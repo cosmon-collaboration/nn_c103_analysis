@@ -4,4 +4,4 @@ To fit our HAL QCD potential data, we discussed using 3 models
 - sum of Gaussians (as HAL QCD does), or is it r-weighted gaussians.   Motiviation:   We will do this mostly because HAL QCD did.   R-weighted Gaussians will eventually work with accurate long range data, but will require many powers to properly represent the tail.  The problem is that we don't have accurate long range data to configure the tail that we know must have a Yukawa form.  
 
 A starting paper for understanding the Gaussian regulated Yukawa and the Woods-Saxon potentials is the original AV18 paper
-- An Accurate nucleon-nucleon potential with charge independence breaking, Wiringa, Stoks, Schiavilla PRC 51 (1995) [nucl-th/9408016]
+- [An Accurate nucleon-nucleon potential with charge independence breaking, Wiringa, Stoks, Schiavilla PRC 51 (1995) \[nucl-th/9408016\](https://arxiv.org/pdf/nucl-th/9408016.pdf)
