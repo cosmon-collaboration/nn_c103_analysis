@@ -4,13 +4,8 @@ The code in this repository performs analysis of the two-nucleon system on the C
 
 The Lüscher Analysis (contained in the `luscher` folder) is performed with an update of the code used to perform the analysis in [2009.11825](https://arxiv.org/abs/2009.11825).
 
-The HAL Potential Analysis (contained in the `hal-qcd` folder) is new software designed with guidance from the HAL QCD Collaboration.
+The HAL Potential Analysis (contained in the `hal-potential` folder) is new software designed with guidance from the HAL QCD Collaboration.
 
-We describe how to run both suites of code below:
-- [Lüscher](#luscher-analysis)
-- [HAL Potential](#hal-potential-analysis)
-
-
-# Luscher Analysis
-
-# HAL Potential Analysis
+We describe how to run both suites of code in their respective README files:
+- [Lüscher](luscher/README.md)
+- [HAL Potential](#hal-potential/README.md)
