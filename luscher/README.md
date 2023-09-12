@@ -1,5 +1,10 @@
 We describe the features and usage of the software to analyze the NN correlators on the C103 ensemble.
 
+The numerical correlators can be found at
+- https://c51.lbl.gov/~walkloud/cosmon_corrs/
+
+Note, this is an unprotected site (no username/passwd required).  We'll make the data public with arXiv anyways, so probably no one will find it before then.
+
 The analysis proceeds in 3 steps:
 - [single nucleon stability study](#single-nucleon)
 - two nucleon stability study

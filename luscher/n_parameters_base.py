@@ -20,7 +20,7 @@ def params():
                Probably more sensible to do single nucleon fits first.
     """
     p = dict()
-    p["debug"] = True
+    p["debug"] = False
     p["latex"] = True
     p["fpath"] = {"nucleon": "./data/nucleon_S0.hdf5", "singlet": "./data/singlet_S0_avg_mom.hdf5"}
 
