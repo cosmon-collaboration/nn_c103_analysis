@@ -20,12 +20,14 @@ def main():
     # NN info
     parser.add_argument('--nn_iso', type=str, default='singlet',
                         help=       'NN system: singlet or triplet [%(default)s]')
+    parser.add_argument('--n_N',    nargs='+', default=[3,4],
+                        help=       'number of exponentials in single nucleon to sweep over %(default)s')
     parser.add_argument('--nn_el',  nargs='+', default=[0],
-                        help=       'number of elastic e.s. to try [%(default)s]')
+                        help=       'number of elastic e.s. to try %(default)s')
     parser.add_argument('--ratio',  default=False, action='store_true',
                         help=       'fit from RATIO correlator? [%(default)s]')
     parser.add_argument('--gevp',   nargs='+', type=str, default=['3-8', '3-10','4-8', '4-10','5-10','6-10'],
-                        help=       'list of GEVP times in t0-td format [%(default)s]')
+                        help=       'list of GEVP times in t0-td format %(default)s')
     parser.add_argument('--tmin',   nargs='+', default=range(2,11),
                         help=       'values of t_min in NN fit [%(default)s]')
    
@@ -42,11 +44,9 @@ def main():
 
     nn_model = 'N_n{N_inel}_NN_{nn_model}_e{nn_el}'
 
-    models = {   
-        'N_n2_NN_conspire_e0'   :{'N_inel':2, 'nn_model':'conspire',    'nn_el':0},
-        'N_n3_NN_conspire_e0'   :{'N_inel':3, 'nn_model':'conspire',    'nn_el':0},
-        'N_n4_NN_conspire_e0'   :{'N_inel':4, 'nn_model':'conspire',    'nn_el':0},
-    }
+    models = {}
+    for n in args.n_N:
+        models['N_n%s_NN_conspire_e0' %n] = {'N_inel':int(n), 'nn_model':'conspire', 'nn_el':0}
     
     if not os.path.exists("figures"):
         os.mkdir("figures")
