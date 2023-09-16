@@ -6,17 +6,17 @@
 
 ratio="False"
 
-t0=3
-td=8
+t0=5
+td=10
 gevp="${t0}-${td}"
 nn_iso='singlet'
 
 for n_N in 2 3 4; do
-    for t0_N in 2 5 7; do
+    for t0_N in 2 3 5 7; do
         e=0
         nucleon="n${n_N}_t_${t0_N}-20"
         for t in $(seq 2 11); do
-            echo "estate= $e,  tmin= $t"
+            echo ""
             echo result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}.pickle
             if [[ ! -e result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}.pickle ]]; then
                 sed "s/R\": \[6, 15\]/R\": \[$t, 15\]/" nn_parameters_base.py \

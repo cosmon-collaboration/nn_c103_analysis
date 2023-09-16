@@ -32,4 +32,12 @@ The main code to run the fit is `nn_fit.py` and it expects an input file `nn_par
     p["ratio"]      = False # fit NN and N1 and N2 
     p["ratio"]      = True  # fit NN/N1/N2 and N1 and N2
 ```
-The script `nn_bash_scripts/run_nn_agnostic_noRatio.sh` will loop over various choices of `t_min` for the nucleon as well as two-nucleon correlator.  It will also loop over the number of states used for the nucleon and two-nucleon.  Importantly, one has to chose the value of `t0` and `td` for the GEVP, this is not looped over.
+The script `nn_bash_scripts/run_nn_agnostic_noRatio.sh` will loop over various choices of `t_min` for the nucleon as well as two-nucleon correlator.  It will also loop over the number of states used for the nucleon and two-nucleon.  Importantly, one has to chose the value of `t0` and `td` for the GEVP, this is not looped over.  In order to create the plots for the paper, we need to run with the `t0-td` values of 
+- 3-8
+- 3-10
+- 4-8
+- 4-10
+- 5-10
+- 6-10
+
+Given these values, the stability plots versus GEVP times is obtained by running `python plot_nn_stability_gevp.py`  This script requires an `optimal` fit, chosen by the user, from the various results obtained.
