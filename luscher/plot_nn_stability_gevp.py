@@ -3,7 +3,7 @@ import os, sys, time
 import gvar as gv
 import numpy as np
 import matplotlib.pyplot as plt
-# load pure_ratio_fit to get fit functions
+# load nn_fit to get fit functions
 import nn_fit as fitter
 import argparse
 import itertools
@@ -20,7 +20,7 @@ def main():
     # NN info
     parser.add_argument('--nn_iso', type=str, default='singlet',
                         help=       'NN system: singlet or triplet [%(default)s]')
-    parser.add_argument('--n_N',    nargs='+', default=[3,4],
+    parser.add_argument('--n_N',    nargs='+', type=int, default=[3,4],
                         help=       'number of exponentials in single nucleon to sweep over %(default)s')
     parser.add_argument('--nn_el',  nargs='+', default=[0],
                         help=       'number of elastic e.s. to try %(default)s')
@@ -46,7 +46,7 @@ def main():
 
     models = {}
     for n in args.n_N:
-        models['N_n%s_NN_conspire_e0' %n] = {'N_inel':int(n), 'nn_model':'conspire', 'nn_el':0}
+        models['N_n%d_NN_conspire_e0' %n] = {'N_inel':n, 'nn_model':'conspire', 'nn_el':0}
     
     if not os.path.exists("figures"):
         os.mkdir("figures")

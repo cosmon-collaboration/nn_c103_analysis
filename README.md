@@ -9,3 +9,4 @@ The HAL Potential Analysis (contained in the `hal-potential` folder) is new soft
 We describe how to run both suites of code in their respective README files:
 - [Lüscher](luscher/README.md)
 - [HAL Potential](hal-potential/README.md)
+
