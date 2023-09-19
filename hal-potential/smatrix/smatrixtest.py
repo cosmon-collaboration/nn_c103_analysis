@@ -48,18 +48,21 @@ def plotV1V2():
 # v = Veck(1.0, 2.0, 3.0, 2.0)
 # print(f"v={v}")
 
-# plotV1V2()
+plotV1V2()
 
 def dotest():
-    testk = 1.0
-    sv = smatrix.get_smatrix_single(0, testk, V2, None, 10.0)
-    sa = v1S(testk)
-    print(f"V2: k={testk}, sa={sa}, sv={sv}")
+    print("Testing analytic S-matrix for special potentials V1 and V2")
+    print("against the numerical calculation")
+    print("sa is the analytic result, sv is the variable phase method result")
+    for testk in [0.1, 0.5, 1.0, 3.0]:
+        sv = smatrix.get_smatrix_single(0, testk, V2, None, 10.0)
+        sa = v1S(testk)
+        print(f"V2: k={testk}, sa={sa}, sv={sv}")
 
-    # V1 dies off slower, give it bigger vR
-    sv = smatrix.get_smatrix_single(0, testk, V1, None, 20.0)
-    sa = v1S(testk)
-    print(f"V1: k={testk}, sa={sa}, sv={sv}")
+        # V1 dies off slower, give it bigger vR
+        sv = smatrix.get_smatrix_single(0, testk, V1, None, 20.0)
+        # sa is the same for V1, they are phase equivalent
+        print(f"V1: k={testk}, sa={sa}, sv={sv}")
 
 dotest()
 

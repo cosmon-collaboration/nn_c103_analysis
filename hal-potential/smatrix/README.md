@@ -23,4 +23,7 @@ In this equation $u_{in}$ and $u_{out}$ are incoming and outgoing basis function
 
 When working with coupled channels the various symbols $S$, $u$, $W$ become matrices.   The $u_{in}$ and $u_{out}$ matrices will be diagonal, with elements corresponding to the angular momentum matrix $L$ defined above.    
 
+&nbsp; &nbsp;&nbsp; $u_{in} = \begin{pmatrix} h^{(2)}_{\ell_1}(r) & 0 \\ 0 & h^{(2)}_{\ell_2}(r) \\ \end{pmatrix}$,
+&nbsp; &nbsp;&nbsp; $u_{out} = \begin{pmatrix} h^{(1)}_{\ell_1}(r) & 0 \\ 0 & h^{(1)}_{\ell_2}(r) \\ \end{pmatrix}$
+
 

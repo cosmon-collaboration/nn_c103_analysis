@@ -59,9 +59,9 @@ def get_smatrix_single(L, k, vf, vd, vR):
     # start far enough away from 0 to avoid numerical issues.
     rrange = (1e-12, vR)
     s0 = [1.0+0.0j] # initial S-matrix is just 1
-    # atol and rtol Tolerance didn't work, must be some error estimate failure
+    # atol and rtol Tolerance didn't work, must be some step size error estimate failure
     # However, brute forcing the max step size does work.
-    sol = solve_ivp(model, rrange, s0, args=(L, k, vf, vd), method="DOP853", atol = 1e-8, rtol = 1e-8, max_step=vR/100.0)
+    sol = solve_ivp(model, rrange, s0, args=(L, k, vf, vd), method="DOP853", atol = 1e-8, max_step=vR/200.0)
     # print(sol.t)
     y = sol.y[0]
     last = y[len(y)-1] # len(2) will be 2, entry 1 will be r=vR
