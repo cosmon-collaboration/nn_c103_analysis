@@ -306,11 +306,13 @@ class Fit:
                 else:
                     meff = siground(meff[x.index(x[0])].mean)
                     zeff = siground(zeff[x.index(x[0])].mean)
-                prior[(key, "e0")] = gv.gvar(0, 10)  # gv.gvar(meff, 10*meff)
-                prior[(key, "z0")] = gv.gvar(zeff, 10 * zeff)
+                prior[(key, "e0")] = gv.gvar(meff, 0.2 * meff)
+                # use a large width for zeff in case we aren't in plateau region
+                prior[(key, "z0")] = gv.gvar(zeff, 5 * zeff) 
                 for n in range(1, self.params["nstates"]):
-                    #prior[(key, f"e{n}")] = gv.gvar(-0.31, 1.4)  # 2 pion splitting
-                    prior[(key, f"e{n}")] = gv.gvar(np.log(0.31 / n), 0.7)  # N-pi with 1 momentum unit
+                    ampi = self.params['ampi']
+                    # give a log-normal splitting of 2mpi, with a 1-sigma down fluctuation to mpi
+                    prior[(key, f"e{n}")] = gv.gvar(np.log(2*ampi), 0.7)
                     if self.params["gs_factorize"]:
                         prior[(key, f"z{n}")] = gv.gvar(1, 1)
                     else:
@@ -388,6 +390,8 @@ class Fit:
         if not self.params["save"]:
             return
 
+        if not os.path.exists('result'):
+            os.makedirs('result')
         filename = f"N_n{self.params['nstates']}_t_{self.params['trange'][0]}-{self.params['trange'][1]}.pickle"
         gv.dump(self.posterior, f"./result/{filename}")
 
