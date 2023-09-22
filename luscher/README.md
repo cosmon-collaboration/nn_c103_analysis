@@ -5,6 +5,19 @@ The numerical correlators can be found at
 
 Note, this is an unprotected site (no username/passwd required).  We'll make the data public with arXiv anyways, so probably no one will find it before then.
 
+For the code to run, we need to either rename these files or make soft links to them (after you download them) to match the convention in the input files,
+```
+mkdir data
+cd data
+wget https://c51.lbl.gov/~walkloud/cosmon_corrs/c103_nn_hdf5/c103_nn_hdf5/cls21_c103_r005-8_nucleon_S0.hdf5
+...
+ln -s cls21_c103_r005-8_nucleon_S0.hdf5 nucleon_S0.hdf5
+...
+```
+
+
+
+
 The analysis proceeds in 3 steps:
 - [single nucleon stability study](#single-nucleon)
 - [two nucleon stability study](#two-nucleon)
