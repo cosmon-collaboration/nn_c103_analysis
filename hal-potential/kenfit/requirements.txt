@@ -1,0 +1,7 @@
+matplotlib==3.7.2
+numpy>=1.25.2
+gvar>=11.11.13
+h5py>=3.9.0
+lsqfit>=13.0.1
+scipy>=1.11.2
+vegas>=5.4.2
