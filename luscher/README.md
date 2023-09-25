@@ -16,12 +16,20 @@ ln -s cls21_c103_r005-8_nucleon_S0.hdf5 nucleon_S0.hdf5
 ```
 
 
-
-
 The analysis proceeds in 3 steps:
 - [single nucleon stability study](#single-nucleon)
 - [two nucleon stability study](#two-nucleon)
 - phase shift analysis
+
+The analysis code requires a few Python libraries to work.  The version of each library with which this code has been tested are
+- numpy: 1.23.5
+- scipy: 1.10.0
+- matplotlib
+- h5py: 3.7.0
+- gvar: 11.11.1
+- lsqfit: 13.0
+
+
 
 ## Single Nucleon
 
