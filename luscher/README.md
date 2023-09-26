@@ -62,7 +62,7 @@ The script `nn_bash_scripts/run_nn_agnostic_noRatio.sh` will loop over various c
 - 5-10
 - 6-10
 
-Given these values, the stability plots versus GEVP times is obtained with `plot_nn_stability_gevp.py`  This script requires an `optimal` fit, chosen by the user, from the various results obtained.  For example:
+Given these values, the stability plots versus GEVP times is obtained with `plot_nn_stability_gevp.py`.  This script requires an `optimal` fit, chosen by the user, from the various results obtained.  For example:
 ```
 ./plot_nn_stability_gevp.py result/NN_singlet_t0-td_4-10_N_n3_t_3-20_NN_conspire_e0_t_3-15_ratio_False.pickle
 ```

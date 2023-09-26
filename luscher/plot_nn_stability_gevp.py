@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import nn_fit as fitter
 import argparse
 import itertools
+
 def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
 
@@ -57,46 +58,39 @@ def main():
         ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
         ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
     ]
-    #states = [('0', 'T1g', 0)]
+    states = [('0', 'T1g', 0)]
     #states = [('3', 'A2', 0)]
 
-    if args.optimal:
-        print('loading optimal fit:',args.optimal)
-        post_optimal  = gv.load(args.optimal)
-        optimal_p     = {'positive_z':True, 'debug':False}
-        N_inel        = int(args.optimal.split('N_n')[1].split('_')[0])
-        nn_el         = int(args.optimal.split('_e')[1].split('_')[0])
-        optimal_model = {}
-        if 'conspire' in args.optimal:
-            optimal_p['version']      = 'conspire'
-            optimal_model['nn_model'] = 'conspire'
-        else:
-            optimal_p['version'] = 'agnostic'
-            r_n_inel = int(args.optimal.split('agnostic_n')[1].split('_')[0])
-            optimal_p['r_n_inel']  = r_n_inel
-            optimal_model['model'] = 'agnostic_n%d' %r_n_inel
-        
-        optimal_p['r_n_el']  = nn_el
-        optimal_p['nstates'] = N_inel
-        optimal_model['N_inel'] = N_inel
-        optimal_model['nn_el']  = nn_el
-
-        optimal_model = nn_model.format(**optimal_model)
-
-        color = { '3-10':'magenta', '4-10':'b', '5-10':'g', '6-10':'r', '3-8':'orange', '4-8':'yellow' }
-        opt_tmin  = int(args.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
-        gevp_plot = args.optimal.split('t0-td_')[1].split('_')[0]
-        opt_clr   = color[gevp_plot]
-
-        # get data keys
-        fit_keys = {}
-        for q in states:
-            for k in post_optimal:
-                if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
-                    fit_keys[q] = k
-
+    print('\nloading optimal fit:',args.optimal)
+    post_optimal  = gv.load(args.optimal)
+    optimal_p     = {'positive_z':True, 'debug':False}
+    N_inel        = int(args.optimal.split('N_n')[1].split('_')[0])
+    nn_el         = int(args.optimal.split('_e')[1].split('_')[0])
+    optimal_model = {}
+    if 'conspire' in args.optimal:
+        optimal_p['version']      = 'conspire'
+        optimal_model['nn_model'] = 'conspire'
     else:
-        gevp_plot = args.gevp[0]
+        sys.exit('you supplied an "agnostic" model, but we require "conspire"')
+    
+    optimal_p['r_n_el']     = nn_el
+    optimal_p['nstates']    = N_inel
+    optimal_model['N_inel'] = N_inel
+    optimal_model['nn_el']  = nn_el
+
+    optimal_model = nn_model.format(**optimal_model)
+
+    color = { '3-10':'magenta', '4-10':'b', '5-10':'g', '6-10':'r', '3-8':'orange', '4-8':'yellow' }
+    opt_tmin  = int(args.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
+    gevp_plot = args.optimal.split('t0-td_')[1].split('_')[0]
+    opt_clr   = color[gevp_plot]
+
+    # get data keys
+    fit_keys = {}
+    for q in states:
+        for k in post_optimal:
+            if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
+                fit_keys[q] = k
 
     nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+'.pickle')
 
