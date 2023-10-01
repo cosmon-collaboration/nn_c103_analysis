@@ -6,7 +6,10 @@ import gvar as gv
 import vegas
 import h5py as h5
 import lsqfit
+import scipy
 import scipy.constants as const
+from scipy.special import genlaguerre
+from scipy.special import laguerre
 import copy
 import smatrix
 
@@ -27,7 +30,10 @@ mpi = mpilat / a_fm    # In inverse fm for mult with r in fm
 mpimev = hc * mpilat / a_fm 
 print(f"mpimev = {mpimev} MeV, mpi = {mpi} fm^-1")
 
-mnucleonmev=1400.0  # Nucleon mass in MeV
+mnucleonlu = gv.gvar("0.70273(31)")
+mnucleonmev_gv= hc * (mnucleonlu / a_fm)
+mnucleonmev = mnucleonmev_gv.mean
+print(f"nucleon mass = {mnucleonmev_gv} MeV")
 
 # Ken:  why are we overriding to 1?    
 # Andre's Answer:   hack to work in lattice units instead of MeV fm
@@ -35,7 +41,7 @@ mnucleonmev=1400.0  # Nucleon mass in MeV
 # scale = 1
 
 fitgo=True
-maxt = 18
+maxt = 19
 t_V_fit=maxt # time slice to plot
 trange = range(maxt-1,maxt+1)
 
@@ -96,7 +102,12 @@ with h5.File('c103_V_hal_pn_TRIP.h5') as f5:
 
     #print("data = ", data)
     # Get density for each 
-    sdevscale = np.sqrt(np.array([density(r_a[i]) for i in range(len(r_a))]))
+    if False:
+        print("implement sample density correction")
+        sdevscale = np.sqrt(np.array([density(r_a[i]) for i in range(len(r_a))]))
+    else:
+        print("no sample density correction")
+        sdevscale = np.array([1 for i in range(len(r_a))])
     data_gv = gv.dataset.avg_data(data, bstrap=True)
     for t in trange:
         tag = f"pn_trip_t{t}"
@@ -119,13 +130,116 @@ def plotDensity():
 #plotDensity()
 #quit()
 
-def V_gsum(x, p):
-    w = p['w'] # gaussian width
-    a0 = p['a0']
-    a1 = p['a1']
-    a2 = p['a2']
-    return np.exp(- x^2 / a) * (a0 + a1 * x + a2 * x^2)
-    
+
+# manually create Laguerre polynomials for L=0
+# so that we can use them with lsqfit (consume Gvars)
+# Note:  q = r*r
+def lagL0(n, q):
+    q2 = q*q
+    q4 = q2*q2
+    # LaguerreP[n-1, L+1/2, r^2]
+    if n == 1:
+        rslt = 1
+    elif n == 2:
+        rslt = (3.0/2.0) - q
+    elif n == 3:
+        rslt = (1.0/8.0)*(15.0 - 20*q + 4*q2)
+    elif n == 4:
+        rslt = (1/48.0)*(105.0 - 210.0*q + 84.0*q2 - 8*q2*q)
+    elif n == 5:
+        rslt = (1.0/384.0)*(945.0 - 2520.0*q + 1512.0*q2 - 288.0*q2*q + 16*q4)
+    elif n == 6:
+        rslt = (1.0/3840.0)*(10395.0 - 34650.0*q + 27720.0*q2 - 7920.0*q2*q + 880.0*q4 - 32*q4*q)
+    elif n == 7:
+        rslt = (1.0/46080.0)*(135135.0 - 540540.0*q + 540540.0*q2 - 205920.0*q2*q 
+                              + 34320.0*q4 - 2496.0*q4*q + 64.0*q4*q2)
+    elif n == 8:
+        rslt = (1.0/645120.0)*(2027025.0 - 9459450.0*q + 11351340.0*q2 - 5405400.0*q2*q + 1201200.0*q4 - 131040.0* q4*q + 6720.0*q4*q2  - 128.0*q4*q2*q)
+    elif n == 9:
+        rslt = (1.0/10321920.0)*(34459425.0 - 183783600.0*q + 257297040.0*q2 
+        - 147026880.0*q2*q + 40840800.0*q4 - 5940480.0*q4*q 
+        + 456960.0*q4*q2 - 17408.0*q4*q2*q + 256.0*q4*q4)
+    elif  n == 10:
+        rslt = (1.0/185794560.0)*(654729075.0 - 3928374450.0*q 
+         + 6285399120.0*q2 - 4190266080.0*q2*q 
+         + 1396755360.0*q4 - 253955520.0*q4*q 
+         + 26046720.0*q4*q2 - 1488384.0*q4*q2*q 
+         + 43776.0*q4*q4 - 512.0*q4*q4*q)
+    else:
+        raise("help")
+    return rslt
+
+# Harmonic oscillator state
+def hopos(n, L, b, r):
+    rb = r / b
+    pre = (b ** (-3/2)) * np.sqrt(2.0 * scipy.special.gamma(n)/scipy.special.gamma(n + L + 1/2))
+    if L > 0:
+        pre *= rb**L;
+    rb2 = rb * rb
+    pre *= np.exp(-0.5 * rb2)
+    return pre * lagL0(n, rb2)
+
+# Test hopos against Mathematica code
+# print("hopos(2, 0, 0.5, 0.8) = ", hopos(2, 0,0.5, 0.8))
+
+#
+# Fit with orthogonal polynomials
+#
+def V_ho_one(r, p):
+    # OPEP part
+    if True:
+        # c = p['c']
+        c = 4.0
+        m = p['m']
+        z = r * mpi
+        # -3 is for (tau.tau)*(sigma.sigma)
+        h = (1 - np.exp(-c*r*r)) * (-3.0) * m * np.exp(-z) / (z + 1e-10)
+    else:
+        h = 0.0
+
+    # HO part
+    # b = p['b']
+    b = 0.25
+    h +=  p['a1'] * hopos(1, 0, b, r)
+    h += p['a2'] * hopos(2, 0, b, r)
+    h += p['a3'] * hopos(3, 0, b, r)
+    h += p['a4'] * hopos(4, 0, b, r) 
+    h += p['a5'] * hopos(5, 0, b, r)
+    if 'a6' in p:
+        h += p['a6'] * hopos(6, 0, b, r)
+        if 'a7' in p:
+            h += p['a7'] * hopos(7, 0, b, r)
+            if 'a8' in p:
+                h += p['a8'] * hopos(8, 0, b, r)
+                if 'a9' in p:
+                    h += p['a9'] * hopos(9, 0, b, r)
+                    if 'a10' in p:
+                        h += p['a10'] * hopos(10, 0, b, r)
+    return h
+
+def V_ho(rv, p):
+    if isinstance(rv, np.ndarray):
+        rslt = []
+        for r in rv:
+            rslt.append(V_ho_one(r, p))
+        return np.array(rslt)
+    else:
+        return V_ho_one(rv, p)
+       
+ho_p = {
+    'm' : gv.gvar(20.0, 10.0),
+    # 'c' : gv.gvar(4.0, 2.0),
+    # 'b' : gv.gvar(0.25, 0.2),
+    'a1' : gv.gvar(10.0, 10.0),
+    'a2' : gv.gvar(10.0, 10.0),
+    'a3' : gv.gvar(10.0, 10.0),
+    'a4' : gv.gvar(10.0, 10.0),
+    'a5' : gv.gvar(5.0, 5.0),
+    'a6' : gv.gvar(3.0, 3.0),
+    'a7' : gv.gvar(15.625, 10.0),
+    'a8' : gv.gvar(10.0, 10.0),
+    'a9' : gv.gvar(10.0, 10.0)
+}
 
 # Av18 had c = 2.1 fm^-2 for physical pion mass in the Yukawa regulator
 # This is compared to  mpi/hc of 0.535448162 fm^-1 at the physical point.
@@ -154,9 +268,11 @@ def V_gsum(x, p):
 #
 V_opep_c = 2.1
 V_opep_tfpiNN2 = 0.0
+V_opep_regp = 4
 def V_opep_reg(r, p):
     c = p.get('c', V_opep_c)
-    return (1 - np.exp(-c*r*r))**4
+    regp = p.get('regp', V_opep_regp)
+    return (1 - np.exp(-c*r*r))**regp
 
 def V_wsopep(r, p):
     a = p['a']
@@ -208,6 +324,7 @@ def V_opep(r, p):
 opep_p = {
     # 'tfpiNN2' : gv.gvar(0.024 * 2.5**2, 0.100),
     'tfpiNN2' : gv.gvar(1.2 * 0.024 * (722.4/134.0)**2, 0.200),
+    'regp' : gv.gvar(V_opep_regp, 1.0),
     # 'c' : gv.gvar(2.66, 0.2)
     'c' : gv.gvar(3.50, 0.2)
     # 'c' : gv.gvar(2.1, 0.2)
@@ -249,9 +366,10 @@ wsopep_phys = {
 #quit()
 
 
-def V_wsopep_plot(t, p, extend = False):
+def V_wsopep_plot(t, p, vf, extend = False):
     plt.ion() # Enable interactive mode
-    fig = plt.figure() # creates a figure
+    # fig = plt.figure(dpi=400.0) # creates a figure
+    fig = plt.figure(dpi=200.0) # creates a figure
     ax = plt.axes([.12,.12,.87,.87]) # can't find docs yet
     # evaluate associated function, in this case V_wsopep on r data with fit values
     # Becaues of gvars this will yield mean and uncertainty as the result v_fit
@@ -261,7 +379,7 @@ def V_wsopep_plot(t, p, extend = False):
         xset = np.arange(densityXmin, densityXmax, 0.05)
 
     rset = xset * a_fm
-    v_fit = np.array([V_wsopep(r, p) for r in rset])
+    v_fit = np.array([vf(r, p) for r in rset])
     # extract mean and deviation for configured model
     y  = np.array([k.mean for k in v_fit])
     dy = np.array([k.sdev for k in v_fit])
@@ -276,38 +394,76 @@ def V_wsopep_plot(t, p, extend = False):
 
     ax.axhline(0, color='k')
     plt.ylim(-100.0, 2500.0)
+    # plt.ylim(-100.0, 100.0)
     plt.xlim(0.0, 1.6)
     plt.title(f"Potential at time {t}")
     plt.xlabel("Radial distance [fm]")
     plt.ylabel("Potential [MeV]")
     ax.text(0.5, 1000.0, f"potential at $time={t}$", fontsize=16)
     plt.ioff()
-    #   plt.show()
+    plt.savefig(f"fit_{t}.png")
+    plt.show()
 
+vfglobal = 0
 def feffrng(p):
-    plist = np.array([smatrix.get_phase_single(0, k, W_wsopep, p, 2.0) for k in klist])
+    plist = np.array([smatrix.get_phase_single(0, k, vfglobal, p, 3.0) for k in klist])
     kcotd = np.array([ k*(1.0/np.tan(d)) for k,d in zip(klist, plist)])
     ercoef = np.polynomial.polynomial.Polynomial.fit(k2list, kcotd, 3, symbol="k2")
     return ercoef.coef
     
-def get_effrangeexpansion(gp):
+def get_effrangeexpansion(gp, vf):
+    global vfglobal
+    vfglobal = vf
     expval = vegas.PDFIntegrator(gp)
+    # result = expval(feffrng, neval=2, nitn=2)
     result = expval(feffrng, neval=20, nitn=5)
     return result
 
-def report_phase(t, gp):
+def plot_kcotd(t, vf, gp):
+    vfglobal = vf
+    xp = dict()
+    for key,v in gp.items():
+        xp[key] = v.mean
+    # elist  = np.array([0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0]) # MeV
+    elist = np.arange(0.01, 64.0, 0.5)
+    klist  = np.array([np.sqrt(mnucleonmev*e)/HBARC for e in elist])
+    k2list = np.array([k*k for k in klist]) # fm^-2
+    k2overmpi2 = k2list / mpi**2
+    plist = np.array([smatrix.get_phase_single(0, k, vfglobal, xp, 3.0) for k in klist])
+    kcotd = np.array([ k*(1.0/np.tan(d)) for k,d in zip(klist, plist)])
+    kcotd /= mpi
+    plt.ion() # Enable interactive mode
+    fig = plt.figure(dpi=200.0) # creates a figure
+    ax = plt.axes([.12,.12,.87,.87]) # can't find docs yet
+    ax.plot(k2overmpi2, kcotd)
+    plt.ioff()
+    plt.show()
+
+def report_phase(t, vf, gp):
     print("phase shift gen from distribution: ", gp)
     global elist, klist, k2list
     elist = np.array([0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0]);
     klist = np.array([np.sqrt(mnucleonmev*e)/HBARC for e in elist])
     k2list = np.array([k*k for k in klist])
-    result = get_effrangeexpansion(gp)
+    if True:
+        plot_kcotd(t, vf, gp)
+    result = get_effrangeexpansion(gp, vf)
     print("result = ", result)
+    # 
+    # k cot \delta = -1/a  + (1/2) reff k^2 + ...
+    a = -1.0 / result[0]
+    reff = 2 * result[1]
+    z = reff / a
+    if z < 0.0 or z > 1.0:
+        print(f"No bound state as (reff / a) = {z} < 0 or > 1")
+    else:
+        be = (1.0 / reff) * (1.0 - np.sqrt(1.0 - 2.0 * z))
+        print(f"Binding energy is {be}")
     return
     for i in range(2):
         p = gv.sample(gp)
         print("phase shift gen with sample: ", p)
-        plist = np.array([smatrix.get_phase_single(0, k, W_wsopep, p, 3.0) for k in klist])
+        plist = np.array([smatrix.get_phase_single(0, k, vf, p, 3.0) for k in klist])
         print(f"sample{i}: phases({t}) = ", plist)
         kcotd = np.array([ k*(1.0/np.tan(d)) for k,d in zip(klist, plist)])
         print(f"kcotd{i}:  ", kcotd)
@@ -334,9 +490,9 @@ def fit_wsopep():
     # Use r_min = 2.
     # First lets fit the opep from
     if 'c' in opep_p:
-        r_min_opep = 0.5 / a_fm # to start of roll off to be sensitive to c
+        r_min_opep = 0.6 / a_fm # to start of roll off to be sensitive to c
     else:
-        r_min_opep = 0.5 / a_fm
+        r_min_opep = 0.6 / a_fm
     r_max_opep = maxlu
     print(f"opep fit range {r_min_opep} to {r_max_opep}")
     r_min_wsopep = 0.0 / a_fm
@@ -387,20 +543,55 @@ def fit_wsopep():
             tp[key] = v
         fit_results[t] = [t, tp, wsopep_fit, opep_fit]  # save everything
         print("twsfit = ", tp)
-        V_wsopep_plot(t, fit_results[t][1], True)
-        report_phase(t, fit_results[t][1])
+        V_wsopep_plot(t, fit_results[t][1], V_wsopep, True)
+        report_phase(t, W_wsopep, fit_results[t][1])
 
     # V_wsopep_plot(t_V_fit, tp, True)
     return
-    p = wsopep_p
-    p0 = dict()
-    for key,v in p.items():
-        p0[key] = v.mean
-    # tmp_fit = lsqfit.nonlinear_fit(udata=(fit_x,fit_y), prior=p, p0=p0, fcn=V_wsopep)
-    tmp_fit = lsqfit.nonlinear_fit(udata=(fit_x,fit_y), prior=p, fcn=V_wsopep)
-    print("fit : ", tmp_fit)
-    fit_results[t_V_fit] = tmp_fit
-    V_wsopep_plot(r_min, t_V_fit, fit_results, True)
+
+#
+# Strategy:   
+# Use simple sum of HO states (orthogonal functions)
+# We expect the range to be sqrt(nmax) * b
+# if b is 0.7, then  sqrt(6) * 0.7 = 1.71
+#                    sqrt(8) * 0.7 = 1.97
+#
+# If we don't fit too close to r=0, then should be easier.
+#
+def fit_ho():
+    fit_results = {}
+    # Advice from Andre is that discretization errors show up as small r.
+    r_max_opep = maxlu
+    r_min = 0.0 / a_fm
+    r_max = maxlu
+    print(f"ho fit range {r_min} to {r_max}")
+    for t in trange:
+        t_c = t
+        print(f" r_minmax = {r_min}, {r_max}")
+        print(f"Fitting V_ho from r={r_min*a_fm} to r={r_max*a_fm}")
+        # Get indices we will use in the fit
+        i_r_fit = [i_r for i_r,r in enumerate(r_a) if r > r_min and r < r_max]
+        fit_x = r_a[i_r_fit] * a_fm
+        fit_y = data_gv[f"pn_trip_t{t}"][i_r_fit] * scale
+        # print("fit_y = ", fit_y)
+        p = ho_p
+        p0 = dict()
+        for key,v in p.items():
+            p0[key] = v.mean
+        ho_fit = lsqfit.nonlinear_fit(udata=(fit_x,fit_y), prior=p, p0=p0, fcn=V_ho)
+        print(f"t = {t}")
+        print(ho_fit)
+        fit_results[t] = ho_fit
+        print("Fit Results: ", ho_fit.p)
+        # hack globals to configure wsopep with opep parameters
+        fit_results[t] = [t, ho_fit.p, ho_fit]  # save everything
+        print("hofit = ", ho_fit.p)
+        V_wsopep_plot(t, fit_results[t][1], V_ho, True)
+        report_phase(t, V_ho, fit_results[t][1])
+
+    return
+
 
 fit_wsopep()
+# fit_ho()
 quit()
