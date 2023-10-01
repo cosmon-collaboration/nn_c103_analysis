@@ -8,7 +8,6 @@ import gvar as gv
 import lsqfit
 import numpy as np
 import scipy as sp
-import pandas as pd
 from os import path
 import tqdm
 from colorama import Fore
@@ -17,12 +16,12 @@ import nn_parameters as parameters
 
 class Fit:
     def __init__(self, params=None):
-        print('numpy:',  np.__version__)
-        print('scipy:',  sp.__version__)
-        print('h5py:',   h5.__version__)
-        print('pandas:', pd.__version__)
-        print('gvar:',   gv.__version__)
-        print('lsqfit:', lsqfit.__version__)
+        print('numpy:',      np.__version__)
+        print('scipy:',      sp.__version__)
+        print('matplotlib:', sys.modules[plt.__package__].__version__)
+        print('h5py:',       h5.__version__)
+        print('gvar:',       gv.__version__)
+        print('lsqfit:',     lsqfit.__version__)
         if params is None:
             self.params = parameters.params()
         else:
