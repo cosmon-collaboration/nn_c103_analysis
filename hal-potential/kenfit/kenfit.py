@@ -13,6 +13,8 @@ from scipy.special import laguerre
 import copy
 import smatrix
 
+doshow=False
+
 # Ken:  Why does HBARC have the electron charge in it???
 HBARC   = const.hbar * const.c / const.e * 1e15 / 1e6
 print(f"old HBARC = {HBARC}") # seems to work (what are the orig units??)
@@ -41,9 +43,10 @@ print(f"nucleon mass = {mnucleonmev_gv} MeV")
 # scale = 1
 
 fitgo=True
-maxt = 19
+maxt = 18
+mint = 10
 t_V_fit=maxt # time slice to plot
-trange = range(maxt-1,maxt+1)
+trange = range(mint,maxt+1)
 
 maxfm = 1.5
 maxlu = maxfm / a_fm
@@ -97,7 +100,6 @@ with h5.File('c103_V_hal_pn_TRIP.h5') as f5:
         # data['pn_trip_t%d' %t] = pn_trip[:,t]
         print(f"Adding data for pn_trip_t{t}")
         tript = pn_trip[:,t]
-        # tript = np.array([ gv.gvar(tript[i].mean, tript[i].sdev * density(r_a[i])) for i in range(len(tript))])
         data[f"pn_trip_t{t}"] = tript # pn_trip[:,t]
 
     #print("data = ", data)
@@ -108,6 +110,9 @@ with h5.File('c103_V_hal_pn_TRIP.h5') as f5:
     else:
         print("no sample density correction")
         sdevscale = np.array([1 for i in range(len(r_a))])
+    #
+    # We have multiple data sets from different configurations.
+    # We use them to get the average and stddev
     data_gv = gv.dataset.avg_data(data, bstrap=True)
     for t in trange:
         tag = f"pn_trip_t{t}"
@@ -125,7 +130,8 @@ def plotDensity():
     y = np.array([density(x) for x in densityXset])
     ax.plot(densityXset, y, linewidth=2.0)
     ax.set(xlim=(0, 20), xticks=np.arange(1, 20), ylim=(0, 5), yticks=np.arange(0, 5))
-    plt.show()
+    if doshow:
+        plt.show()
 
 #plotDensity()
 #quit()
@@ -169,10 +175,29 @@ def lagL0(n, q):
         raise("help")
     return rslt
 
+def honorm(n, L, b):
+    return (b ** (-3/2)) * np.sqrt(2.0 * scipy.special.gamma(n)/scipy.special.gamma(n + L + 1/2))
+
+#
+# Pre-compute normalization for ho states
+# b is changing so we have to redo for every call to V_ho,
+# but it is usually called with a vector rv so we save a lot.
+#
+honormtab = np.array([1000.0] * 20)
+def sethonormtab(maxn, b):
+    global honormtab, honormtab_b
+    
+    honormtab_b = b
+    honormtab = np.array([honorm(n, 0, b) for n in range(1, maxn)])
+
+#
 # Harmonic oscillator state
+# Relies on sethonormtab being called.
+#
 def hopos(n, L, b, r):
     rb = r / b
-    pre = (b ** (-3/2)) * np.sqrt(2.0 * scipy.special.gamma(n)/scipy.special.gamma(n + L + 1/2))
+    # pre = (b ** (-3/2)) * np.sqrt(2.0 * scipy.special.gamma(n)/scipy.special.gamma(n + L + 1/2))
+    pre = honormtab[n]  #  precalc now
     if L > 0:
         pre *= rb**L;
     rb2 = rb * rb
@@ -180,7 +205,29 @@ def hopos(n, L, b, r):
     return pre * lagL0(n, rb2)
 
 # Test hopos against Mathematica code
+# sethonormtab(2, 0.5)
 # print("hopos(2, 0, 0.5, 0.8) = ", hopos(2, 0,0.5, 0.8))
+
+V_ho_m = 1.0
+V_ho_c = 1.0
+V_ho_regp = 2.0
+V_ho_br = np.sqrt(0.15)
+
+def V_ho_opep(r, p):
+    m = p.get('m', V_ho_m)  #  overall scale
+    c = p.get('c', V_ho_c)  #  regulator scale
+    regp = p.get('regp', V_ho_regp)  #  regulator power
+    z = r * mpi
+    # -3 is for (tau.tau)*(sigma.sigma) in 3S0  T=0 channel
+    h = (1 - np.exp(-c*r*r))**regp * (-3.0) * m * np.exp(-z) / (z + 1e-10)
+    # h = (-3.0) * m * np.exp(-z) / (z + 1e-10)
+    return h
+
+ho_opep_p = {
+    'm' : gv.gvar(800.0, 200.0),
+    # 'regp' : gv.gvar(1.0, 1.0),
+    'c' : gv.gvar(2.10, 0.2)
+}
 
 #
 # Fit with orthogonal polynomials
@@ -188,19 +235,14 @@ def hopos(n, L, b, r):
 def V_ho_one(r, p):
     # OPEP part
     if True:
-        # c = p['c']
-        c = 4.0
-        m = p['m']
-        z = r * mpi
-        # -3 is for (tau.tau)*(sigma.sigma)
-        h = (1 - np.exp(-c*r*r)) * (-3.0) * m * np.exp(-z) / (z + 1e-10)
+        h = V_ho_opep(r, p)
     else:
         h = 0.0
 
     # HO part
-    # b = p['b']
-    b = 0.25
-    h +=  p['a1'] * hopos(1, 0, b, r)
+    b = p.get('br', V_ho_br)
+    b *= b
+    h += p['a1'] * hopos(1, 0, b, r)
     h += p['a2'] * hopos(2, 0, b, r)
     h += p['a3'] * hopos(3, 0, b, r)
     h += p['a4'] * hopos(4, 0, b, r) 
@@ -218,6 +260,9 @@ def V_ho_one(r, p):
     return h
 
 def V_ho(rv, p):
+    b = p.get('br', V_ho_br)
+    b *= b
+    sethonormtab(11, b)
     if isinstance(rv, np.ndarray):
         rslt = []
         for r in rv:
@@ -227,18 +272,16 @@ def V_ho(rv, p):
         return V_ho_one(rv, p)
        
 ho_p = {
-    'm' : gv.gvar(20.0, 10.0),
-    # 'c' : gv.gvar(4.0, 2.0),
-    # 'b' : gv.gvar(0.25, 0.2),
-    'a1' : gv.gvar(10.0, 10.0),
+    'br': gv.gvar(np.sqrt(0.10), 0.05),
+    'a1' : gv.gvar(50.0, 10.0),
     'a2' : gv.gvar(10.0, 10.0),
     'a3' : gv.gvar(10.0, 10.0),
     'a4' : gv.gvar(10.0, 10.0),
     'a5' : gv.gvar(5.0, 5.0),
     'a6' : gv.gvar(3.0, 3.0),
     'a7' : gv.gvar(15.625, 10.0),
-    'a8' : gv.gvar(10.0, 10.0),
-    'a9' : gv.gvar(10.0, 10.0)
+    'a8' : gv.gvar(10.0, 10.0)
+    #'a9' : gv.gvar(10.0, 10.0)
 }
 
 # Av18 had c = 2.1 fm^-2 for physical pion mass in the Yukawa regulator
@@ -366,20 +409,18 @@ wsopep_phys = {
 #quit()
 
 
-def V_wsopep_plot(t, p, vf, extend = False):
+def V_plot(t, p, xmin, xmax, vf):
     plt.ion() # Enable interactive mode
     # fig = plt.figure(dpi=400.0) # creates a figure
     fig = plt.figure(dpi=200.0) # creates a figure
     ax = plt.axes([.12,.12,.87,.87]) # can't find docs yet
-    # evaluate associated function, in this case V_wsopep on r data with fit values
+    # evaluate associated function, in this case vf on r data with fit values
     # Becaues of gvars this will yield mean and uncertainty as the result v_fit
-    if extend:
-        xset = np.arange(0.01, densityXmax, 0.05)
-    else:
-        xset = np.arange(densityXmin, densityXmax, 0.05)
+    xset = np.arange(xmin, xmax, 0.05)
 
     rset = xset * a_fm
     v_fit = np.array([vf(r, p) for r in rset])
+    print("v_fit = ", v_fit[0:40])
     # extract mean and deviation for configured model
     y  = np.array([k.mean for k in v_fit])
     dy = np.array([k.sdev for k in v_fit])
@@ -393,16 +434,17 @@ def V_wsopep_plot(t, p, vf, extend = False):
                 label=r'$t=%d$' %t, color='r')
 
     ax.axhline(0, color='k')
-    plt.ylim(-100.0, 2500.0)
+    plt.ylim(-100.0, 3000.0)
     # plt.ylim(-100.0, 100.0)
     plt.xlim(0.0, 1.6)
     plt.title(f"Potential at time {t}")
     plt.xlabel("Radial distance [fm]")
     plt.ylabel("Potential [MeV]")
-    ax.text(0.5, 1000.0, f"potential at $time={t}$", fontsize=16)
+    ax.text(0.5, 100.0, f"potential at $time={t}$", fontsize=16)
     plt.ioff()
     plt.savefig(f"fit_{t}.png")
-    plt.show()
+    if doshow:
+        plt.show()
 
 vfglobal = 0
 def feffrng(p):
@@ -436,8 +478,13 @@ def plot_kcotd(t, vf, gp):
     fig = plt.figure(dpi=200.0) # creates a figure
     ax = plt.axes([.12,.12,.87,.87]) # can't find docs yet
     ax.plot(k2overmpi2, kcotd)
+    ax.text(0.05, 0.1, f"time={t}", fontsize=16)
+    plt.xlabel("k lu^-1")
+    plt.ylabel("k cot delta / mpi")
     plt.ioff()
-    plt.show()
+    plt.savefig(f"kcotd_{t}.png")
+    if doshow:
+        plt.show()
 
 def report_phase(t, vf, gp):
     print("phase shift gen from distribution: ", gp)
@@ -450,33 +497,16 @@ def report_phase(t, vf, gp):
     result = get_effrangeexpansion(gp, vf)
     print("result = ", result)
     # 
-    # k cot \delta = -1/a  + (1/2) reff k^2 + ...
+    print("k cot \delta = -1/a  + (1/2) reff k^2 + ...")
     a = -1.0 / result[0]
     reff = 2 * result[1]
+    print(f"a = {a}, reff = {reff}")
     z = reff / a
     if z < 0.0 or z > 1.0:
         print(f"No bound state as (reff / a) = {z} < 0 or > 1")
     else:
         be = (1.0 / reff) * (1.0 - np.sqrt(1.0 - 2.0 * z))
         print(f"Binding energy is {be}")
-    return
-    for i in range(2):
-        p = gv.sample(gp)
-        print("phase shift gen with sample: ", p)
-        plist = np.array([smatrix.get_phase_single(0, k, vf, p, 3.0) for k in klist])
-        print(f"sample{i}: phases({t}) = ", plist)
-        kcotd = np.array([ k*(1.0/np.tan(d)) for k,d in zip(klist, plist)])
-        print(f"kcotd{i}:  ", kcotd)
-        ercoef = np.polynomial.polynomial.Polynomial.fit(k2list, kcotd, 3, symbol="k2")
-        print("ercoef = ", ercoef)
-        a = -1.0 / ercoef.coef[0]
-        reff = ercoef.coef[1]
-        z = reff / a
-        if z < 0.0 or z > 1.0:
-            print(f"No bound state as (reff / a) = {z} < 0 or > 1")
-        else:
-            be = (1.0 / reff) * (1.0 - np.sqrt(1.0 - 2.0 * z))
-            print(f"Binding energy is {be}")
 
 #
 # Strategy:   
@@ -486,8 +516,6 @@ def report_phase(t, vf, gp):
 #
 def fit_wsopep():
     fit_results = {}
-    # Advice from Andre is that discretization errors show up as small r.
-    # Use r_min = 2.
     # First lets fit the opep from
     if 'c' in opep_p:
         r_min_opep = 0.6 / a_fm # to start of roll off to be sensitive to c
@@ -543,36 +571,66 @@ def fit_wsopep():
             tp[key] = v
         fit_results[t] = [t, tp, wsopep_fit, opep_fit]  # save everything
         print("twsfit = ", tp)
-        V_wsopep_plot(t, fit_results[t][1], V_wsopep, True)
+        V_plot(t, fit_results[t][1], r_min_wsopep, r_max_wsopep, V_wsopep)
         report_phase(t, W_wsopep, fit_results[t][1])
 
-    # V_wsopep_plot(t_V_fit, tp, True)
     return
 
 #
 # Strategy:   
 # Use simple sum of HO states (orthogonal functions)
 # We expect the range to be sqrt(nmax) * b
-# if b is 0.7, then  sqrt(6) * 0.7 = 1.71
-#                    sqrt(8) * 0.7 = 1.97
-#
-# If we don't fit too close to r=0, then should be easier.
+# Modified strategy:  Added regulated OPEP
 #
 def fit_ho():
+    global V_ho_m, V_ho_c, V_ho_regp
     fit_results = {}
     # Advice from Andre is that discretization errors show up as small r.
     r_max_opep = maxlu
+    # First lets fit the opep from
+    if 'c' in opep_p:
+        r_min_opep = 0.6 / a_fm # to start of roll off to be sensitive to c
+    else:
+        r_min_opep = 0.6 / a_fm
     r_min = 0.0 / a_fm
     r_max = maxlu
     print(f"ho fit range {r_min} to {r_max}")
     for t in trange:
         t_c = t
+        tag = f"pn_trip_t{t}"
+        print(f"*** t = {t}")
+        print(f" r_minmax = {r_min_opep}, {r_max_opep}")
+        print(f"Fitting opep from r={r_min_opep*a_fm} to r={r_max_opep*a_fm}")
+        i_r_fit = [i_r for i_r,r in enumerate(r_a) if r > r_min_opep and r < r_max_opep]
+        fit_x = r_a[i_r_fit] * a_fm
+        # print("fit_x = ", fit_x)
+        # t_V_fit currently set to 10,   need to loop and fit
+        fit_y = data_gv[tag][i_r_fit] * scale
+        # print("fit_y = ", fit_y)
+        p = ho_opep_p
+        p0 = dict()
+        for key,v in p.items():
+            p0[key] = v.mean
+        print("fit_x start = ", fit_x[0:40])
+        print("fit_y start = ", fit_y[0:40])
+        opep_fit = lsqfit.nonlinear_fit(udata=(fit_x,fit_y), prior=p, p0=p0, fcn=V_ho_opep)
+        print("opep: ", opep_fit)
+        # V_plot(t, opep_fit.p, 0.0, r_max_opep, V_ho_opep)
+
+        V_ho_m = opep_fit.p['m'].mean
+        V_ho_c = opep_fit.p['c'].mean
+        if 'regp' in opep_fit.p:
+            V_ho_regp = opep_fit.p['regp'].mean
+
+        #
+        # Now for fitting the remainder with HO basis
+        #
         print(f" r_minmax = {r_min}, {r_max}")
         print(f"Fitting V_ho from r={r_min*a_fm} to r={r_max*a_fm}")
         # Get indices we will use in the fit
         i_r_fit = [i_r for i_r,r in enumerate(r_a) if r > r_min and r < r_max]
         fit_x = r_a[i_r_fit] * a_fm
-        fit_y = data_gv[f"pn_trip_t{t}"][i_r_fit] * scale
+        fit_y = data_gv[tag][i_r_fit] * scale
         # print("fit_y = ", fit_y)
         p = ho_p
         p0 = dict()
@@ -586,12 +644,12 @@ def fit_ho():
         # hack globals to configure wsopep with opep parameters
         fit_results[t] = [t, ho_fit.p, ho_fit]  # save everything
         print("hofit = ", ho_fit.p)
-        V_wsopep_plot(t, fit_results[t][1], V_ho, True)
+        V_plot(t, fit_results[t][1], r_min, r_max, V_ho)
         report_phase(t, V_ho, fit_results[t][1])
 
     return
 
 
-fit_wsopep()
-# fit_ho()
+# fit_wsopep()
+fit_ho()
 quit()
