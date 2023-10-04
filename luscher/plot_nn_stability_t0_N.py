@@ -35,7 +35,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { 2:'yellow', 3:'orange', 4:'r', 5:'g', 6:'b', 7:'magenta' }
+    color = { 2:'orange', 3:'r', 4:'g', 5:'b', 6:'magenta', 7:'gray' }
 
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
@@ -58,7 +58,7 @@ def main():
         ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
         ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
     ]
-    #states = [('0', 'T1g', 0)]
+    states = [('0', 'T1g', 0)]
     #states = [('3', 'A2', 0)]
 
     print('\nloading optimal fit:',args.optimal)
@@ -155,10 +155,7 @@ def main():
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data)
 
-        if args.optimal:
-            fig_name = '%s_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
-        else:
-            fig_name = q_str.replace('\_','_')+'_stability.pdf'
+        fig_name = '%s_t0_N_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
         plt.savefig('figures/'+fig_name,transparent=True)
 
         stop_time = time.perf_counter()
@@ -331,7 +328,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
         'N_n2_NN_conspire_e0':'o',
     }
     shift = { 2:-0.2, 3:-0.1, 4:0., 5:0.1, 6:0.2, 7:0.3 }
-    color = { 2:'yellow', 3:'orange', 4:'r', 5:'g', 6:'b', 7:'magenta' }
+    color = { 2:'orange', 3:'r', 4:'g', 5:'b', 6:'magenta', 7:'gray' }
 
     if arg.optimal:
         opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
