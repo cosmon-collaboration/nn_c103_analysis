@@ -307,6 +307,7 @@ class Fit:
             allsing = {
                 key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
+
             drot = get_gevp_rotation(singlet)
             for key in drot:
                 eigVecs = np.fliplr(drot[key])
@@ -552,16 +553,15 @@ class Fit:
                             pass
 
         for nbs in tqdm.tqdm(range(bi,bf,1)):
-            if nbs > 0:
-                ''' all gvar's created in this switch are destroyed at restore_gvar
-                    [they are out of scope] '''
-                gv.switch_gvar()
-
             posterior = gv.BufferDict()
             masterkey = tqdm.tqdm(self.params["masterkey"])
             #print("masterkey: ", masterkey)
             #sys.exit()
             for subset in masterkey:
+                if nbs > 0:
+                    ''' all gvar's created in this switch are destroyed at restore_gvar
+                        [they are out of scope] '''
+                    gv.switch_gvar()
                 #print("subset:",subset)
                 masterkey.set_description(f"Fitting {subset}")
                 masterkey.bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)
@@ -612,14 +612,15 @@ class Fit:
                             bsresult[key].append(rbs[key])
                         else:
                             bsresult[key] = [rbs[key]]
+                if nbs > 0:
+                    ''' end of gvar scope used for bootstrap '''
+                    gv.restore_gvar()
+
             posterior = self.reconstruct_gs(posterior)
             posterior = {"masterkey": self.params["masterkey"], **posterior}
             if nbs == 0:
                 self.posterior = posterior
-            else:
-                ''' end of gvar scope used for bootstrap '''
-                gv.restore_gvar()
-
+                
         self.bsresult = bsresult
 
         '''
