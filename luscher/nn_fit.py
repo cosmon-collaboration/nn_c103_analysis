@@ -352,6 +352,7 @@ class Fit:
                 irrep_dim[irrep] += 1
             else:
                 irrep_dim[irrep] = 1
+
         return gvdata, irrep_dim
 
     def set_priors(self, prior, data, nbs, type="auto"):
@@ -587,6 +588,7 @@ class Fit:
                     result = lsqfit.nonlinear_fit(
                         data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, maxit=100000, fitter=self.params['fitter']
                     )
+                    #import IPython; IPython.embed()
                 #print(result.format(maxline=True))
                 if ndraws == 0:
                     self.plot.plot_result(result, subset)
@@ -633,10 +635,6 @@ class Fit:
 
         if not os.path.exists("./result"):
             os.makedirs("./result")
-        if os.path.exists(f"./result/{self.filename}"):
-            os.remove(f"./result/{self.filename}")
-        print('saving result')
-        gv.dump(self.posterior, f"./result/{self.filename}")
         if self.params['bootstrap']:
             if not os.path.exists(f"./result/{self.filename}_bs"):
                 gv.dump(self.bsresult, f"./result/{self.filename}_bs")
@@ -647,6 +645,12 @@ class Fit:
                 gv.dump(self.bsresult, f"./result/{self.filename}_bs")
 
             del self.bsresult
+        else:
+            if os.path.exists(f"./result/{self.filename}"):
+                os.remove(f"./result/{self.filename}")
+            print('saving result')
+            gv.dump(self.posterior, f"./result/{self.filename}")
+
 
     def get_bs_pickle_Nbs(self):
         if os.path.exists(f"./result/{self.filename}_bs"):
