@@ -4,13 +4,16 @@ import sys
 import os
 import h5py as h5
 import matplotlib.pyplot as plt
-import gvar as gv
-import lsqfit
 import numpy as np
 import scipy as sp
 from os import path
+
 import tqdm
 from colorama import Fore
+
+import gvar as gv
+import lsqfit
+
 import nn_parameters as parameters
 
 
@@ -510,8 +513,14 @@ class Fit:
                     mask = self.draws[nbs]
                 else:
                     mask = [int(m) for m in self.draws["draws"].iloc[nbs][1:-1].split(",")]
-                ndata = {key: self.bsdata[key][mask] for key in self.bsdata}
+                # only select data we want for this particular fit
+                # key = NN
+                # k0, k1 = single nucleon keys corresponding to NN
+                wanted_keys = [key, k0, k1]
+                ndata = {k: self.bsdata[k][mask] for k in self.bsdata if k in wanted_keys}
+
                 ndataset  = gv.dataset.avg_data(ndata)
+
                 numerator = ndataset[key][x[key_ratio]]
                 if ratio:
                     denominator = (ndataset[k0][x[key_ratio]] * ndataset[k1][x[key_ratio]])
@@ -520,6 +529,7 @@ class Fit:
                 ybs[key_ratio] = numerator / denominator
                 ybs[key_nucl0] = ndataset[k0][x[key_nucl0]]
                 ybs[key_nucl1] = ndataset[k1][x[key_nucl1]]
+
         return x, y0, ybs
 
     def reconstruct_gs(self, posterior):
