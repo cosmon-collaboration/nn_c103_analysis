@@ -5,6 +5,7 @@ import os
 import h5py as h5
 import matplotlib.pyplot as plt
 import numpy as np
+import opt_einsum
 import scipy as sp
 from os import path
 
@@ -314,7 +315,7 @@ class Fit:
             drot = get_gevp_rotation(singlet)
             for key in drot:
                 eigVecs = np.fliplr(drot[key])
-                rotated_singlet = np.einsum('cijt,in,jm->cnmt', singlet[key], np.conj(eigVecs), eigVecs)
+                rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', singlet[key], np.conj(eigVecs), eigVecs)
                 rotated_singlet = np.diagonal(rotated_singlet, axis1=1, axis2=2)
                 for operator in range(np.shape(rotated_singlet)[-1]):
                     opkey = (key[0], key[1], operator)
@@ -607,7 +608,8 @@ class Fit:
                 stats[(tuple(subset), "chi2")]   = result.chi2
                 stats[(tuple(subset), "dof")]    = result.dof
                 stats[(tuple(subset), "logGBF")] = result.logGBF
-                stats[(tuple(subset), "prior")]  = result.prior
+                if not self.params['bootstrap']:
+                    stats[(tuple(subset), "prior")]  = result.prior
                 # Change fit to record "result" instead of pieces of "result"
                 #stats[(tuple(subset), "fit")]    = result
 
@@ -647,6 +649,7 @@ class Fit:
         if not os.path.exists("./result"):
             os.makedirs("./result")
         if self.params['bootstrap']:
+            #import IPython; IPython.embed()
             if not os.path.exists(f"./result/{self.filename}_bs"):
                 gv.dump(self.bsresult, f"./result/{self.filename}_bs")
             else:
