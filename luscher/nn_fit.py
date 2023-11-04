@@ -387,8 +387,10 @@ class Fit:
                 zeff_mean = zeff
                 zeff_sdev = np.absolute(zeff)
                 if nbs > 0:
-                    meff_mean = np.random.normal(meff_mean, meff_sdev)
-                    zeff_mean = np.random.normal(zeff_mean, zeff_sdev)
+                    e_fit = self.posterior[(key, 'e0')]
+                    z_fit = self.posterior[(key, 'z0')]
+                    meff_mean = np.random.normal(meff_mean, self.params['bs0_width'] * e_fit.sdev)
+                    zeff_mean = np.random.normal(zeff_mean, self.params['bs0_width'] * z_fit.sdev)
                 if key[1] in ["R"]:
                     prior[(key, "e0")] = gv.gvar(meff_mean, self.params["sig_e0"] * meff_sdev)
                 else:
@@ -404,11 +406,12 @@ class Fit:
                         if nbs > 0:
                             en = np.random.lognormal(mean=np.log(en_mean), sigma=0.7)
                             zn = np.random.normal(1.0, 0.5)
+                            prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
                         else:
                             en = en_mean
                             zn = 1.0
-                        #print("N key : ",(key, f"e{n}"))
-                        prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
+                            prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
+                        
                         prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
 
                 elif key[1] in ["R"]:
@@ -418,11 +421,12 @@ class Fit:
                         if nbs > 0:
                             en = np.random.lognormal(mean=np.log(dE_elastic), sigma=0.7)
                             zn = np.random.normal(loc=1.0, scale=0.5)
+                            prior[(key, f"e_el{n}")] = gv.gvar(en, 0.7)
                         else:
                             en = dE_elastic
                             zn = 1.0
-                        # log(en, 0.7) gives 50% down fluctuation at 1-sigma
-                        prior[(key, f"e_el{n}")] = gv.gvar(np.log(en), 0.7)
+                            prior[(key, f"e_el{n}")] = gv.gvar(np.log(en), 0.7)
+
                         prior[(key, f"z_el{n}")] = gv.gvar(zn, 0.5)
 
                     # inelastic NN priors
@@ -431,10 +435,11 @@ class Fit:
                             if nbs > 0:
                                 en = np.random.lognormal(mean=np.log(2*self.params['ampi']), sigma=0.7)
                                 zn = np.random.normal(loc=1.0, scale=0.5)
+                                prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
                             else:
                                 en = 2*self.params['ampi']
                                 zn = 1.0
-                            prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
+                                prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
                             prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
 
                     elif self.version == 'conspire':
@@ -599,7 +604,7 @@ class Fit:
                     result = lsqfit.nonlinear_fit(
                         data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, maxit=100000, fitter=self.params['fitter']
                     )
-                    #import IPython; IPython.embed()
+
                 #print(result.format(maxline=True))
                 if ndraws == 0:
                     self.plot.plot_result(result, subset)

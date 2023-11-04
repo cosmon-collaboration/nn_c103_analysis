@@ -42,14 +42,15 @@ def params():
 
     p["fitter"] = 'scipy_least_squares'
 
-    p["t0"] = 4
-    p["td"] = 8
+    p["t0"] = 5
+    p["td"] = 10
 
-    p["bootstrap"] = False
+    p["bootstrap"] = True
     p['Nbs_max']   = 5000
     p['bs_seed']   = 'c103_nn'
-    p["nbs"]       = 1000
-    p["nbs_sub"]   = 10
+    p["nbs"]       = 2
+    p["nbs_sub"]   = 1
+    p['bs0_width'] = 5
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
     p["sig_e0"]     = 10 # multiplication factor for meff[autotime] for prior width
@@ -79,7 +80,7 @@ def params():
             [('3', 'A2', 0)], [('3', 'E', 0)]
             ]
         p["masterkey"] = [
-            [('3', 'A2', 0)], [('3', 'A2', 1)], [('3', 'A2', 2)]
+            [("0", "T1g", 0)], [('0', 'T1g', 1)]
         ]
         #p["masterkey"] = [[
         #    ("0", "T1g", 0), ('0', 'T1g', 1), 
