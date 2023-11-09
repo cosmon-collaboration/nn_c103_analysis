@@ -5,6 +5,7 @@ import os
 import h5py as h5
 import matplotlib.pyplot as plt
 import numpy as np
+np.set_printoptions(linewidth=180)
 import opt_einsum
 import scipy as sp
 from os import path
@@ -156,9 +157,23 @@ class Fit:
             correlators = file.keys()
             for correlator in correlators:
                 irrep = correlator.split("_")[0]
-                mom2 = correlator.split("Psq")[1]
-                tag = (mom2, irrep)
-                data[tag] = file[f"{correlator}/data"][()]
+                mom2  = correlator.split("Psq")[1]
+                tag   = (mom2, irrep)
+                corr  = file[f"{correlator}/data"][()]
+                # restore Hermiticity of NN data
+                if len(corr.shape) == 4:
+                    corr_full = np.zeros_like(corr)
+                    for i in range(corr.shape[1]):
+                        for j in range(corr.shape[2]):
+                            re = corr[0,i,j,self.params['t0']].real
+                            im = corr[0,i,j,self.params['t0']].imag
+                            if re != 0 or im != 0:
+                                corr_full[:,i,j,:] = corr[:,i,j,:]
+                            else:
+                                corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
+                    corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
+                    #data[tag] = file[f"{correlator}/data"][()]
+                data[tag] = corr
         return data
 
     def get_equivalent_momenta(self, file):
@@ -282,7 +297,12 @@ class Fit:
                         val, vec = eigh(a=mean[:, :, td], b=mean[:, :, t0])
                         drot[key] = vec
                         print(f"{key} Success, condition numbers:")
-                        print(cond(mean[:, :, td]), cond(mean[:, :, t0]))
+                        print(cond(mean[:, :, t0]), cond(mean[:, :, td]))
+                        print('scipy.linalg.ishermitian @ t0, td', 
+                              sp.linalg.ishermitian(mean[:, :, t0]), 
+                              sp.linalg.ishermitian(mean[:, :, td]))
+                        #if key == ('0', 'T1g'):
+                        #    print(mean[0:4,0:4,t0])
                     except:
                         print(f"{key} Fail, condition numbers:")
                         print(cond(mean[:, :, td]), cond(mean[:, :, t0]))
@@ -331,6 +351,7 @@ class Fit:
 
             self.bsdata = {**nucleon, **allsing}
 
+            print('\nThe principle value ROT correlators are REAL at inf statistics, so we discard imaginary')
             gvdata = gv.dataset.avg_data({**nucleon, **allsing})
             if not os.path.exists(datapath):
                 gv.dump(gvdata, datapath)
