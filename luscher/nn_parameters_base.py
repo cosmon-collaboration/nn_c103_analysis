@@ -50,6 +50,7 @@ def params():
     p['bs_seed']   = 'c103_nn'
     p["nbs"]       = 1000
     p["nbs_sub"]   = 10
+    p['bs0_width'] = 5
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
     p["sig_e0"]     = 10 # multiplication factor for meff[autotime] for prior width

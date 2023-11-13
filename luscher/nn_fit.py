@@ -4,13 +4,18 @@ import sys
 import os
 import h5py as h5
 import matplotlib.pyplot as plt
-import gvar as gv
-import lsqfit
 import numpy as np
+np.set_printoptions(linewidth=180)
+import opt_einsum
 import scipy as sp
 from os import path
+
 import tqdm
 from colorama import Fore
+
+import gvar as gv
+import lsqfit
+
 import nn_parameters as parameters
 
 
@@ -152,9 +157,23 @@ class Fit:
             correlators = file.keys()
             for correlator in correlators:
                 irrep = correlator.split("_")[0]
-                mom2 = correlator.split("Psq")[1]
-                tag = (mom2, irrep)
-                data[tag] = file[f"{correlator}/data"][()]
+                mom2  = correlator.split("Psq")[1]
+                tag   = (mom2, irrep)
+                corr  = file[f"{correlator}/data"][()]
+                # restore Hermiticity of NN data
+                if len(corr.shape) == 4:
+                    corr_full = np.zeros_like(corr)
+                    for i in range(corr.shape[1]):
+                        for j in range(corr.shape[2]):
+                            re = corr[0,i,j,self.params['t0']].real
+                            im = corr[0,i,j,self.params['t0']].imag
+                            if re != 0 or im != 0:
+                                corr_full[:,i,j,:] = corr[:,i,j,:]
+                            else:
+                                corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
+                    corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
+                    #data[tag] = file[f"{correlator}/data"][()]
+                data[tag] = corr
         return data
 
     def get_equivalent_momenta(self, file):
@@ -278,7 +297,12 @@ class Fit:
                         val, vec = eigh(a=mean[:, :, td], b=mean[:, :, t0])
                         drot[key] = vec
                         print(f"{key} Success, condition numbers:")
-                        print(cond(mean[:, :, td]), cond(mean[:, :, t0]))
+                        print(cond(mean[:, :, t0]), cond(mean[:, :, td]))
+                        print('scipy.linalg.ishermitian @ t0, td', 
+                              sp.linalg.ishermitian(mean[:, :, t0]), 
+                              sp.linalg.ishermitian(mean[:, :, td]))
+                        #if key == ('0', 'T1g'):
+                        #    print(mean[0:4,0:4,t0])
                     except:
                         print(f"{key} Fail, condition numbers:")
                         print(cond(mean[:, :, td]), cond(mean[:, :, t0]))
@@ -307,10 +331,11 @@ class Fit:
             allsing = {
                 key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
+
             drot = get_gevp_rotation(singlet)
             for key in drot:
                 eigVecs = np.fliplr(drot[key])
-                rotated_singlet = np.einsum('cijt,in,jm->cnmt', singlet[key], np.conj(eigVecs), eigVecs)
+                rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', singlet[key], np.conj(eigVecs), eigVecs)
                 rotated_singlet = np.diagonal(rotated_singlet, axis1=1, axis2=2)
                 for operator in range(np.shape(rotated_singlet)[-1]):
                     opkey = (key[0], key[1], operator)
@@ -326,6 +351,7 @@ class Fit:
 
             self.bsdata = {**nucleon, **allsing}
 
+            print('\nThe principle value ROT correlators are REAL at inf statistics, so we discard imaginary')
             gvdata = gv.dataset.avg_data({**nucleon, **allsing})
             if not os.path.exists(datapath):
                 gv.dump(gvdata, datapath)
@@ -352,6 +378,7 @@ class Fit:
                 irrep_dim[irrep] += 1
             else:
                 irrep_dim[irrep] = 1
+
         return gvdata, irrep_dim
 
     def set_priors(self, prior, data, nbs, type="auto"):
@@ -381,8 +408,10 @@ class Fit:
                 zeff_mean = zeff
                 zeff_sdev = np.absolute(zeff)
                 if nbs > 0:
-                    meff_mean = np.random.normal(meff_mean, meff_sdev)
-                    zeff_mean = np.random.normal(zeff_mean, zeff_sdev)
+                    e_fit = self.posterior[(key, 'e0')]
+                    z_fit = self.posterior[(key, 'z0')]
+                    meff_mean = np.random.normal(meff_mean, self.params['bs0_width'] * e_fit.sdev)
+                    zeff_mean = np.random.normal(zeff_mean, self.params['bs0_width'] * z_fit.sdev)
                 if key[1] in ["R"]:
                     prior[(key, "e0")] = gv.gvar(meff_mean, self.params["sig_e0"] * meff_sdev)
                 else:
@@ -398,11 +427,12 @@ class Fit:
                         if nbs > 0:
                             en = np.random.lognormal(mean=np.log(en_mean), sigma=0.7)
                             zn = np.random.normal(1.0, 0.5)
+                            prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
                         else:
                             en = en_mean
                             zn = 1.0
-                        #print("N key : ",(key, f"e{n}"))
-                        prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
+                            prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
+                        
                         prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
 
                 elif key[1] in ["R"]:
@@ -412,11 +442,12 @@ class Fit:
                         if nbs > 0:
                             en = np.random.lognormal(mean=np.log(dE_elastic), sigma=0.7)
                             zn = np.random.normal(loc=1.0, scale=0.5)
+                            prior[(key, f"e_el{n}")] = gv.gvar(en, 0.7)
                         else:
                             en = dE_elastic
                             zn = 1.0
-                        # log(en, 0.7) gives 50% down fluctuation at 1-sigma
-                        prior[(key, f"e_el{n}")] = gv.gvar(np.log(en), 0.7)
+                            prior[(key, f"e_el{n}")] = gv.gvar(np.log(en), 0.7)
+
                         prior[(key, f"z_el{n}")] = gv.gvar(zn, 0.5)
 
                     # inelastic NN priors
@@ -425,10 +456,11 @@ class Fit:
                             if nbs > 0:
                                 en = np.random.lognormal(mean=np.log(2*self.params['ampi']), sigma=0.7)
                                 zn = np.random.normal(loc=1.0, scale=0.5)
+                                prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
                             else:
                                 en = 2*self.params['ampi']
                                 zn = 1.0
-                            prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
+                                prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
                             prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
 
                     elif self.version == 'conspire':
@@ -508,8 +540,14 @@ class Fit:
                     mask = self.draws[nbs]
                 else:
                     mask = [int(m) for m in self.draws["draws"].iloc[nbs][1:-1].split(",")]
-                ndata = {key: self.bsdata[key][mask] for key in self.bsdata}
+                # only select data we want for this particular fit
+                # key = NN
+                # k0, k1 = single nucleon keys corresponding to NN
+                wanted_keys = [key, k0, k1]
+                ndata = {k: self.bsdata[k][mask] for k in self.bsdata if k in wanted_keys}
+
                 ndataset  = gv.dataset.avg_data(ndata)
+
                 numerator = ndataset[key][x[key_ratio]]
                 if ratio:
                     denominator = (ndataset[k0][x[key_ratio]] * ndataset[k1][x[key_ratio]])
@@ -518,6 +556,7 @@ class Fit:
                 ybs[key_ratio] = numerator / denominator
                 ybs[key_nucl0] = ndataset[k0][x[key_nucl0]]
                 ybs[key_nucl1] = ndataset[k1][x[key_nucl1]]
+
         return x, y0, ybs
 
     def reconstruct_gs(self, posterior):
@@ -551,16 +590,15 @@ class Fit:
                             pass
 
         for nbs in tqdm.tqdm(range(bi,bf,1)):
-            if nbs > 0:
-                ''' all gvar's created in this switch are destroyed at restore_gvar
-                    [they are out of scope] '''
-                gv.switch_gvar()
-
             posterior = gv.BufferDict()
             masterkey = tqdm.tqdm(self.params["masterkey"])
             #print("masterkey: ", masterkey)
             #sys.exit()
             for subset in masterkey:
+                if nbs > 0:
+                    ''' all gvar's created in this switch are destroyed at restore_gvar
+                        [they are out of scope] '''
+                    gv.switch_gvar()
                 #print("subset:",subset)
                 masterkey.set_description(f"Fitting {subset}")
                 masterkey.bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)
@@ -587,6 +625,7 @@ class Fit:
                     result = lsqfit.nonlinear_fit(
                         data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, maxit=100000, fitter=self.params['fitter']
                     )
+
                 #print(result.format(maxline=True))
                 if ndraws == 0:
                     self.plot.plot_result(result, subset)
@@ -595,7 +634,8 @@ class Fit:
                 stats[(tuple(subset), "chi2")]   = result.chi2
                 stats[(tuple(subset), "dof")]    = result.dof
                 stats[(tuple(subset), "logGBF")] = result.logGBF
-                stats[(tuple(subset), "prior")]  = result.prior
+                if not self.params['bootstrap']:
+                    stats[(tuple(subset), "prior")]  = result.prior
                 # Change fit to record "result" instead of pieces of "result"
                 #stats[(tuple(subset), "fit")]    = result
 
@@ -610,14 +650,15 @@ class Fit:
                             bsresult[key].append(rbs[key])
                         else:
                             bsresult[key] = [rbs[key]]
+                if nbs > 0:
+                    ''' end of gvar scope used for bootstrap '''
+                    gv.restore_gvar()
+
             posterior = self.reconstruct_gs(posterior)
             posterior = {"masterkey": self.params["masterkey"], **posterior}
             if nbs == 0:
                 self.posterior = posterior
-            else:
-                ''' end of gvar scope used for bootstrap '''
-                gv.restore_gvar()
-
+                
         self.bsresult = bsresult
 
         '''
@@ -633,11 +674,8 @@ class Fit:
 
         if not os.path.exists("./result"):
             os.makedirs("./result")
-        if os.path.exists(f"./result/{self.filename}"):
-            os.remove(f"./result/{self.filename}")
-        print('saving result')
-        gv.dump(self.posterior, f"./result/{self.filename}")
         if self.params['bootstrap']:
+            #import IPython; IPython.embed()
             if not os.path.exists(f"./result/{self.filename}_bs"):
                 gv.dump(self.bsresult, f"./result/{self.filename}_bs")
             else:
@@ -647,6 +685,12 @@ class Fit:
                 gv.dump(self.bsresult, f"./result/{self.filename}_bs")
 
             del self.bsresult
+        else:
+            if os.path.exists(f"./result/{self.filename}"):
+                os.remove(f"./result/{self.filename}")
+            print('saving result')
+            gv.dump(self.posterior, f"./result/{self.filename}")
+
 
     def get_bs_pickle_Nbs(self):
         if os.path.exists(f"./result/{self.filename}_bs"):
