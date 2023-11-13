@@ -14,6 +14,7 @@ import copy
 import smatrix
 
 doshow=False
+DensityScale=False  # scale stddev by relative density of samples at r
 
 # Ken:  Why does HBARC have the electron charge in it???
 HBARC   = const.hbar * const.c / const.e * 1e15 / 1e6
@@ -29,12 +30,13 @@ scale   = HBARC / a_fm
 mpilatg = gv.gvar('0.310810(95)')  # 1/a
 mpilat = mpilatg.mean
 mpi = mpilat / a_fm    # In inverse fm for mult with r in fm
-mpimev = hc * mpilat / a_fm 
+mpimev = hc * mpi
 print(f"mpimev = {mpimev} MeV, mpi = {mpi} fm^-1")
 
 mnucleonlu = gv.gvar("0.70273(31)")
 mnucleonmev_gv= hc * (mnucleonlu / a_fm)
 mnucleonmev = mnucleonmev_gv.mean
+print(f"pion mass = {mpimev} MeV")
 print(f"nucleon mass = {mnucleonmev_gv} MeV")
 
 # Ken:  why are we overriding to 1?    
@@ -44,11 +46,13 @@ print(f"nucleon mass = {mnucleonmev_gv} MeV")
 
 fitgo=True
 maxt = 18
-mint = 10
+mint = 8
 t_V_fit=maxt # time slice to plot
 trange = range(mint,maxt+1)
 
-maxfm = 1.5
+maxfm = 1.3  # for fitting
+maxplotfm = 1.6
+minopep=0.7  # min for fitting OPEP
 maxlu = maxfm / a_fm
 
 # Top level keys
@@ -104,7 +108,7 @@ with h5.File('c103_V_hal_pn_TRIP.h5') as f5:
 
     #print("data = ", data)
     # Get density for each 
-    if False:
+    if DensityScale:
         print("implement sample density correction")
         sdevscale = np.sqrt(np.array([density(r_a[i]) for i in range(len(r_a))]))
     else:
@@ -212,18 +216,20 @@ V_ho_m = 1.0
 V_ho_c = 1.0
 V_ho_regp = 2.0
 V_ho_br = np.sqrt(0.15)
+V_ho_mpifm = mpi
 
 def V_ho_opep(r, p):
     m = p.get('m', V_ho_m)  #  overall scale
     c = p.get('c', V_ho_c)  #  regulator scale
+    mpifm = p.get('mpi', V_ho_mpifm)
     regp = p.get('regp', V_ho_regp)  #  regulator power
-    z = r * mpi
-    # -3 is for (tau.tau)*(sigma.sigma) in 3S0  T=0 channel
+    z = r * mpifm
+    # -3 is for (tau.tau)*(sigma.sigma) in 3S1  T=0 channel
     h = (1 - np.exp(-c*r*r))**regp * (-3.0) * m * np.exp(-z) / (z + 1e-10)
-    # h = (-3.0) * m * np.exp(-z) / (z + 1e-10)
     return h
 
 ho_opep_p = {
+    # 'mpi' : gv.gvar(mpi, mpi*0.1),
     'm' : gv.gvar(800.0, 200.0),
     # 'regp' : gv.gvar(1.0, 1.0),
     'c' : gv.gvar(2.10, 0.2)
@@ -271,6 +277,10 @@ def V_ho(rv, p):
     else:
         return V_ho_one(rv, p)
        
+# wrapper to convert to fm^-1 for smatrix
+def W_ho(r, p):
+    return (mnucleonmev / HBARC**2)*V_ho(r, p)
+
 ho_p = {
     'br': gv.gvar(np.sqrt(0.10), 0.05),
     'a1' : gv.gvar(50.0, 10.0),
@@ -309,11 +319,11 @@ ho_p = {
 # It is implemented from the contraint by fixing 'wl' as function of ‘wc’.
 # See eqn 24 in Av18 paper.
 #
-V_opep_c = 2.1
+V_wsopep_c = 2.1
 V_opep_tfpiNN2 = 0.0
-V_opep_regp = 4
+V_opep_regp = 2
 def V_opep_reg(r, p):
-    c = p.get('c', V_opep_c)
+    c = p.get('c', V_wsopep_c)
     regp = p.get('regp', V_opep_regp)
     return (1 - np.exp(-c*r*r))**regp
 
@@ -324,19 +334,15 @@ def V_wsopep(r, p):
     ws = p['ws']
     wq = p['wq']
     # support these being in the fit or hardwired
-    if 'c' in p:
-        c = p['c']
-    else:
-        c = V_opep_c
-    if 'tfpiNN2' in p:
-        tfpiNN2 = p['tfpiNN2']
-    else:
-        tfpiNN2 = V_opep_tfpiNN2
+    c = p.get('c', V_wsopep_c)
+    tfpiNN2 = p.get('tfpiNN2', V_opep_tfpiNN2)
+    mpifm = p.get('mpi', V_wsopep_mpifm)
+    mpimevx = hc * mpifm
 
-    z = mpi * r
-    # prefactor is tfpiNN2 * mpimev * (tau.tau) * (sigma.sigma)
+    z = mpifm * r
+    # prefactor is tfpiNN2 * mpimevx * (tau.tau) * (sigma.sigma)
     # -3 for (tau.tau)*(sigma.sigma)  T=0, S=1   (sigma.sigma) = 4S - 3
-    ya = tfpiNN2 * mpimev * (-3.0)
+    ya = tfpiNN2 * mpimevx * (-3.0)
     # stick in tiny value in denominator to git rid of suppressed divide by 0
     t1 = ya * (np.exp(-z) / (z+1e-10)) * V_opep_reg(r, p)
     # compute wl that gives V_wsopep'(0, p) == 0
@@ -351,26 +357,24 @@ def W_wsopep(r, p):
 
 def V_opep(r, p):
     tfpiNN2 = p['tfpiNN2']
-    if 'c' in p:
-        c = p['c']
-    else:
-        c = V_opep_c
+    c = p.get('c', V_wsopep_c)  # range of regulator
+    mpifm = p.get('mpi', V_wsopep_mpifm);
+    mpimevx = hc * mpifm
+    # mpi is in fm^-1
 
-    z = mpi * r
-    # prefactor is tfpiNN2 * mpimev * (tau.tau) * (sigma.sigma)
+    z = mpifm * r
+    # prefactor is tfpiNN2 * mpimevx * (tau.tau) * (sigma.sigma)
     # -3 for (tau.tau)*(sigma.sigma)  T=0, S=1   (sigma.sigma) = 4S - 3
-    ya = tfpiNN2 * mpi * hc * (-3.0)
+    ya = tfpiNN2 * mpifm * hc * (-3.0)
     # stick in tiny value in denominator to git rid of suppressed divide by 0
     t1 = ya * (np.exp(-z) / (z+1e-10)) * V_opep_reg(r, p)
     return t1
 
 opep_p = {
-    # 'tfpiNN2' : gv.gvar(0.024 * 2.5**2, 0.100),
-    'tfpiNN2' : gv.gvar(1.2 * 0.024 * (722.4/134.0)**2, 0.200),
+    'mpi' : gv.gvar(722.3933898298679/hc, 20.0/hc),
+    'tfpiNN2' : gv.gvar(1.5 * 0.024 * (722.4/134.0)**2, 0.200),
     'regp' : gv.gvar(V_opep_regp, 1.0),
-    # 'c' : gv.gvar(2.66, 0.2)
-    'c' : gv.gvar(3.50, 0.2)
-    # 'c' : gv.gvar(2.1, 0.2)
+    'c' : gv.gvar(2.66, 0.2)
 }
 wsopep_p = {
     'a' : gv.gvar(0.10, 0.05),
@@ -392,22 +396,6 @@ wsopep_p = {
     # 'tfpiNN2' : gv.gvar(0.024 * (722.4/134.0)**2, 0.500)
     # 'tfpiNN2' : gv.gvar(0.024 * 2.5**2, 0.100)
 }
-
-wsopep_phys = {
-    'a' : 0.2,
-    'r0r' : np.sqrt(0.5),
-    'ws'  : 2605.2682,
-    'wq'  : 441.973,
-    'mpi' : 0.68403,
-    # make cr twice mpi but sloppy.  Cut off pion when sigma and others kick in
-    'cr' : np.sqrt(2.1),
-    'tfpiNN2' : 0.024
-}
-
-#for tr in [0.1, 0.5, 1.0]:
-#    print(f"wsopep({tr}) = {V_wsopep(tr, wsopep_phys)}")
-#quit()
-
 
 def V_plot(t, p, xmin, xmax, vf):
     plt.ion() # Enable interactive mode
@@ -434,8 +422,8 @@ def V_plot(t, p, xmin, xmax, vf):
                 label=r'$t=%d$' %t, color='r')
 
     ax.axhline(0, color='k')
-    plt.ylim(-100.0, 3000.0)
-    # plt.ylim(-100.0, 100.0)
+    # plt.ylim(-100.0, 3000.0)
+    plt.ylim(-100.0, 100.0)
     plt.xlim(0.0, 1.6)
     plt.title(f"Potential at time {t}")
     plt.xlabel("Radial distance [fm]")
@@ -452,13 +440,26 @@ def feffrng(p):
     kcotd = np.array([ k*(1.0/np.tan(d)) for k,d in zip(klist, plist)])
     ercoef = np.polynomial.polynomial.Polynomial.fit(k2list, kcotd, 3, symbol="k2")
     return ercoef.coef
+
+#
+# If we aren't doing PDFIntegrate, then just use the mean
+# values of the parameters and do a single evaluation
+#
+def mean_feffrng(gp, vf):
+    global vfglobal
+    vfglobal = vf
+    xp = dict()
+    for key,v in gp.items():
+        xp[key] = v.mean
+    return feffrng(xp)
     
 def get_effrangeexpansion(gp, vf):
+    return None
     global vfglobal
     vfglobal = vf
     expval = vegas.PDFIntegrator(gp)
     # result = expval(feffrng, neval=2, nitn=2)
-    result = expval(feffrng, neval=20, nitn=5)
+    result = expval(feffrng, neval=500, nitn=5)
     return result
 
 def plot_kcotd(t, vf, gp):
@@ -467,7 +468,8 @@ def plot_kcotd(t, vf, gp):
     for key,v in gp.items():
         xp[key] = v.mean
     # elist  = np.array([0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0]) # MeV
-    elist = np.arange(0.01, 64.0, 0.5)
+    # elist = np.arange(0.01, 64.0, 0.5)
+    elist = np.arange(0.01, 80.0, 0.5)
     klist  = np.array([np.sqrt(mnucleonmev*e)/HBARC for e in elist])
     k2list = np.array([k*k for k in klist]) # fm^-2
     k2overmpi2 = k2list / mpi**2
@@ -477,16 +479,31 @@ def plot_kcotd(t, vf, gp):
     plt.ion() # Enable interactive mode
     fig = plt.figure(dpi=200.0) # creates a figure
     ax = plt.axes([.12,.12,.87,.87]) # can't find docs yet
+    plt.ylim(0.0, 1.25)
+
+    #get x and y limits
+    ratio = 0.1
+    x_left, x_right = ax.get_xlim()
+    y_low, y_high = ax.get_ylim()
+    #set aspect ratio
+    ax.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio)
+
     ax.plot(k2overmpi2, kcotd)
     ax.text(0.05, 0.1, f"time={t}", fontsize=16)
-    plt.xlabel("k lu^-1")
+    plt.xlabel("(k/mpi)^2")
     plt.ylabel("k cot delta / mpi")
     plt.ioff()
     plt.savefig(f"kcotd_{t}.png")
     if doshow:
         plt.show()
 
+#
+# t - time slot we got the potential from
+# vf - the model function
+# gp - the model parameters
+#
 def report_phase(t, vf, gp):
+    skip = False
     print("phase shift gen from distribution: ", gp)
     global elist, klist, k2list
     elist = np.array([0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0]);
@@ -495,12 +512,21 @@ def report_phase(t, vf, gp):
     if True:
         plot_kcotd(t, vf, gp)
     result = get_effrangeexpansion(gp, vf)
+    if result is None:
+        print("Skipping pdf integrate for eff range expansion")
+        skip = True
+        result = mean_feffrng(gp, vf)
     print("result = ", result)
     # 
-    print("k cot \delta = -1/a  + (1/2) reff k^2 + ...")
+    print("k cot \delta = -1/a  + (1/2) reff k^2 + v_2 k^4 + v_3 k^6 + ...")
     a = -1.0 / result[0]
     reff = 2 * result[1]
-    print(f"a = {a}, reff = {reff}")
+    lbr = '{'
+    rbr = '}'
+    if skip:
+        print(f"effrng{t} = {lbr}'t':{t}, 'a':{a}, 'reff':{reff}, 'v2':{result[2]}, 'v3':{result[3]}'{rbr}")
+    else:
+        print(f"effrng{t} = {lbr}'t':{t}, 'a':gv.gvar('{a}'), 'reff':gv.gvar('{reff}'), 'v2':gv.gvar('{result[2]}'), 'v3':gv.gvar('{result[3]}'){rbr}")
     z = reff / a
     if z < 0.0 or z > 1.0:
         print(f"No bound state as (reff / a) = {z} < 0 or > 1")
@@ -515,6 +541,9 @@ def report_phase(t, vf, gp):
 #    Fit wsopep from 0 to 1.5
 #
 def fit_wsopep():
+    global V_wsopep_c, V_opep_tfpiNN2, V_wsopep_mpifm
+    V_wsopep_mpifm = mpi
+    V_wsopep_c = 2.1
     fit_results = {}
     # First lets fit the opep from
     if 'c' in opep_p:
@@ -523,7 +552,7 @@ def fit_wsopep():
         r_min_opep = 0.6 / a_fm
     r_max_opep = maxlu
     print(f"opep fit range {r_min_opep} to {r_max_opep}")
-    r_min_wsopep = 0.0 / a_fm
+    r_min_wsopep = 0.2 / a_fm
     r_max_wsopep = maxlu
     print(f"wsopep fit range {r_min_wsopep} to {r_max_wsopep}")
     for t in trange:
@@ -547,11 +576,12 @@ def fit_wsopep():
         fit_results[t] = opep_fit
         print("Fit Results: ", opep_fit.p)
         # hack globals to configure wsopep with opep parameters
-        global V_opep_c, V_opep_tfpiNN2
         if 'c' in opep_fit.p:
-            V_opep_c = opep_fit.p['c'].mean
+            V_wsopep_c = opep_fit.p['c'].mean
+        if 'mpi' in opep_fit.p:
+            V_wsopep_mpifm = opep_fit.p['mpi'].mean
         V_opep_tfpiNN2 = opep_fit.p['tfpiNN2'].mean
-        print(f"c={V_opep_c}, tfpiNN2={V_opep_tfpiNN2}")
+        print(f"c={V_wsopep_c}, tfpiNN2={V_opep_tfpiNN2}")
         print(f"Fitting wsopep from r={r_min_wsopep*a_fm} to r={r_max_wsopep*a_fm}")
         i_r_fit = [i_r for i_r,r in enumerate(r_a) if r > r_min_wsopep and r < r_max_wsopep]
         fit_x = r_a[i_r_fit] * a_fm
@@ -571,7 +601,7 @@ def fit_wsopep():
             tp[key] = v
         fit_results[t] = [t, tp, wsopep_fit, opep_fit]  # save everything
         print("twsfit = ", tp)
-        V_plot(t, fit_results[t][1], r_min_wsopep, r_max_wsopep, V_wsopep)
+        V_plot(t, fit_results[t][1], r_min_wsopep, maxplotfm/a_fm, V_wsopep)
         report_phase(t, W_wsopep, fit_results[t][1])
 
     return
@@ -583,15 +613,15 @@ def fit_wsopep():
 # Modified strategy:  Added regulated OPEP
 #
 def fit_ho():
-    global V_ho_m, V_ho_c, V_ho_regp
+    global V_ho_m, V_ho_c, V_ho_regp, V_ho_mpifm
     fit_results = {}
     # Advice from Andre is that discretization errors show up as small r.
     r_max_opep = maxlu
     # First lets fit the opep from
     if 'c' in opep_p:
-        r_min_opep = 0.6 / a_fm # to start of roll off to be sensitive to c
+        r_min_opep = minopep / a_fm # to start of roll off to be sensitive to c
     else:
-        r_min_opep = 0.6 / a_fm
+        r_min_opep = minopep / a_fm
     r_min = 0.0 / a_fm
     r_max = maxlu
     print(f"ho fit range {r_min} to {r_max}")
@@ -606,6 +636,9 @@ def fit_ho():
         # print("fit_x = ", fit_x)
         # t_V_fit currently set to 10,   need to loop and fit
         fit_y = data_gv[tag][i_r_fit] * scale
+        # EXPERIMENT
+        fit_y_scale = 1.0
+        fit_y *= fit_y_scale
         # print("fit_y = ", fit_y)
         p = ho_opep_p
         p0 = dict()
@@ -615,10 +648,14 @@ def fit_ho():
         print("fit_y start = ", fit_y[0:40])
         opep_fit = lsqfit.nonlinear_fit(udata=(fit_x,fit_y), prior=p, p0=p0, fcn=V_ho_opep)
         print("opep: ", opep_fit)
-        # V_plot(t, opep_fit.p, 0.0, r_max_opep, V_ho_opep)
+        V_plot(t, opep_fit.p, 0.0, maxplotfm/a_fm , V_ho_opep)
 
         V_ho_m = opep_fit.p['m'].mean
         V_ho_c = opep_fit.p['c'].mean
+        if 'mpi' in opep_fit.p:
+            V_ho_mpifm = opep_fit.p['mpi'].mean
+        else:
+            V_ho_mpifm = mpi
         if 'regp' in opep_fit.p:
             V_ho_regp = opep_fit.p['regp'].mean
 
@@ -631,6 +668,8 @@ def fit_ho():
         i_r_fit = [i_r for i_r,r in enumerate(r_a) if r > r_min and r < r_max]
         fit_x = r_a[i_r_fit] * a_fm
         fit_y = data_gv[tag][i_r_fit] * scale
+        # EXPERIMENT
+        fit_y *= fit_y_scale
         # print("fit_y = ", fit_y)
         p = ho_p
         p0 = dict()
@@ -639,13 +678,16 @@ def fit_ho():
         ho_fit = lsqfit.nonlinear_fit(udata=(fit_x,fit_y), prior=p, p0=p0, fcn=V_ho)
         print(f"t = {t}")
         print(ho_fit)
-        fit_results[t] = ho_fit
-        print("Fit Results: ", ho_fit.p)
+        tp = dict()
+        for key,v in ho_fit.p.items():
+            tp[key] = v
+        for key,v in opep_fit.p.items():
+            tp[key] = v
+        print("Fit Results: ", tp)
         # hack globals to configure wsopep with opep parameters
-        fit_results[t] = [t, ho_fit.p, ho_fit]  # save everything
-        print("hofit = ", ho_fit.p)
-        V_plot(t, fit_results[t][1], r_min, r_max, V_ho)
-        report_phase(t, V_ho, fit_results[t][1])
+        fit_results[t] = [t, tp, ho_fit]  # save everything
+        V_plot(t, fit_results[t][1], r_min, maxplotfm/a_fm, V_ho)
+        report_phase(t, W_ho, fit_results[t][1])
 
     return
 
