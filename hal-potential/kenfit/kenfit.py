@@ -438,7 +438,9 @@ vfglobal = 0
 def feffrng(p):
     plist = np.array([smatrix.get_phase_single(0, k, vfglobal, p, 3.0) for k in klist])
     kcotd = np.array([ k*(1.0/np.tan(d)) for k,d in zip(klist, plist)])
-    ercoef = np.polynomial.polynomial.Polynomial.fit(k2list, kcotd, 3, symbol="k2")
+    # Note:  window is required or the polynomial is expanded around a point of fit's choosing
+    #        This gives strange coefficients.
+    ercoef = np.polynomial.polynomial.Polynomial.fit(k2list, kcotd, 3, symbol="k2", window=[0, k2list[-1]])
     return ercoef.coef
 
 #
@@ -454,26 +456,24 @@ def mean_feffrng(gp, vf):
     return feffrng(xp)
     
 def get_effrangeexpansion(gp, vf):
-    return None
+    # return None
     global vfglobal
     vfglobal = vf
     expval = vegas.PDFIntegrator(gp)
     # result = expval(feffrng, neval=2, nitn=2)
-    result = expval(feffrng, neval=500, nitn=5)
+    # result = expval(feffrng, neval=500, nitn=5)
+    result = expval(feffrng, neval=100, nitn=3)
     return result
 
-def plot_kcotd(t, vf, gp):
-    vfglobal = vf
+def plot_kcotd_vf(t, vf, gp):
     xp = dict()
     for key,v in gp.items():
         xp[key] = v.mean
-    # elist  = np.array([0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0]) # MeV
-    # elist = np.arange(0.01, 64.0, 0.5)
-    elist = np.arange(0.01, 80.0, 0.5)
+    elist = np.arange(0.01, 80.0, 0.1)
     klist  = np.array([np.sqrt(mnucleonmev*e)/HBARC for e in elist])
     k2list = np.array([k*k for k in klist]) # fm^-2
     k2overmpi2 = k2list / mpi**2
-    plist = np.array([smatrix.get_phase_single(0, k, vfglobal, xp, 3.0) for k in klist])
+    plist = np.array([smatrix.get_phase_single(0, k, vf, xp, 3.0) for k in klist])
     kcotd = np.array([ k*(1.0/np.tan(d)) for k,d in zip(klist, plist)])
     kcotd /= mpi
     plt.ion() # Enable interactive mode
@@ -487,8 +487,49 @@ def plot_kcotd(t, vf, gp):
     y_low, y_high = ax.get_ylim()
     #set aspect ratio
     ax.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio)
-
     ax.plot(k2overmpi2, kcotd)
+    ax.text(0.05, 0.1, f"time={t}", fontsize=16)
+    plt.xlabel("(k/mpi)^2")
+    plt.ylabel("k cot delta / mpi")
+    plt.ioff()
+    plt.savefig(f"kcotd_{t}.png")
+    if doshow:
+        plt.show()
+
+#
+# effp is a dict containing  'a', 'reff', 'v_2', 'v_3' for an effective range expansion
+def plot_kcotd(t, efa, usegvars):
+    print("plot_kcotd: coefs=", efa)
+    v_0 = efa[0]
+    v_1 = efa[1]
+    v_2 = efa[2]
+    v_3 = efa[3]
+    elist = np.arange(0.01, 80.0, 0.1)
+    klist  = np.array([np.sqrt(mnucleonmev*e)/HBARC for e in elist])
+    k2list = np.array([k*k for k in klist]) # fm^-2
+    k2overmpi2 = k2list / mpi**2
+    kcotd = np.array([ v_0 + v_1 * kk + v_2 * kk*kk + v_3 * kk**3 for kk in k2list])
+    kcotd /= mpi
+
+    plt.ion() # Enable interactive mode
+    fig = plt.figure(dpi=200.0) # creates a figure
+    ax = plt.axes([.12,.12,.87,.87]) # can't find docs yet
+    plt.ylim(0.0, 1.25)
+
+    #get x and y limits
+    ratio = 0.1
+    x_left, x_right = ax.get_xlim()
+    y_low, y_high = ax.get_ylim()
+    #set aspect ratio
+    ax.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio)
+    if usegvars:
+        y  = [kd.mean for kd in kcotd]
+        dy  = [kd.sdev for kd in kcotd]
+        ax.errorbar(k2overmpi2, y, yerr=dy, linestyle='None',
+                    mfc='None', alpha=.3, #marker='o', 
+                    label=r'$t=%d$' %t, color='r')
+    else:
+        ax.plot(k2overmpi2, kcotd)
     ax.text(0.05, 0.1, f"time={t}", fontsize=16)
     plt.xlabel("(k/mpi)^2")
     plt.ylabel("k cot delta / mpi")
@@ -503,22 +544,27 @@ def plot_kcotd(t, vf, gp):
 # gp - the model parameters
 #
 def report_phase(t, vf, gp):
-    skip = False
-    print("phase shift gen from distribution: ", gp)
     global elist, klist, k2list
+
+    print("phase shift gen from distribution: ", gp)
     elist = np.array([0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0]);
     klist = np.array([np.sqrt(mnucleonmev*e)/HBARC for e in elist])
     k2list = np.array([k*k for k in klist])
-    if True:
-        plot_kcotd(t, vf, gp)
     result = get_effrangeexpansion(gp, vf)
     if result is None:
+        plot_kcotd_vf(t, vf, gp)
         print("Skipping pdf integrate for eff range expansion")
         skip = True
         result = mean_feffrng(gp, vf)
+        print("result = ", result)
+        plot_kcotd(t, result, False) # False indicates floats in result
+    else:
+        skip = False
+        print("result = ", result)
+        plot_kcotd(t, result, True) # True indicates gvars in result
     print("result = ", result)
     # 
-    print("k cot \delta = -1/a  + (1/2) reff k^2 + v_2 k^4 + v_3 k^6 + ...")
+    print("k cot delta = -1/a  + (1/2) r_{eff} k^2 + v_2 k^4 + v_3 k^6 + ...")
     a = -1.0 / result[0]
     reff = 2 * result[1]
     lbr = '{'
@@ -528,10 +574,12 @@ def report_phase(t, vf, gp):
     else:
         print(f"effrng{t} = {lbr}'t':{t}, 'a':gv.gvar('{a}'), 'reff':gv.gvar('{reff}'), 'v2':gv.gvar('{result[2]}'), 'v3':gv.gvar('{result[3]}'){rbr}")
     z = reff / a
-    if z < 0.0 or z > 1.0:
-        print(f"No bound state as (reff / a) = {z} < 0 or > 1")
+    print("\kappa = (1/r_{eff})(1 - sqrt(1 - 2 r_{eff}/a))")
+    if z < 0.0 or z > 0.5:
+        print(f"No bound state as (reff / a) = {z} < 0 or {z} > 0.5")
     else:
-        be = (1.0 / reff) * (1.0 - np.sqrt(1.0 - 2.0 * z))
+        be = (1.0 / reff) * (1.0 - np.sqrt(1.0 - 2.0 * z)) # kappa
+        be *= (hc / mnucleonmev)**2  # \hbar^2 \kappa^2 / M_N^2
         print(f"Binding energy is {be}")
 
 #
