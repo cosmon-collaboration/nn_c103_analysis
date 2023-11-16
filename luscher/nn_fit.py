@@ -18,6 +18,22 @@ import lsqfit
 
 import nn_parameters as parameters
 
+def block_data(data, bl):
+    ''' data shape is [Ncfg, others]
+        bl = block length in configs
+    '''
+    ncfg = data.shape[0]
+    dims = data.shape[1:]
+    if ncfg % bl == 0:
+        nb = ncfg // bl
+    else:
+        nb = ncfg // bl + 1
+    corr_bl = np.zeros((nb,)+ dims, dtype=data.dtype)
+    for b in range(nb-1):
+        corr_bl[b] = data[b*bl:(b+1)*bl].mean(axis=0)
+    corr_bl[nb-1] = data[(nb-1)*bl:].mean(axis=0)
+
+    return corr_bl
 
 class Fit:
     def __init__(self, params=None):
@@ -31,13 +47,19 @@ class Fit:
             self.params = parameters.params()
         else:
             self.params = params
+
+        if 'block' in self.params:
+            self.block = self.params['block']
+        else:
+            self.block = 1
+
         self.plot = Plot(self.params)
         self.func = Functions(self.params)
         self.data, self.irrep_dim = self.gevp_correlators()
         self.ratio_denom = self.get_ratio_combinations()
 
         self.ratio = self.params['ratio']
-
+        
         self.version = self.params['version']
         if self.version not in ['agnostic', 'conspire']:
             sys.exit('version must be in [ agnostic, conspire]')
@@ -53,7 +75,6 @@ class Fit:
             except:
                 self.r_n_inel = self.params['r_n_inel']
 
-
         nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
         filename = f"NN_{nn}_t0-td_{self.params['t0']}-{self.params['td']}"
         filename = f"{filename}_N_n{self.nstates}"
@@ -65,8 +86,11 @@ class Fit:
             filename = f"{filename}_e{self.r_n_el}"
 
         filename = f"{filename}_t_{self.params['trange']['R'][0]}-{self.params['trange']['R'][1]}"
-        filename = f"{filename}_ratio_{self.params['ratio']}.pickle"
-        self.filename = filename
+        filename = f"{filename}_ratio_{self.params['ratio']}"
+        if self.block != 1:
+            filename = f"{filename}_block{self.block}"
+        
+        self.filename = f"{filename}.pickle"
 
     def nucleon_data(self):
         """ Reads nucleon data from h5.
@@ -100,6 +124,11 @@ class Fit:
         data = dict()
         for mom2 in avglist:
             data[mom2] = np.average([dcorr[corr] for corr in avglist[mom2]], axis=0)
+        if self.block != 1:
+            new_data = dict()
+            for k in data:
+                new_data[k] = block_data(data[k], self.block)
+            data = new_data
         if self.params["debug"]:
             """Plot effective mass for averaged correlator"""
             for mom2 in data:
@@ -107,59 +136,21 @@ class Fit:
         return data
 
     def singlet_data(self):
+        if 'make_Hermitian' in self.params:
+            self.make_Hermitian = self.params['make_Hermitian']
+        else:
+            self.make_Hermitian = True
+
         fpath = self.params["fpath"]["nn"]
-        if fpath in ["./data/singlet_S0.hdf5"]:
-            file = h5.File(fpath, "r")
-            dcorr, avglist = self.get_equivalent_momenta(file)
-
-            if self.params["debug"]:
-                phase_check = dict()
-                for tag in list(avglist.keys())[4:5]:
-                    print(tag)
-                    gvdat = gv.dataset.avg_data({key: dcorr[key] for key in avglist[tag]})
-                    for c in avglist[tag]:
-                        cshape = np.shape(gvdat[c])
-                        if len(cshape) == 3:
-                            dat = gvdat[c][:, :, 2]
-                            mdat = dat
-                            pdat = np.array(
-                                [
-                                    [abs(dat[j, i].mean) for i in range(len(dat))]
-                                    for j in range(len(dat))
-                                ]
-                            )
-                            phase = mdat / pdat
-                        else:
-                            dat = gvdat[c][2]
-                            phase = int(dat / abs(dat.mean))
-                        if tag in phase_check:
-                            phase_check[tag] += phase
-                        else:
-                            phase_check[tag] = phase
-                print("phase_check")
-                for tag in phase_check:
-                    print(tag)
-                    print(phase_check[tag])
-            if self.params["debug"]:
-                # 1 6
-                for tag in list(avglist.keys())[4:5]:
-                    for c in avglist[tag]:
-                        print(c)
-                        sdat = {c: dcorr[c][:, 0, 7, :]}
-                        self.plot.simple_plot(sdat, c, "corr")
-
-            data = dict()
-            for tag in avglist:
-                data[tag] = np.average([dcorr[corr] for corr in avglist[tag]], axis=0)
-        elif fpath in ["./data/singlet_S0_avg_mom.hdf5", "./data/triplet_S0_avg_mom.hdf5"]:
-            data = dict()
-            file = h5.File(fpath, "r")
-            correlators = file.keys()
-            for correlator in correlators:
-                irrep = correlator.split("_")[0]
-                mom2  = correlator.split("Psq")[1]
-                tag   = (mom2, irrep)
-                corr  = file[f"{correlator}/data"][()]
+        data = dict()
+        file = h5.File(fpath, "r")
+        correlators = file.keys()
+        for correlator in correlators:
+            irrep = correlator.split("_")[0]
+            mom2  = correlator.split("Psq")[1]
+            tag   = (mom2, irrep)
+            corr  = file[f"{correlator}/data"][()]
+            if self.make_Hermitian:
                 # restore Hermiticity of NN data
                 if len(corr.shape) == 4:
                     corr_full = np.zeros_like(corr)
@@ -172,8 +163,13 @@ class Fit:
                             else:
                                 corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
                     corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
-                    #data[tag] = file[f"{correlator}/data"][()]
-                data[tag] = corr
+            data[tag] = corr
+        if self.block != 1:
+            new_data = dict()
+            for k in data:
+                new_data[k] = block_data(data[k], self.block)
+            data = new_data
+
         return data
 
     def get_equivalent_momenta(self, file):
@@ -301,8 +297,6 @@ class Fit:
                         print('scipy.linalg.ishermitian @ t0, td', 
                               sp.linalg.ishermitian(mean[:, :, t0]), 
                               sp.linalg.ishermitian(mean[:, :, td]))
-                        #if key == ('0', 'T1g'):
-                        #    print(mean[0:4,0:4,t0])
                     except:
                         print(f"{key} Fail, condition numbers:")
                         print(cond(mean[:, :, td]), cond(mean[:, :, t0]))
@@ -319,7 +313,10 @@ class Fit:
         t0 = self.params["t0"]
         td = self.params["td"]
         nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
-        datapath = f"./data/gevp_{nn}_{t0}-{td}.pickle"
+        if self.block != 1:
+            datapath = f"./data/gevp_{nn}_{t0}-{td}_block{self.block}.pickle"
+        else:
+            datapath = f"./data/gevp_{nn}_{t0}-{td}.pickle"
         if path.exists(datapath) and self.params["bootstrap"] is False:
             print("Read data from gvar dump")
             gvdata = gv.load(datapath)
@@ -328,6 +325,7 @@ class Fit:
             print("Constructing data from HDF5")
             nucleon = self.nucleon_data()
             singlet = self.singlet_data()
+
             allsing = {
                 key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
@@ -343,6 +341,7 @@ class Fit:
 
             if self.params["bootstrap"]:
                 import bs_utils
+                # if we have blocked - nucleon has the correct number of "configs"
                 ncfg = nucleon[next(iter(nucleon))].shape[0]
                 self.draws = bs_utils.make_bs_list(ncfg, self.params['Nbs_max'], seed=self.params['bs_seed'])
                 self.h5_bs = True
@@ -416,7 +415,6 @@ class Fit:
                     prior[(key, "e0")] = gv.gvar(meff_mean, self.params["sig_e0"] * meff_sdev)
                 else:
                     prior[(key, "e0")] = gv.gvar(meff_mean, 0.1*meff_sdev)
-                #print(key, prior[(key, "e0")])
                 prior[(key, "z0")] = gv.gvar(zeff_mean, zeff_sdev)
 
                 # excited state priors
@@ -503,11 +501,13 @@ class Fit:
         """
         The assumption is that the fit will always simultaneously perform a fit to the
         2N two nucleon correlator
+        or 
         2N / N1*N2 ratio correlator
+        and
         N1 and N2 single nucleon correlators
         """
-        x = dict()
-        y0 = dict()
+        x   = dict()
+        y0  = dict()
         ybs = dict()
         for key in subset:
             k0 = self.ratio_denom[key][0]
@@ -580,6 +580,9 @@ class Fit:
             bi=n_start+1
             bf=n_start+1+ndraws
             b0 = self.get_b0_posteriors()
+            # only add self.posterior if not already defined
+            if not 'posterior' in dir(self):
+                self.posterior = b0
             for subset in self.params["masterkey"]:
                 p0[subset[0]] = dict()
                 for k in b0:
@@ -592,14 +595,12 @@ class Fit:
         for nbs in tqdm.tqdm(range(bi,bf,1)):
             posterior = gv.BufferDict()
             masterkey = tqdm.tqdm(self.params["masterkey"])
-            #print("masterkey: ", masterkey)
-            #sys.exit()
             for subset in masterkey:
                 if nbs > 0:
                     ''' all gvar's created in this switch are destroyed at restore_gvar
                         [they are out of scope] '''
                     gv.switch_gvar()
-                #print("subset:",subset)
+
                 masterkey.set_description(f"Fitting {subset}")
                 masterkey.bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)
                 if self.ratio:
@@ -661,13 +662,6 @@ class Fit:
                 
         self.bsresult = bsresult
 
-        '''
-        if n_start == 0:
-            print(self.posterior)
-        else:
-            print('')
-        '''
-
     def save(self):
         if not self.params["save"]:
             return
@@ -705,7 +699,8 @@ class Fit:
         if os.path.exists(f"./result/{self.filename}"):
             return gv.load(f"./result/{self.filename}")
         else:
-            sys.exit("can't get boot0, DOES NOT EXISTS: "+"result/{self.filename}")
+            print("can't get boot0, DOES NOT EXISTS: "+f"result/{self.filename}")
+            sys.exit('run again with p["bootstrap"] = False')
 
 
 def siground(x, sigfig=2):

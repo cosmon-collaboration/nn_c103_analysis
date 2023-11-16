@@ -45,6 +45,8 @@ def params():
     p["t0"] = 5
     p["td"] = 10
 
+    p["block"] = 1
+
     p["bootstrap"] = False
     p['Nbs_max']   = 5000
     p['bs_seed']   = 'c103_nn'
