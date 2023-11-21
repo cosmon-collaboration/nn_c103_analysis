@@ -83,6 +83,8 @@ class Fit:
         if self.params['version'] == 'agnostic':
             filename = f"{filename}_n{self.params['r_n_inel']}_e{self.r_n_el}"
         elif self.params['version'] == 'conspire':
+            if self.params['gs_conspire']:
+                filename = f"{filename}_gs"
             filename = f"{filename}_e{self.r_n_el}"
 
         filename = f"{filename}_t_{self.params['trange']['R'][0]}-{self.params['trange']['R'][1]}"
@@ -462,6 +464,7 @@ class Fit:
                             prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
 
                     elif self.version == 'conspire':
+                        # gs_conspire only adds interaction energy to ground state in tower of NN states
                         sig_factor = self.params['sig_enn']
                         for n1 in range(self.nstates):
                             key1 = (key[0],"N",key[2][0])
@@ -480,14 +483,17 @@ class Fit:
                                         en = 0.0
                                         zn = 1.0
                                     if n2 >= n1:
-                                        prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
+                                        if not self.params['gs_conspire']:
+                                            prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
                                         prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.5)
                                     else:
                                         if key2 == key1:
-                                            prior[(key, f"e_{n1}_{n2}")] = prior[(key, f"e_{n2}_{n1}")]
+                                            if not self.params['gs_conspire']:
+                                                prior[(key, f"e_{n1}_{n2}")] = prior[(key, f"e_{n2}_{n1}")]
                                             prior[(key, f"z_{n1}_{n2}")] = prior[(key, f"z_{n2}_{n1}")]
                                         else:
-                                            prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
+                                            if not self.params['gs_conspire']:
+                                                prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
                                             prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.5)
 
                     if self.params["debug"]:
@@ -882,18 +888,22 @@ class Functions:
                         key2 = (key[0],"N",key[2][1])
                         En2  = sum([np.exp(p[(key2, f"e{ni}")]) for ni in range(1, n2 + 1)])
 
+                        En = En1 + En2
                         if n1 == 0 and n2 == 0:
                             pass
                         else:
                             if n1 <= n2:
-                                En = En1 + En2 + p[(key, f"e_{n1}_{n2}")]
+                                if not self.params['gs_conspire']:
+                                    En += p[(key, f"e_{n1}_{n2}")]
                                 r += p[(key, f"z_{n1}_{n2}")] ** 2 * np.exp(-En * t)
                             else:
                                 if key2 == key1:
-                                    En = En1 + En2 + p[(key, f"e_{n2}_{n1}")]
+                                    if not self.params['gs_conspire']:
+                                        En += p[(key, f"e_{n2}_{n1}")]
                                     r += p[(key, f"z_{n2}_{n1}")] ** 2 * np.exp(-En * t)
                                 else:
-                                    En = En1 + En2 + p[(key, f"e_{n1}_{n2}")]
+                                    if not self.params['gs_conspire']:  
+                                        En += p[(key, f"e_{n1}_{n2}")]
                                     r += p[(key, f"z_{n1}_{n2}")] ** 2 * np.exp(-En * t)
                                 
         return r

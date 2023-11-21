@@ -59,14 +59,15 @@ def params():
     p["sig_enn"]    = 20 # multiplication factor for meff[autotime] for prior width
     p["positive_z"] = True
 
-    p["ratio"]      = True
-    p["ratio_type"] = "data"
-    p["irreps"]     = "irreps_ben" #["irreps", "irreps_ben"]
-    p["version"]    = 'agnostic'
-    p["nstates"]    = 2
-    p["r_n_inel"]   = 2
-    p["r_n_el"]     = 0
-    p["trange"]     = {"N": [5, 20], "R": [6, 15]}
+    p["ratio"]       = True
+    p["ratio_type"]  = "data"
+    p["irreps"]      = "irreps_ben" #["irreps", "irreps_ben"]
+    p["version"]     = 'agnostic'
+    p["gs_conspire"] = False
+    p["nstates"]     = 2
+    p["r_n_inel"]    = 2
+    p["r_n_el"]      = 0
+    p["trange"]      = {"N": [5, 20], "R": [6, 15]}
 
     p["ampi"] = 0.310810
     p["amn"]  = 0.70262
