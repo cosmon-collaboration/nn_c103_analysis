@@ -6,14 +6,14 @@
 
 ratio="False"
 
-t0=5
+t0=4
 td=10
 gevp="${t0}-${td}"
 nn_iso='singlet'
 
-for N_b in 1 2 5 10 20 ; do
+for N_b in 2 5 10 20 ; do
     for t0_N in 2 3 4 5 6 7; do
-        n_N=3
+        n_N=4
         e=0
         nucleon="n${n_N}_t_${t0_N}-20"
         for t in $(seq 2 11); do

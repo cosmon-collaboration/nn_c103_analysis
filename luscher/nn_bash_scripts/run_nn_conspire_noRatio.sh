@@ -6,7 +6,7 @@
 
 ratio="False"
 
-t0=4
+t0=6
 td=10
 gevp="${t0}-${td}"
 nn_iso='singlet'
