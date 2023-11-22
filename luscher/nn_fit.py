@@ -409,15 +409,22 @@ class Fit:
                 zeff_mean = zeff
                 zeff_sdev = np.absolute(zeff)
                 if nbs > 0:
+                    # for the g.s., we tighten the random shift of the prior
+                    # since our g.s. prior is very broad
                     e_fit = self.posterior[(key, 'e0')]
                     z_fit = self.posterior[(key, 'z0')]
                     meff_mean = np.random.normal(meff_mean, self.params['bs0_width'] * e_fit.sdev)
                     zeff_mean = np.random.normal(zeff_mean, self.params['bs0_width'] * z_fit.sdev)
-                if key[1] in ["R"]:
-                    prior[(key, "e0")] = gv.gvar(meff_mean, self.params["sig_e0"] * meff_sdev)
+
+                    prior[(key, "e0")] = gv.gvar(meff_mean, self.params['bs0_width'] * e_fit.sdev)
+                    prior[(key, "z0")] = gv.gvar(zeff_mean, self.params['bs0_width'] * z_fit.sdev)
                 else:
-                    prior[(key, "e0")] = gv.gvar(meff_mean, 0.1*meff_sdev)
-                prior[(key, "z0")] = gv.gvar(zeff_mean, zeff_sdev)
+                    # for NN, we use a larger width for the interaction energy, than for the Nucleons
+                    if key[1] in ["R"]:
+                        prior[(key, "e0")] = gv.gvar(meff_mean, self.params["sig_e0"] * meff_sdev)
+                    else:
+                        prior[(key, "e0")] = gv.gvar(meff_mean, 0.1*meff_sdev)
+                    prior[(key, "z0")]     = gv.gvar(zeff_mean, zeff_sdev)
 
                 # excited state priors
                 if key[1] in ["N"]:
@@ -425,6 +432,7 @@ class Fit:
                     for n in range(1, states):
                         en_mean = self.params["ampi"] * 2
                         if nbs > 0:
+                            # for log-normal, a width of 0.7 is 1-sigma down fluctuation at 1/2 mean
                             en = np.random.lognormal(mean=np.log(en_mean), sigma=0.7)
                             zn = np.random.normal(1.0, 0.5)
                             prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
@@ -465,6 +473,7 @@ class Fit:
 
                     elif self.version == 'conspire':
                         # gs_conspire only adds interaction energy to ground state in tower of NN states
+                        # which we prior as a normal distribution
                         sig_factor = self.params['sig_enn']
                         for n1 in range(self.nstates):
                             key1 = (key[0],"N",key[2][0])

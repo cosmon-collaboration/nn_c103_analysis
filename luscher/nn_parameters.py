@@ -45,11 +45,13 @@ def params():
     p["t0"] = 5
     p["td"] = 10
 
-    p["bootstrap"] = True
+    p["block"] = 1
+
+    p["bootstrap"] = False
     p['Nbs_max']   = 5000
     p['bs_seed']   = 'c103_nn'
-    p["nbs"]       = 2
-    p["nbs_sub"]   = 1
+    p["nbs"]       = 5000
+    p["nbs_sub"]   = 200
     p['bs0_width'] = 5
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
@@ -57,14 +59,15 @@ def params():
     p["sig_enn"]    = 20 # multiplication factor for meff[autotime] for prior width
     p["positive_z"] = True
 
-    p["ratio"]      = False
-    p["ratio_type"] = "data"
-    p["irreps"]     = "irreps_ben" #["irreps", "irreps_ben"]
-    p["version"]    = 'conspire'
-    p["nstates"]    = 3
-    p["r_n_inel"]   = 2
-    p["r_n_el"]     = 0
-    p["trange"]     = {"N": [3, 20], "R": [3, 15]}
+    p["ratio"]       = False
+    p["ratio_type"]  = "data"
+    p["irreps"]      = "irreps_ben" #["irreps", "irreps_ben"]
+    p["version"]     = 'conspire'
+    p["gs_conspire"] = False
+    p["nstates"]     = 3
+    p["r_n_inel"]    = 2
+    p["r_n_el"]      = 0
+    p["trange"]      = {"N": [3, 20], "R": [3, 15]}
 
     p["ampi"] = 0.310810
     p["amn"]  = 0.70262
@@ -77,19 +80,10 @@ def params():
             [('1', 'E', 0)], [('1', 'E', 1)], [('4', 'E', 0)], [('4', 'E', 1)],
             [('2', 'A2', 0)], [('4', 'A2', 0)], [('4', 'A2', 1)], 
             [('2', 'B1', 0)], [('2', 'B2', 0)], [('2', 'B2', 3)],
-            [('3', 'A2', 0)], [('3', 'E', 0)]
+            [('3', 'A2', 0)], [('3', 'A2', 1)], [('3', 'E', 0)]
             ]
-        p["masterkey"] = [
-            [("0", "T1g", 0)], [('0', 'T1g', 1)]
-        ]
-        #p["masterkey"] = [[
-        #    ("0", "T1g", 0), ('0', 'T1g', 1), 
-        #    ('1', 'A2', 0),  ('1', 'A2', 1),
-        #    ('1', 'E', 0),   ('1', 'E', 1),  ('4', 'E', 0), ('4', 'E', 1),
-        #    ('2', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
-        #    ('2', 'B1', 0),  ('2', 'B2', 0), ('2', 'B2', 3),
-        #    ('3', 'A2', 0),  ('3', 'E', 0)
-        #    ]]
+
+        #p["masterkey"] = [[("0", "T1g", 0)]]
 
     elif 'triplet' in p["fpath"]["nn"]:
         p["masterkey"] = []
