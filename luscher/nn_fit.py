@@ -450,7 +450,7 @@ class Fit:
                     for n in range(1,1 + self.r_n_el):
                         if nbs > 0:
                             en = np.random.lognormal(mean=np.log(dE_elastic), sigma=0.7)
-                            zn = np.random.normal(loc=1.0, self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
+                            zn = np.random.normal(loc=1.0, scale=self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
                             #zn = np.random.normal(loc=1.0, scale=0.5)
                             prior[(key, f"e_el{n}")] = gv.gvar(en, 0.7)
                         else:
@@ -465,7 +465,7 @@ class Fit:
                         for n in range(1, self.r_n_inel):
                             if nbs > 0:
                                 en = np.random.lognormal(mean=np.log(2*self.params['ampi']), sigma=0.7)
-                                zn = np.random.normal(loc=1.0, self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
+                                zn = np.random.normal(loc=1.0, scale=self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
                                 #zn = np.random.normal(loc=1.0, scale=0.5)
                                 prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
                             else:
@@ -490,7 +490,7 @@ class Fit:
                                     e0 = abs(prior[(key, "e0")].mean)
                                     if nbs > 0:
                                         en = np.random.normal(loc=0.0, scale=sig_factor * e0)
-                                        zn = np.random.normal(loc=1.0, self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
+                                        zn = np.random.normal(loc=1.0, scale=self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
                                         #zn = np.random.normal(loc=1.0, scale=0.5)
                                     else:
                                         en = 0.0
