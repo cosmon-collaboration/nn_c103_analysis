@@ -434,7 +434,8 @@ class Fit:
                         if nbs > 0:
                             # for log-normal, a width of 0.7 is 1-sigma down fluctuation at 1/2 mean
                             en = np.random.lognormal(mean=np.log(en_mean), sigma=0.7)
-                            zn = np.random.normal(1.0, 0.5)
+                            zn = np.random.normal(1.0, self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
+                            #zn = np.random.normal(1.0, 0.5)
                             prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
                         else:
                             en = en_mean
@@ -449,7 +450,8 @@ class Fit:
                     for n in range(1,1 + self.r_n_el):
                         if nbs > 0:
                             en = np.random.lognormal(mean=np.log(dE_elastic), sigma=0.7)
-                            zn = np.random.normal(loc=1.0, scale=0.5)
+                            zn = np.random.normal(loc=1.0, self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
+                            #zn = np.random.normal(loc=1.0, scale=0.5)
                             prior[(key, f"e_el{n}")] = gv.gvar(en, 0.7)
                         else:
                             en = dE_elastic
@@ -463,7 +465,8 @@ class Fit:
                         for n in range(1, self.r_n_inel):
                             if nbs > 0:
                                 en = np.random.lognormal(mean=np.log(2*self.params['ampi']), sigma=0.7)
-                                zn = np.random.normal(loc=1.0, scale=0.5)
+                                zn = np.random.normal(loc=1.0, self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
+                                #zn = np.random.normal(loc=1.0, scale=0.5)
                                 prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
                             else:
                                 en = 2*self.params['ampi']
@@ -487,7 +490,8 @@ class Fit:
                                     e0 = abs(prior[(key, "e0")].mean)
                                     if nbs > 0:
                                         en = np.random.normal(loc=0.0, scale=sig_factor * e0)
-                                        zn = np.random.normal(loc=1.0, scale=0.5)
+                                        zn = np.random.normal(loc=1.0, self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
+                                        #zn = np.random.normal(loc=1.0, scale=0.5)
                                     else:
                                         en = 0.0
                                         zn = 1.0
