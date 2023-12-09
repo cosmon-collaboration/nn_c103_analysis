@@ -47,16 +47,16 @@ def params():
 
     p["block"] = 1
 
-    p["bootstrap"] = False
+    p["bootstrap"] = True
     p['Nbs_max']   = 5000
     p['bs_seed']   = 'c103_nn'
     p["nbs"]       = 5000
-    p["nbs_sub"]   = 200
-    p['bs0_width'] = 5
+    p["nbs_sub"]   = 100
+    p['bs0_width'] = 3
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
-    p["sig_e0"]     = 10 # multiplication factor for meff[autotime] for prior width
-    p["sig_enn"]    = 20 # multiplication factor for meff[autotime] for prior width
+    p["sig_e0"]     = 2 # multiplication factor for meff[autotime] for prior width
+    p["sig_enn"]    = 1 # multiplication factor for meff[autotime] for prior width
     p["positive_z"] = True
 
     p["ratio"]       = False
@@ -76,9 +76,9 @@ def params():
     if 'singlet' in p["fpath"]["nn"]:
         p["masterkey"] = [
             [("0", "T1g", 0)], [('0', 'T1g', 1)],
-            [('1', 'A2', 0)], [('1', 'A2', 1)], 
+            [('1', 'A2', 0)], [('1', 'A2', 1)],
             [('1', 'E', 0)], [('1', 'E', 1)], [('4', 'E', 0)], [('4', 'E', 1)],
-            [('2', 'A2', 0)], [('4', 'A2', 0)], [('4', 'A2', 1)], 
+            [('2', 'A2', 0)], [('4', 'A2', 0)], [('4', 'A2', 1)],
             [('2', 'B1', 0)], [('2', 'B2', 0)], [('2', 'B2', 3)],
             [('3', 'A2', 0)], [('3', 'A2', 1)], [('3', 'E', 0)]
             ]

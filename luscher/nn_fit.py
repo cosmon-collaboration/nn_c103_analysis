@@ -17,6 +17,7 @@ import gvar as gv
 import lsqfit
 
 import nn_parameters as parameters
+import bs_utils
 
 def block_data(data, bl):
     ''' data shape is [Ncfg, others]
@@ -59,7 +60,7 @@ class Fit:
         self.ratio_denom = self.get_ratio_combinations()
 
         self.ratio = self.params['ratio']
-        
+
         self.version = self.params['version']
         if self.version not in ['agnostic', 'conspire']:
             sys.exit('version must be in [ agnostic, conspire]')
@@ -91,7 +92,7 @@ class Fit:
         filename = f"{filename}_ratio_{self.params['ratio']}"
         if self.block != 1:
             filename = f"{filename}_block{self.block}"
-        
+
         self.filename = f"{filename}.pickle"
 
     def nucleon_data(self):
@@ -296,8 +297,8 @@ class Fit:
                         drot[key] = vec
                         print(f"{key} Success, condition numbers:")
                         print(cond(mean[:, :, t0]), cond(mean[:, :, td]))
-                        print('scipy.linalg.ishermitian @ t0, td', 
-                              sp.linalg.ishermitian(mean[:, :, t0]), 
+                        print('scipy.linalg.ishermitian @ t0, td',
+                              sp.linalg.ishermitian(mean[:, :, t0]),
                               sp.linalg.ishermitian(mean[:, :, td]))
                     except:
                         print(f"{key} Fail, condition numbers:")
@@ -342,7 +343,6 @@ class Fit:
                     allsing[opkey] = rotated_singlet[:, :, operator].real
 
             if self.params["bootstrap"]:
-                import bs_utils
                 # if we have blocked - nucleon has the correct number of "configs"
                 ncfg = nucleon[next(iter(nucleon))].shape[0]
                 self.draws = bs_utils.make_bs_list(ncfg, self.params['Nbs_max'], seed=self.params['bs_seed'])
@@ -408,16 +408,26 @@ class Fit:
                 meff_sdev = np.absolute(meff)
                 zeff_mean = zeff
                 zeff_sdev = np.absolute(zeff)
-                if nbs > 0:
-                    # for the g.s., we tighten the random shift of the prior
-                    # since our g.s. prior is very broad
-                    e_fit = self.posterior[(key, 'e0')]
-                    z_fit = self.posterior[(key, 'z0')]
-                    meff_mean = np.random.normal(meff_mean, self.params['bs0_width'] * e_fit.sdev)
-                    zeff_mean = np.random.normal(zeff_mean, self.params['bs0_width'] * z_fit.sdev)
 
-                    prior[(key, "e0")] = gv.gvar(meff_mean, self.params['bs0_width'] * e_fit.sdev)
-                    prior[(key, "z0")] = gv.gvar(zeff_mean, self.params['bs0_width'] * z_fit.sdev)
+                if nbs > 0:
+                    # generate priors
+                    Nbs = self.params['nbs']
+                    bs_w_fac = self.params['bs0_width']
+                    s_e0 = self.posterior[(key, 'e0')].sdev
+                    s_z0 = self.posterior[(key, 'z0')].sdev
+
+                    # for the g.s., we tighten the random shift of the prior
+                    # since our g.s. prior is very broad.
+                    # Otherwise, we end up in local minimum in the BS samples
+                    e0_bs = bs_utils.bs_prior(Nbs, mean=meff_mean, sdev=bs_w_fac*s_e0, seed=str((key, 'e0')))
+                    z0_bs = bs_utils.bs_prior(Nbs, mean=zeff_mean, sdev=bs_w_fac*s_z0, seed=str((key, 'z0')))
+
+                    if key[1] in ["R"]:
+                        prior[(key, "e0")] = gv.gvar(e0_bs[nbs], self.params["sig_e0"] * meff_sdev)
+                    else:
+                        prior[(key, "e0")] = gv.gvar(e0_bs[nbs], 0.1*meff_sdev)
+                    prior[(key, "z0")] = gv.gvar(zeff_mean, zeff_sdev)
+
                 else:
                     # for NN, we use a larger width for the interaction energy, than for the Nucleons
                     if key[1] in ["R"]:
@@ -432,47 +442,49 @@ class Fit:
                     for n in range(1, states):
                         en_mean = self.params["ampi"] * 2
                         if nbs > 0:
-                            # for log-normal, a width of 0.7 is 1-sigma down fluctuation at 1/2 mean
-                            en = np.random.lognormal(mean=np.log(en_mean), sigma=0.7)
-                            zn = np.random.normal(1.0, self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
-                            #zn = np.random.normal(1.0, 0.5)
-                            prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
+                            en_bs = bs_utils.bs_prior(Nbs, mean=en_mean, sdev=en_mean/2, seed=str((key, f"e{n}")), dist='lognormal')
+                            s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
+                            zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
+                            en    = en_bs[nbs]
+                            zn    = zn_bs[nbs]
                         else:
-                            en = en_mean
+                            en = np.log(en_mean)
                             zn = 1.0
-                            prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
-                        
-                        prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
+                        prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
+                        prior[(key, f"z{n}")] = gv.gvar(zn, 0.25)
 
                 elif key[1] in ["R"]:
                     # elastic NN priors
                     dE_elastic = self.params["dE_elastic"]
                     for n in range(1,1 + self.r_n_el):
                         if nbs > 0:
-                            en = np.random.lognormal(mean=np.log(dE_elastic), sigma=0.7)
-                            zn = np.random.normal(loc=1.0, scale=self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
-                            #zn = np.random.normal(loc=1.0, scale=0.5)
-                            prior[(key, f"e_el{n}")] = gv.gvar(en, 0.7)
+                            en_bs = bs_utils.bs_prior(Nbs, mean=dE_elastic, sdev=dE_elastic/2, seed=str((key, f"e_el{n}")), dist='lognormal')
+                            s_z = bs_w_fac * self.posterior[(key, f"z_el{n}")].sdev
+                            zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_el{n}")))
+                            en    = en_bs[nbs]
+                            zn    = zn_bs[nbs]
                         else:
-                            en = dE_elastic
+                            en = np.log(dE_elastic)
                             zn = 1.0
-                            prior[(key, f"e_el{n}")] = gv.gvar(np.log(en), 0.7)
-
-                        prior[(key, f"z_el{n}")] = gv.gvar(zn, 0.5)
+                        prior[(key, f"e_el{n}")] = gv.gvar(en, 0.7)
+                        prior[(key, f"z_el{n}")] = gv.gvar(zn, 0.25)
 
                     # inelastic NN priors
                     if self.version == 'agnostic':
                         for n in range(1, self.r_n_inel):
                             if nbs > 0:
-                                en = np.random.lognormal(mean=np.log(2*self.params['ampi']), sigma=0.7)
-                                zn = np.random.normal(loc=1.0, scale=self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
-                                #zn = np.random.normal(loc=1.0, scale=0.5)
-                                prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
+                                dE    = np.exp(self.posterior[(key, f"e{n}")])
+                                en_bs = bs_utils.bs_prior(Nbs, mean=dE.mean, sdev=bs_w_fac*dE.sdev,
+                                                          seed=str((key, f"e{n}")), dist='lognormal')
+                                s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
+                                zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
+                                en    = en_bs[nbs]
+                                zn    = zn_bs[nbs]
                             else:
                                 en = 2*self.params['ampi']
                                 zn = 1.0
-                                prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
-                            prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
+                            prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
+                            prior[(key, f"z{n}")] = gv.gvar(zn, 0.25)
 
                     elif self.version == 'conspire':
                         # gs_conspire only adds interaction energy to ground state in tower of NN states
@@ -488,17 +500,21 @@ class Fit:
                                 else:
                                     # set delta_NN.mean = 0 for these energies
                                     e0 = abs(prior[(key, "e0")].mean)
+                                    s_e = sig_factor * e0
                                     if nbs > 0:
-                                        en = np.random.normal(loc=0.0, scale=sig_factor * e0)
-                                        zn = np.random.normal(loc=1.0, scale=self.params['bs0_width'] * self.posterior[(key, 'e%d' %n)])
-                                        #zn = np.random.normal(loc=1.0, scale=0.5)
+                                        # deltaE gets normal, not lognormal
+                                        en_bs = bs_utils.bs_prior(Nbs, mean=0, sdev=s_e, seed=str((key, f"e_{n1}_{n2}")))
+                                        s_z   = bs_w_fac * self.posterior[(key, f"z_{n1}_{n2}")].sdev
+                                        zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_{n1}_{n2}")))
+                                        en    = en_bs[nbs]
+                                        zn    = zn_bs[nbs]
                                     else:
                                         en = 0.0
                                         zn = 1.0
                                     if n2 >= n1:
                                         if not self.params['gs_conspire']:
                                             prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
-                                        prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.5)
+                                        prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.25)
                                     else:
                                         if key2 == key1:
                                             if not self.params['gs_conspire']:
@@ -507,7 +523,7 @@ class Fit:
                                         else:
                                             if not self.params['gs_conspire']:
                                                 prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
-                                            prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.5)
+                                            prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.25)
 
                     if self.params["debug"]:
                         for k in prior:
@@ -520,7 +536,7 @@ class Fit:
         """
         The assumption is that the fit will always simultaneously perform a fit to the
         2N two nucleon correlator
-        or 
+        or
         2N / N1*N2 ratio correlator
         and
         N1 and N2 single nucleon correlators
@@ -670,6 +686,9 @@ class Fit:
                             bsresult[key].append(rbs[key])
                         else:
                             bsresult[key] = [rbs[key]]
+                #if nbs != 0:
+                #    import IPython; IPython.embed()
+                #    sys.exit()
                 if nbs > 0:
                     ''' end of gvar scope used for bootstrap '''
                     gv.restore_gvar()
@@ -678,7 +697,7 @@ class Fit:
             posterior = {"masterkey": self.params["masterkey"], **posterior}
             if nbs == 0:
                 self.posterior = posterior
-                
+
         self.bsresult = bsresult
 
     def save(self):
@@ -915,10 +934,10 @@ class Functions:
                                         En += p[(key, f"e_{n2}_{n1}")]
                                     r += p[(key, f"z_{n2}_{n1}")] ** 2 * np.exp(-En * t)
                                 else:
-                                    if not self.params['gs_conspire']:  
+                                    if not self.params['gs_conspire']:
                                         En += p[(key, f"e_{n1}_{n2}")]
                                     r += p[(key, f"z_{n1}_{n2}")] ** 2 * np.exp(-En * t)
-                                
+
         return r
 
     def pure_ratio(self, key, x, p):
