@@ -423,10 +423,10 @@ class Fit:
                     z0_bs = bs_utils.bs_prior(Nbs, mean=zeff_mean, sdev=bs_w_fac*s_z0, seed=str((key, 'z0')))
 
                     if key[1] in ["R"]:
-                        prior[(key, "e0")] = gv.gvar(e0_bs[nbs], self.params["sig_e0"] * meff_sdev)
+                        prior[(key, "e0")] = gv.gvar(e0_bs[nbs-1], self.params["sig_e0"] * meff_sdev)
                     else:
-                        prior[(key, "e0")] = gv.gvar(e0_bs[nbs], 0.1*meff_sdev)
-                    prior[(key, "z0")] = gv.gvar(zeff_mean, zeff_sdev)
+                        prior[(key, "e0")] = gv.gvar(e0_bs[nbs-1], 0.1*meff_sdev)
+                    prior[(key, "z0")] = gv.gvar(z0_bs[nbs-1], zeff_sdev)
 
                 else:
                     # for NN, we use a larger width for the interaction energy, than for the Nucleons
@@ -445,8 +445,8 @@ class Fit:
                             en_bs = bs_utils.bs_prior(Nbs, mean=en_mean, sdev=en_mean/2, seed=str((key, f"e{n}")), dist='lognormal')
                             s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
                             zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
-                            en    = en_bs[nbs]
-                            zn    = zn_bs[nbs]
+                            en    = np.log(en_bs[nbs-1])
+                            zn    = zn_bs[nbs-1]
                         else:
                             en = np.log(en_mean)
                             zn = 1.0
@@ -461,8 +461,8 @@ class Fit:
                             en_bs = bs_utils.bs_prior(Nbs, mean=dE_elastic, sdev=dE_elastic/2, seed=str((key, f"e_el{n}")), dist='lognormal')
                             s_z = bs_w_fac * self.posterior[(key, f"z_el{n}")].sdev
                             zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_el{n}")))
-                            en    = en_bs[nbs]
-                            zn    = zn_bs[nbs]
+                            en    = np.log(en_bs[nbs-1])
+                            zn    = zn_bs[nbs-1]
                         else:
                             en = np.log(dE_elastic)
                             zn = 1.0
@@ -478,8 +478,8 @@ class Fit:
                                                           seed=str((key, f"e{n}")), dist='lognormal')
                                 s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
                                 zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
-                                en    = en_bs[nbs]
-                                zn    = zn_bs[nbs]
+                                en    = en_bs[nbs-1]
+                                zn    = zn_bs[nbs-1]
                             else:
                                 en = 2*self.params['ampi']
                                 zn = 1.0
@@ -506,13 +506,15 @@ class Fit:
                                         en_bs = bs_utils.bs_prior(Nbs, mean=0, sdev=s_e, seed=str((key, f"e_{n1}_{n2}")))
                                         s_z   = bs_w_fac * self.posterior[(key, f"z_{n1}_{n2}")].sdev
                                         zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_{n1}_{n2}")))
-                                        en    = en_bs[nbs]
-                                        zn    = zn_bs[nbs]
+                                        en    = en_bs[nbs-1]
+                                        zn    = zn_bs[nbs-1]
                                     else:
                                         en = 0.0
                                         zn = 1.0
+
                                     if n2 >= n1:
                                         if not self.params['gs_conspire']:
+                                            # only add deltaE if we add for all states in tower
                                             prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
                                         prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.25)
                                     else:

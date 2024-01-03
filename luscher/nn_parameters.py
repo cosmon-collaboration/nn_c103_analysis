@@ -50,12 +50,13 @@ def params():
     p["bootstrap"] = True
     p['Nbs_max']   = 5000
     p['bs_seed']   = 'c103_nn'
-    p["nbs"]       = 5000
-    p["nbs_sub"]   = 100
+    p["nbs"]       = 2
+    p["nbs_sub"]   = 2
     p['bs0_width'] = 3
+    p['bs_prior']  = 'gs' # 'gs' or 'all'
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
-    p["sig_e0"]     = 2 # multiplication factor for meff[autotime] for prior width
+    p["sig_e0"]     = 1 # multiplication factor for meff[autotime] for prior width
     p["sig_enn"]    = 1 # multiplication factor for meff[autotime] for prior width
     p["positive_z"] = True
 
@@ -63,7 +64,7 @@ def params():
     p["ratio_type"]  = "data"
     p["irreps"]      = "irreps_ben" #["irreps", "irreps_ben"]
     p["version"]     = 'conspire'
-    p["gs_conspire"] = False
+    p["gs_conspire"] = False # only add deltaE for ground state?
     p["nstates"]     = 3
     p["r_n_inel"]    = 2
     p["r_n_el"]      = 0
