@@ -90,8 +90,18 @@ class Fit:
 
         filename = f"{filename}_t_{self.params['trange']['R'][0]}-{self.params['trange']['R'][1]}"
         filename = f"{filename}_ratio_{self.params['ratio']}"
+
+        # did we block the data?
         if self.block != 1:
             filename = f"{filename}_block{self.block}"
+        # SVD study?
+        if self.params['svd_study']:
+            filename = f"{filename}_svdcut"
+            if 'svdcut' in self.params:
+                svd = str(self.params['svdcut'])
+                filename = f"{filename}{svd}"
+            else:
+                filename = f"{filename}Opt"
 
         self.filename = f"{filename}.pickle"
 
@@ -282,7 +292,7 @@ class Fit:
 
     def gevp_correlators(self):
 
-        def get_gevp_rotation(data):
+        def get_gevp_rotation(data, verbose=True):
             from scipy.linalg import eigh
             from numpy.linalg import cond
 
@@ -295,11 +305,12 @@ class Fit:
                         mean = np.average(data[key], axis=0)
                         val, vec = eigh(a=mean[:, :, td], b=mean[:, :, t0])
                         drot[key] = vec
-                        print(f"{key} Success, condition numbers:")
-                        print(cond(mean[:, :, t0]), cond(mean[:, :, td]))
-                        print('scipy.linalg.ishermitian @ t0, td',
-                              sp.linalg.ishermitian(mean[:, :, t0]),
-                              sp.linalg.ishermitian(mean[:, :, td]))
+                        if verbose:
+                            print(f"{key} Success, condition numbers:")
+                            print(cond(mean[:, :, t0]), cond(mean[:, :, td]))
+                            print('scipy.linalg.ishermitian @ t0, td',
+                                sp.linalg.ishermitian(mean[:, :, t0]),
+                                sp.linalg.ishermitian(mean[:, :, td]))
                     except:
                         print(f"{key} Fail, condition numbers:")
                         print(cond(mean[:, :, td]), cond(mean[:, :, t0]))
@@ -312,20 +323,8 @@ class Fit:
                         print(val2)
                         print(vec2[0])
             return drot
-
-        t0 = self.params["t0"]
-        td = self.params["td"]
-        nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
-        if self.block != 1:
-            datapath = f"./data/gevp_{nn}_{t0}-{td}_block{self.block}.pickle"
-        else:
-            datapath = f"./data/gevp_{nn}_{t0}-{td}.pickle"
-        if path.exists(datapath) and self.params["bootstrap"] is False:
-            print("Read data from gvar dump")
-            gvdata = gv.load(datapath)
-            self.h5_bs = False
-        else:
-            print("Constructing data from HDF5")
+        
+        def do_gevp_rotation(verbose=True):
             nucleon = self.nucleon_data()
             singlet = self.singlet_data()
 
@@ -333,7 +332,7 @@ class Fit:
                 key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
 
-            drot = get_gevp_rotation(singlet)
+            drot = get_gevp_rotation(singlet, verbose=verbose)
             for key in drot:
                 eigVecs = np.fliplr(drot[key])
                 rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', singlet[key], np.conj(eigVecs), eigVecs)
@@ -348,9 +347,29 @@ class Fit:
                 self.draws = bs_utils.make_bs_list(ncfg, self.params['Nbs_max'], seed=self.params['bs_seed'])
                 self.h5_bs = True
             else:
-                self.h5_bs = False
+                self.h5_bs = False                
 
             self.bsdata = {**nucleon, **allsing}
+
+            return nucleon, allsing
+
+
+        t0 = self.params["t0"]
+        td = self.params["td"]
+        nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
+        if self.block != 1:
+            datapath = f"./data/gevp_{nn}_{t0}-{td}_block{self.block}.pickle"
+        else:
+            datapath = f"./data/gevp_{nn}_{t0}-{td}.pickle"
+        if path.exists(datapath) and self.params["bootstrap"] is False:
+            print("Read data from gvar dump")
+            gvdata = gv.load(datapath)
+            self.h5_bs = False
+            if self.params['svd_study']:
+                nucleon, allsing = do_gevp_rotation(verbose=False)
+        else:
+            print("Constructing data from HDF5")
+            nucleon, allsing = do_gevp_rotation()
 
             print('\nThe principle value ROT correlators are REAL at inf statistics, so we discard imaginary')
             gvdata = gv.dataset.avg_data({**nucleon, **allsing})
@@ -441,7 +460,7 @@ class Fit:
                     states = self.params["nstates"]
                     for n in range(1, states):
                         en_mean = self.params["ampi"] * 2
-                        if nbs > 0:
+                        if nbs > 0 and self.params['bs_prior'] == 'all':
                             en_bs = bs_utils.bs_prior(Nbs, mean=en_mean, sdev=en_mean/2, seed=str((key, f"e{n}")), dist='lognormal')
                             s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
                             zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
@@ -501,7 +520,7 @@ class Fit:
                                     # set delta_NN.mean = 0 for these energies
                                     e0 = abs(prior[(key, "e0")].mean)
                                     s_e = sig_factor * e0
-                                    if nbs > 0:
+                                    if nbs > 0 and self.params['bs_prior'] == 'all':
                                         # deltaE gets normal, not lognormal
                                         en_bs = bs_utils.bs_prior(Nbs, mean=0, sdev=s_e, seed=str((key, f"e_{n1}_{n2}")))
                                         s_z   = bs_w_fac * self.posterior[(key, f"z_{n1}_{n2}")].sdev
@@ -534,7 +553,7 @@ class Fit:
             pass
         return prior
 
-    def format_data(self, subset, nbs=0, ratio=True):
+    def format_data(self, subset, nbs=0, ratio=True, svdcut=False):
         """
         The assumption is that the fit will always simultaneously perform a fit to the
         2N two nucleon correlator
@@ -546,6 +565,9 @@ class Fit:
         x   = dict()
         y0  = dict()
         ybs = dict()
+        if svdcut:
+            ysvd     = dict()
+            svd_cuts = dict()
         for key in subset:
             k0 = self.ratio_denom[key][0]
             k1 = self.ratio_denom[key][1]
@@ -570,6 +592,25 @@ class Fit:
             y0[key_nucl0] = self.data[k0][x[key_nucl0]]
             y0[key_nucl1] = self.data[k1][x[key_nucl1]]
 
+            if svdcut:
+                if 'svdcut' not in dir(self) or ('svdcut' in dir(self) and key_ratio not in self.svdcut):
+                    ysvd[key_ratio] = self.bsdata[key][x[key_ratio]]
+                    ysvd[key_nucl0] = self.bsdata[k0][x[key_nucl0]]
+                    ysvd[key_nucl1] = self.bsdata[k1][x[key_nucl1]]
+
+                    if ratio:
+                        def svd_processor(data):
+                            d  = gv.dataset.avg_data(data)
+                            d2 = gv.BufferDict()
+                            d2[key_ratio] = d[key_ratio] / d[key_nucl0] / d[key_nucl1]
+                            d2[key_nucl0] = d[key_nucl0]
+                            d2[key_nucl1] = d[key_nucl1]
+                            return d2
+                        svd_test = gv.dataset.svd_diagnosis(ysvd, process_dataset=svd_processor)
+                    else:
+                        svd_test = gv.dataset.svd_diagnosis(ysvd)
+                    svd_cuts[key_ratio] = svd_test.svdcut
+            
             if not self.params['bootstrap']:
                 ybs = []
             else:
@@ -582,7 +623,6 @@ class Fit:
                 # k0, k1 = single nucleon keys corresponding to NN
                 wanted_keys = [key, k0, k1]
                 ndata = {k: self.bsdata[k][mask] for k in self.bsdata if k in wanted_keys}
-
                 ndataset  = gv.dataset.avg_data(ndata)
 
                 numerator = ndataset[key][x[key_ratio]]
@@ -593,6 +633,12 @@ class Fit:
                 ybs[key_ratio] = numerator / denominator
                 ybs[key_nucl0] = ndataset[k0][x[key_nucl0]]
                 ybs[key_nucl1] = ndataset[k1][x[key_nucl1]]
+
+        if svdcut:
+            if 'svdcut' not in dir(self):
+                self.svdcut = dict()
+            for k in svd_cuts:
+                self.svdcut[k] = svd_cuts[k]
 
         return x, y0, ybs
 
@@ -641,7 +687,7 @@ class Fit:
                 masterkey.set_description(f"Fitting {subset}")
                 masterkey.bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)
                 if self.ratio:
-                    x, y0, ybs = self.format_data(subset, nbs)
+                    x, y0, ybs = self.format_data(subset, nbs, svdcut=self.params['svd_study'])
                     prior = gv.BufferDict()
                     prior = self.set_priors(prior, data=(x, y0), nbs=nbs, type="auto")
                 else:
@@ -651,20 +697,33 @@ class Fit:
                     prior = self.set_priors(prior, data=(x, y0), nbs=nbs, type="auto")
 
                     # remake data without ratio
-                    x, y0, ybs = self.format_data(subset, nbs, ratio=False)
+                    x, y0, ybs = self.format_data(subset, nbs, ratio=False, svdcut=self.params['svd_study'])
+
+                # SVD cut?
+                if self.params['svd_study']:
+                    if 'svdcut' in self.params:
+                        svdcut = self.params['svdcut']
+                    else:
+                        k0 = self.ratio_denom[subset[0]][0]
+                        k1 = self.ratio_denom[subset[0]][1]
+                        key_ratio = (subset[0], "R", (k0, k1))
+                        svdcut = self.svdcut[key_ratio]
+                else:
+                    svdcut=None
 
                 if nbs == 0:
                     result = lsqfit.nonlinear_fit(
-                        data=(x, y0), prior=prior, fcn=self.func, maxit=100000, fitter=self.params['fitter']
+                        data=(x, y0), prior=prior, fcn=self.func, 
+                        maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
                     )
                     p0[subset[0]] = {k:v.mean for k,v in result.p.items()}
                 else:
                     p0_bs = {k:p0[subset[0]][k] for k in prior}
                     result = lsqfit.nonlinear_fit(
-                        data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, maxit=100000, fitter=self.params['fitter']
+                        data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, 
+                        maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
                     )
 
-                #print(result.format(maxline=True))
                 if ndraws == 0:
                     self.plot.plot_result(result, subset)
                 stats = dict()
@@ -688,9 +747,6 @@ class Fit:
                             bsresult[key].append(rbs[key])
                         else:
                             bsresult[key] = [rbs[key]]
-                #if nbs != 0:
-                #    import IPython; IPython.embed()
-                #    sys.exit()
                 if nbs > 0:
                     ''' end of gvar scope used for bootstrap '''
                     gv.restore_gvar()
@@ -709,7 +765,6 @@ class Fit:
         if not os.path.exists("./result"):
             os.makedirs("./result")
         if self.params['bootstrap']:
-            #import IPython; IPython.embed()
             if not os.path.exists(f"./result/{self.filename}_bs"):
                 gv.dump(self.bsresult, f"./result/{self.filename}_bs")
             else:
