@@ -37,3 +37,23 @@ def make_bs_list(Ndata, Nbs, Mbs=None, seed=None, verbose=False, add_b0=True):
         bs_list = np.insert(bs_list, 0, np.arange(Ndata), axis=0)
 
     return bs_list
+
+def bs_prior(Nbs, mean=0., sdev=1., seed=None, dist='normal'):
+    ''' Generate bootstrap distribution of prior central values
+        Args:
+            Nbs  : number of values to return
+            mean : mean of Gaussian distribution
+            sdev : width of Gaussian distribution
+            seed : string to seed random number generator
+        Return:
+            a numpy array of length Nbs of normal(mean, sdev) values
+    '''
+    # seed the random number generator
+    rng = get_rng(seed) if seed else np.random.default_rng()
+
+    if dist == 'normal':
+        return rng.normal(loc=mean, scale=sdev, size=Nbs)
+    elif dist == 'lognormal':
+        return rng.lognormal(mean=mean, sigma=sdev, size=Nbs)
+    else:
+        sys.exit('you have not given a known distribution, %s' %dist)

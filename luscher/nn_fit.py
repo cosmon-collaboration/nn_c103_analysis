@@ -17,7 +17,24 @@ import gvar as gv
 import lsqfit
 
 import nn_parameters as parameters
+import bs_utils
 
+def block_data(data, bl):
+    ''' data shape is [Ncfg, others]
+        bl = block length in configs
+    '''
+    ncfg = data.shape[0]
+    dims = data.shape[1:]
+    if ncfg % bl == 0:
+        nb = ncfg // bl
+    else:
+        nb = ncfg // bl + 1
+    corr_bl = np.zeros((nb,)+ dims, dtype=data.dtype)
+    for b in range(nb-1):
+        corr_bl[b] = data[b*bl:(b+1)*bl].mean(axis=0)
+    corr_bl[nb-1] = data[(nb-1)*bl:].mean(axis=0)
+
+    return corr_bl
 
 class Fit:
     def __init__(self, params=None):
@@ -31,6 +48,12 @@ class Fit:
             self.params = parameters.params()
         else:
             self.params = params
+
+        if 'block' in self.params:
+            self.block = self.params['block']
+        else:
+            self.block = 1
+
         self.plot = Plot(self.params)
         self.func = Functions(self.params)
         self.data, self.irrep_dim = self.gevp_correlators()
@@ -53,7 +76,6 @@ class Fit:
             except:
                 self.r_n_inel = self.params['r_n_inel']
 
-
         nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
         filename = f"NN_{nn}_t0-td_{self.params['t0']}-{self.params['td']}"
         filename = f"{filename}_N_n{self.nstates}"
@@ -62,11 +84,26 @@ class Fit:
         if self.params['version'] == 'agnostic':
             filename = f"{filename}_n{self.params['r_n_inel']}_e{self.r_n_el}"
         elif self.params['version'] == 'conspire':
+            if self.params['gs_conspire']:
+                filename = f"{filename}_gs"
             filename = f"{filename}_e{self.r_n_el}"
 
         filename = f"{filename}_t_{self.params['trange']['R'][0]}-{self.params['trange']['R'][1]}"
-        filename = f"{filename}_ratio_{self.params['ratio']}.pickle"
-        self.filename = filename
+        filename = f"{filename}_ratio_{self.params['ratio']}"
+
+        # did we block the data?
+        if self.block != 1:
+            filename = f"{filename}_block{self.block}"
+        # SVD study?
+        if self.params['svd_study']:
+            filename = f"{filename}_svdcut"
+            if 'svdcut' in self.params:
+                svd = str(self.params['svdcut'])
+                filename = f"{filename}{svd}"
+            else:
+                filename = f"{filename}Opt"
+
+        self.filename = f"{filename}.pickle"
 
     def nucleon_data(self):
         """ Reads nucleon data from h5.
@@ -100,6 +137,11 @@ class Fit:
         data = dict()
         for mom2 in avglist:
             data[mom2] = np.average([dcorr[corr] for corr in avglist[mom2]], axis=0)
+        if self.block != 1:
+            new_data = dict()
+            for k in data:
+                new_data[k] = block_data(data[k], self.block)
+            data = new_data
         if self.params["debug"]:
             """Plot effective mass for averaged correlator"""
             for mom2 in data:
@@ -107,59 +149,21 @@ class Fit:
         return data
 
     def singlet_data(self):
+        if 'make_Hermitian' in self.params:
+            self.make_Hermitian = self.params['make_Hermitian']
+        else:
+            self.make_Hermitian = True
+
         fpath = self.params["fpath"]["nn"]
-        if fpath in ["./data/singlet_S0.hdf5"]:
-            file = h5.File(fpath, "r")
-            dcorr, avglist = self.get_equivalent_momenta(file)
-
-            if self.params["debug"]:
-                phase_check = dict()
-                for tag in list(avglist.keys())[4:5]:
-                    print(tag)
-                    gvdat = gv.dataset.avg_data({key: dcorr[key] for key in avglist[tag]})
-                    for c in avglist[tag]:
-                        cshape = np.shape(gvdat[c])
-                        if len(cshape) == 3:
-                            dat = gvdat[c][:, :, 2]
-                            mdat = dat
-                            pdat = np.array(
-                                [
-                                    [abs(dat[j, i].mean) for i in range(len(dat))]
-                                    for j in range(len(dat))
-                                ]
-                            )
-                            phase = mdat / pdat
-                        else:
-                            dat = gvdat[c][2]
-                            phase = int(dat / abs(dat.mean))
-                        if tag in phase_check:
-                            phase_check[tag] += phase
-                        else:
-                            phase_check[tag] = phase
-                print("phase_check")
-                for tag in phase_check:
-                    print(tag)
-                    print(phase_check[tag])
-            if self.params["debug"]:
-                # 1 6
-                for tag in list(avglist.keys())[4:5]:
-                    for c in avglist[tag]:
-                        print(c)
-                        sdat = {c: dcorr[c][:, 0, 7, :]}
-                        self.plot.simple_plot(sdat, c, "corr")
-
-            data = dict()
-            for tag in avglist:
-                data[tag] = np.average([dcorr[corr] for corr in avglist[tag]], axis=0)
-        elif fpath in ["./data/singlet_S0_avg_mom.hdf5", "./data/triplet_S0_avg_mom.hdf5"]:
-            data = dict()
-            file = h5.File(fpath, "r")
-            correlators = file.keys()
-            for correlator in correlators:
-                irrep = correlator.split("_")[0]
-                mom2  = correlator.split("Psq")[1]
-                tag   = (mom2, irrep)
-                corr  = file[f"{correlator}/data"][()]
+        data = dict()
+        file = h5.File(fpath, "r")
+        correlators = file.keys()
+        for correlator in correlators:
+            irrep = correlator.split("_")[0]
+            mom2  = correlator.split("Psq")[1]
+            tag   = (mom2, irrep)
+            corr  = file[f"{correlator}/data"][()]
+            if self.make_Hermitian:
                 # restore Hermiticity of NN data
                 if len(corr.shape) == 4:
                     corr_full = np.zeros_like(corr)
@@ -172,8 +176,13 @@ class Fit:
                             else:
                                 corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
                     corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
-                    #data[tag] = file[f"{correlator}/data"][()]
-                data[tag] = corr
+            data[tag] = corr
+        if self.block != 1:
+            new_data = dict()
+            for k in data:
+                new_data[k] = block_data(data[k], self.block)
+            data = new_data
+
         return data
 
     def get_equivalent_momenta(self, file):
@@ -283,7 +292,7 @@ class Fit:
 
     def gevp_correlators(self):
 
-        def get_gevp_rotation(data):
+        def get_gevp_rotation(data, verbose=True):
             from scipy.linalg import eigh
             from numpy.linalg import cond
 
@@ -296,13 +305,12 @@ class Fit:
                         mean = np.average(data[key], axis=0)
                         val, vec = eigh(a=mean[:, :, td], b=mean[:, :, t0])
                         drot[key] = vec
-                        print(f"{key} Success, condition numbers:")
-                        print(cond(mean[:, :, t0]), cond(mean[:, :, td]))
-                        print('scipy.linalg.ishermitian @ t0, td', 
-                              sp.linalg.ishermitian(mean[:, :, t0]), 
-                              sp.linalg.ishermitian(mean[:, :, td]))
-                        #if key == ('0', 'T1g'):
-                        #    print(mean[0:4,0:4,t0])
+                        if verbose:
+                            print(f"{key} Success, condition numbers:")
+                            print(cond(mean[:, :, t0]), cond(mean[:, :, td]))
+                            print('scipy.linalg.ishermitian @ t0, td',
+                                sp.linalg.ishermitian(mean[:, :, t0]),
+                                sp.linalg.ishermitian(mean[:, :, td]))
                     except:
                         print(f"{key} Fail, condition numbers:")
                         print(cond(mean[:, :, td]), cond(mean[:, :, t0]))
@@ -315,24 +323,16 @@ class Fit:
                         print(val2)
                         print(vec2[0])
             return drot
-
-        t0 = self.params["t0"]
-        td = self.params["td"]
-        nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
-        datapath = f"./data/gevp_{nn}_{t0}-{td}.pickle"
-        if path.exists(datapath) and self.params["bootstrap"] is False:
-            print("Read data from gvar dump")
-            gvdata = gv.load(datapath)
-            self.h5_bs = False
-        else:
-            print("Constructing data from HDF5")
+        
+        def do_gevp_rotation(verbose=True):
             nucleon = self.nucleon_data()
             singlet = self.singlet_data()
+
             allsing = {
                 key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
 
-            drot = get_gevp_rotation(singlet)
+            drot = get_gevp_rotation(singlet, verbose=verbose)
             for key in drot:
                 eigVecs = np.fliplr(drot[key])
                 rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', singlet[key], np.conj(eigVecs), eigVecs)
@@ -342,14 +342,34 @@ class Fit:
                     allsing[opkey] = rotated_singlet[:, :, operator].real
 
             if self.params["bootstrap"]:
-                import bs_utils
+                # if we have blocked - nucleon has the correct number of "configs"
                 ncfg = nucleon[next(iter(nucleon))].shape[0]
                 self.draws = bs_utils.make_bs_list(ncfg, self.params['Nbs_max'], seed=self.params['bs_seed'])
                 self.h5_bs = True
             else:
-                self.h5_bs = False
+                self.h5_bs = False                
 
             self.bsdata = {**nucleon, **allsing}
+
+            return nucleon, allsing
+
+
+        t0 = self.params["t0"]
+        td = self.params["td"]
+        nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
+        if self.block != 1:
+            datapath = f"./data/gevp_{nn}_{t0}-{td}_block{self.block}.pickle"
+        else:
+            datapath = f"./data/gevp_{nn}_{t0}-{td}.pickle"
+        if path.exists(datapath) and self.params["bootstrap"] is False:
+            print("Read data from gvar dump")
+            gvdata = gv.load(datapath)
+            self.h5_bs = False
+            if self.params['svd_study']:
+                nucleon, allsing = do_gevp_rotation(verbose=False)
+        else:
+            print("Constructing data from HDF5")
+            nucleon, allsing = do_gevp_rotation()
 
             print('\nThe principle value ROT correlators are REAL at inf statistics, so we discard imaginary')
             gvdata = gv.dataset.avg_data({**nucleon, **allsing})
@@ -407,63 +427,87 @@ class Fit:
                 meff_sdev = np.absolute(meff)
                 zeff_mean = zeff
                 zeff_sdev = np.absolute(zeff)
+
                 if nbs > 0:
-                    e_fit = self.posterior[(key, 'e0')]
-                    z_fit = self.posterior[(key, 'z0')]
-                    meff_mean = np.random.normal(meff_mean, self.params['bs0_width'] * e_fit.sdev)
-                    zeff_mean = np.random.normal(zeff_mean, self.params['bs0_width'] * z_fit.sdev)
-                if key[1] in ["R"]:
-                    prior[(key, "e0")] = gv.gvar(meff_mean, self.params["sig_e0"] * meff_sdev)
+                    # generate priors
+                    Nbs = self.params['nbs']
+                    bs_w_fac = self.params['bs0_width']
+                    s_e0 = self.posterior[(key, 'e0')].sdev
+                    s_z0 = self.posterior[(key, 'z0')].sdev
+
+                    # for the g.s., we tighten the random shift of the prior
+                    # since our g.s. prior is very broad.
+                    # Otherwise, we end up in local minimum in the BS samples
+                    e0_bs = bs_utils.bs_prior(Nbs, mean=meff_mean, sdev=bs_w_fac*s_e0, seed=str((key, 'e0')))
+                    z0_bs = bs_utils.bs_prior(Nbs, mean=zeff_mean, sdev=bs_w_fac*s_z0, seed=str((key, 'z0')))
+
+                    if key[1] in ["R"]:
+                        prior[(key, "e0")] = gv.gvar(e0_bs[nbs-1], self.params["sig_e0"] * meff_sdev)
+                    else:
+                        prior[(key, "e0")] = gv.gvar(e0_bs[nbs-1], 0.1*meff_sdev)
+                    prior[(key, "z0")] = gv.gvar(z0_bs[nbs-1], zeff_sdev)
+
                 else:
-                    prior[(key, "e0")] = gv.gvar(meff_mean, 0.1*meff_sdev)
-                #print(key, prior[(key, "e0")])
-                prior[(key, "z0")] = gv.gvar(zeff_mean, zeff_sdev)
+                    # for NN, we use a larger width for the interaction energy, than for the Nucleons
+                    if key[1] in ["R"]:
+                        prior[(key, "e0")] = gv.gvar(meff_mean, self.params["sig_e0"] * meff_sdev)
+                    else:
+                        prior[(key, "e0")] = gv.gvar(meff_mean, 0.1*meff_sdev)
+                    prior[(key, "z0")]     = gv.gvar(zeff_mean, zeff_sdev)
 
                 # excited state priors
                 if key[1] in ["N"]:
                     states = self.params["nstates"]
                     for n in range(1, states):
                         en_mean = self.params["ampi"] * 2
-                        if nbs > 0:
-                            en = np.random.lognormal(mean=np.log(en_mean), sigma=0.7)
-                            zn = np.random.normal(1.0, 0.5)
-                            prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
+                        if nbs > 0 and self.params['bs_prior'] == 'all':
+                            en_bs = bs_utils.bs_prior(Nbs, mean=en_mean, sdev=en_mean/2, seed=str((key, f"e{n}")), dist='lognormal')
+                            s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
+                            zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
+                            en    = np.log(en_bs[nbs-1])
+                            zn    = zn_bs[nbs-1]
                         else:
-                            en = en_mean
+                            en = np.log(en_mean)
                             zn = 1.0
-                            prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
-                        
-                        prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
+                        prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
+                        prior[(key, f"z{n}")] = gv.gvar(zn, 0.25)
 
                 elif key[1] in ["R"]:
                     # elastic NN priors
                     dE_elastic = self.params["dE_elastic"]
                     for n in range(1,1 + self.r_n_el):
                         if nbs > 0:
-                            en = np.random.lognormal(mean=np.log(dE_elastic), sigma=0.7)
-                            zn = np.random.normal(loc=1.0, scale=0.5)
-                            prior[(key, f"e_el{n}")] = gv.gvar(en, 0.7)
+                            en_bs = bs_utils.bs_prior(Nbs, mean=dE_elastic, sdev=dE_elastic/2, seed=str((key, f"e_el{n}")), dist='lognormal')
+                            s_z = bs_w_fac * self.posterior[(key, f"z_el{n}")].sdev
+                            zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_el{n}")))
+                            en    = np.log(en_bs[nbs-1])
+                            zn    = zn_bs[nbs-1]
                         else:
-                            en = dE_elastic
+                            en = np.log(dE_elastic)
                             zn = 1.0
-                            prior[(key, f"e_el{n}")] = gv.gvar(np.log(en), 0.7)
-
-                        prior[(key, f"z_el{n}")] = gv.gvar(zn, 0.5)
+                        prior[(key, f"e_el{n}")] = gv.gvar(en, 0.7)
+                        prior[(key, f"z_el{n}")] = gv.gvar(zn, 0.25)
 
                     # inelastic NN priors
                     if self.version == 'agnostic':
                         for n in range(1, self.r_n_inel):
                             if nbs > 0:
-                                en = np.random.lognormal(mean=np.log(2*self.params['ampi']), sigma=0.7)
-                                zn = np.random.normal(loc=1.0, scale=0.5)
-                                prior[(key, f"e{n}")] = gv.gvar(en, 0.7)
+                                dE    = np.exp(self.posterior[(key, f"e{n}")])
+                                en_bs = bs_utils.bs_prior(Nbs, mean=dE.mean, sdev=bs_w_fac*dE.sdev,
+                                                          seed=str((key, f"e{n}")), dist='lognormal')
+                                s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
+                                zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
+                                en    = en_bs[nbs-1]
+                                zn    = zn_bs[nbs-1]
                             else:
                                 en = 2*self.params['ampi']
                                 zn = 1.0
-                                prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
-                            prior[(key, f"z{n}")] = gv.gvar(zn, 0.5)
+                            prior[(key, f"e{n}")] = gv.gvar(np.log(en), 0.7)
+                            prior[(key, f"z{n}")] = gv.gvar(zn, 0.25)
 
                     elif self.version == 'conspire':
+                        # gs_conspire only adds interaction energy to ground state in tower of NN states
+                        # which we prior as a normal distribution
                         sig_factor = self.params['sig_enn']
                         for n1 in range(self.nstates):
                             key1 = (key[0],"N",key[2][0])
@@ -475,22 +519,32 @@ class Fit:
                                 else:
                                     # set delta_NN.mean = 0 for these energies
                                     e0 = abs(prior[(key, "e0")].mean)
-                                    if nbs > 0:
-                                        en = np.random.normal(loc=0.0, scale=sig_factor * e0)
-                                        zn = np.random.normal(loc=1.0, scale=0.5)
+                                    s_e = sig_factor * e0
+                                    if nbs > 0 and self.params['bs_prior'] == 'all':
+                                        # deltaE gets normal, not lognormal
+                                        en_bs = bs_utils.bs_prior(Nbs, mean=0, sdev=s_e, seed=str((key, f"e_{n1}_{n2}")))
+                                        s_z   = bs_w_fac * self.posterior[(key, f"z_{n1}_{n2}")].sdev
+                                        zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_{n1}_{n2}")))
+                                        en    = en_bs[nbs-1]
+                                        zn    = zn_bs[nbs-1]
                                     else:
                                         en = 0.0
                                         zn = 1.0
+
                                     if n2 >= n1:
-                                        prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
-                                        prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.5)
+                                        if not self.params['gs_conspire']:
+                                            # only add deltaE if we add for all states in tower
+                                            prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
+                                        prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.25)
                                     else:
                                         if key2 == key1:
-                                            prior[(key, f"e_{n1}_{n2}")] = prior[(key, f"e_{n2}_{n1}")]
+                                            if not self.params['gs_conspire']:
+                                                prior[(key, f"e_{n1}_{n2}")] = prior[(key, f"e_{n2}_{n1}")]
                                             prior[(key, f"z_{n1}_{n2}")] = prior[(key, f"z_{n2}_{n1}")]
                                         else:
-                                            prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
-                                            prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.5)
+                                            if not self.params['gs_conspire']:
+                                                prior[(key, f"e_{n1}_{n2}")] = gv.gvar(en, sig_factor * e0)
+                                            prior[(key, f"z_{n1}_{n2}")] = gv.gvar(zn, 0.25)
 
                     if self.params["debug"]:
                         for k in prior:
@@ -499,16 +553,21 @@ class Fit:
             pass
         return prior
 
-    def format_data(self, subset, nbs=0, ratio=True):
+    def format_data(self, subset, nbs=0, ratio=True, svdcut=False):
         """
         The assumption is that the fit will always simultaneously perform a fit to the
         2N two nucleon correlator
+        or
         2N / N1*N2 ratio correlator
+        and
         N1 and N2 single nucleon correlators
         """
-        x = dict()
-        y0 = dict()
+        x   = dict()
+        y0  = dict()
         ybs = dict()
+        if svdcut:
+            ysvd     = dict()
+            svd_cuts = dict()
         for key in subset:
             k0 = self.ratio_denom[key][0]
             k1 = self.ratio_denom[key][1]
@@ -533,6 +592,25 @@ class Fit:
             y0[key_nucl0] = self.data[k0][x[key_nucl0]]
             y0[key_nucl1] = self.data[k1][x[key_nucl1]]
 
+            if svdcut:
+                if 'svdcut' not in dir(self) or ('svdcut' in dir(self) and key_ratio not in self.svdcut):
+                    ysvd[key_ratio] = self.bsdata[key][x[key_ratio]]
+                    ysvd[key_nucl0] = self.bsdata[k0][x[key_nucl0]]
+                    ysvd[key_nucl1] = self.bsdata[k1][x[key_nucl1]]
+
+                    if ratio:
+                        def svd_processor(data):
+                            d  = gv.dataset.avg_data(data)
+                            d2 = gv.BufferDict()
+                            d2[key_ratio] = d[key_ratio] / d[key_nucl0] / d[key_nucl1]
+                            d2[key_nucl0] = d[key_nucl0]
+                            d2[key_nucl1] = d[key_nucl1]
+                            return d2
+                        svd_test = gv.dataset.svd_diagnosis(ysvd, process_dataset=svd_processor)
+                    else:
+                        svd_test = gv.dataset.svd_diagnosis(ysvd)
+                    svd_cuts[key_ratio] = svd_test.svdcut
+            
             if not self.params['bootstrap']:
                 ybs = []
             else:
@@ -545,7 +623,6 @@ class Fit:
                 # k0, k1 = single nucleon keys corresponding to NN
                 wanted_keys = [key, k0, k1]
                 ndata = {k: self.bsdata[k][mask] for k in self.bsdata if k in wanted_keys}
-
                 ndataset  = gv.dataset.avg_data(ndata)
 
                 numerator = ndataset[key][x[key_ratio]]
@@ -556,6 +633,12 @@ class Fit:
                 ybs[key_ratio] = numerator / denominator
                 ybs[key_nucl0] = ndataset[k0][x[key_nucl0]]
                 ybs[key_nucl1] = ndataset[k1][x[key_nucl1]]
+
+        if svdcut:
+            if 'svdcut' not in dir(self):
+                self.svdcut = dict()
+            for k in svd_cuts:
+                self.svdcut[k] = svd_cuts[k]
 
         return x, y0, ybs
 
@@ -580,6 +663,9 @@ class Fit:
             bi=n_start+1
             bf=n_start+1+ndraws
             b0 = self.get_b0_posteriors()
+            # only add self.posterior if not already defined
+            if not 'posterior' in dir(self):
+                self.posterior = b0
             for subset in self.params["masterkey"]:
                 p0[subset[0]] = dict()
                 for k in b0:
@@ -592,18 +678,16 @@ class Fit:
         for nbs in tqdm.tqdm(range(bi,bf,1)):
             posterior = gv.BufferDict()
             masterkey = tqdm.tqdm(self.params["masterkey"])
-            #print("masterkey: ", masterkey)
-            #sys.exit()
             for subset in masterkey:
                 if nbs > 0:
                     ''' all gvar's created in this switch are destroyed at restore_gvar
                         [they are out of scope] '''
                     gv.switch_gvar()
-                #print("subset:",subset)
+
                 masterkey.set_description(f"Fitting {subset}")
                 masterkey.bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)
                 if self.ratio:
-                    x, y0, ybs = self.format_data(subset, nbs)
+                    x, y0, ybs = self.format_data(subset, nbs, svdcut=self.params['svd_study'])
                     prior = gv.BufferDict()
                     prior = self.set_priors(prior, data=(x, y0), nbs=nbs, type="auto")
                 else:
@@ -613,20 +697,33 @@ class Fit:
                     prior = self.set_priors(prior, data=(x, y0), nbs=nbs, type="auto")
 
                     # remake data without ratio
-                    x, y0, ybs = self.format_data(subset, nbs, ratio=False)
+                    x, y0, ybs = self.format_data(subset, nbs, ratio=False, svdcut=self.params['svd_study'])
+
+                # SVD cut?
+                if self.params['svd_study']:
+                    if 'svdcut' in self.params:
+                        svdcut = self.params['svdcut']
+                    else:
+                        k0 = self.ratio_denom[subset[0]][0]
+                        k1 = self.ratio_denom[subset[0]][1]
+                        key_ratio = (subset[0], "R", (k0, k1))
+                        svdcut = self.svdcut[key_ratio]
+                else:
+                    svdcut=None
 
                 if nbs == 0:
                     result = lsqfit.nonlinear_fit(
-                        data=(x, y0), prior=prior, fcn=self.func, maxit=100000, fitter=self.params['fitter']
+                        data=(x, y0), prior=prior, fcn=self.func, 
+                        maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
                     )
                     p0[subset[0]] = {k:v.mean for k,v in result.p.items()}
                 else:
                     p0_bs = {k:p0[subset[0]][k] for k in prior}
                     result = lsqfit.nonlinear_fit(
-                        data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, maxit=100000, fitter=self.params['fitter']
+                        data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, 
+                        maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
                     )
 
-                #print(result.format(maxline=True))
                 if ndraws == 0:
                     self.plot.plot_result(result, subset)
                 stats = dict()
@@ -658,15 +755,8 @@ class Fit:
             posterior = {"masterkey": self.params["masterkey"], **posterior}
             if nbs == 0:
                 self.posterior = posterior
-                
-        self.bsresult = bsresult
 
-        '''
-        if n_start == 0:
-            print(self.posterior)
-        else:
-            print('')
-        '''
+        self.bsresult = bsresult
 
     def save(self):
         if not self.params["save"]:
@@ -675,7 +765,6 @@ class Fit:
         if not os.path.exists("./result"):
             os.makedirs("./result")
         if self.params['bootstrap']:
-            #import IPython; IPython.embed()
             if not os.path.exists(f"./result/{self.filename}_bs"):
                 gv.dump(self.bsresult, f"./result/{self.filename}_bs")
             else:
@@ -705,7 +794,8 @@ class Fit:
         if os.path.exists(f"./result/{self.filename}"):
             return gv.load(f"./result/{self.filename}")
         else:
-            sys.exit("can't get boot0, DOES NOT EXISTS: "+"result/{self.filename}")
+            print("can't get boot0, DOES NOT EXISTS: "+f"result/{self.filename}")
+            sys.exit('run again with p["bootstrap"] = False')
 
 
 def siground(x, sigfig=2):
@@ -887,20 +977,24 @@ class Functions:
                         key2 = (key[0],"N",key[2][1])
                         En2  = sum([np.exp(p[(key2, f"e{ni}")]) for ni in range(1, n2 + 1)])
 
+                        En = En1 + En2
                         if n1 == 0 and n2 == 0:
                             pass
                         else:
                             if n1 <= n2:
-                                En = En1 + En2 + p[(key, f"e_{n1}_{n2}")]
+                                if not self.params['gs_conspire']:
+                                    En += p[(key, f"e_{n1}_{n2}")]
                                 r += p[(key, f"z_{n1}_{n2}")] ** 2 * np.exp(-En * t)
                             else:
                                 if key2 == key1:
-                                    En = En1 + En2 + p[(key, f"e_{n2}_{n1}")]
+                                    if not self.params['gs_conspire']:
+                                        En += p[(key, f"e_{n2}_{n1}")]
                                     r += p[(key, f"z_{n2}_{n1}")] ** 2 * np.exp(-En * t)
                                 else:
-                                    En = En1 + En2 + p[(key, f"e_{n1}_{n2}")]
+                                    if not self.params['gs_conspire']:
+                                        En += p[(key, f"e_{n1}_{n2}")]
                                     r += p[(key, f"z_{n1}_{n2}")] ** 2 * np.exp(-En * t)
-                                
+
         return r
 
     def pure_ratio(self, key, x, p):

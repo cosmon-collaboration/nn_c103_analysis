@@ -45,6 +45,8 @@ def params():
     p["t0"] = 5
     p["td"] = 10
 
+    p["block"] = 1
+
     p["bootstrap"] = False
     p['Nbs_max']   = 5000
     p['bs_seed']   = 'c103_nn'
@@ -53,18 +55,19 @@ def params():
     p['bs0_width'] = 5
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
-    p["sig_e0"]     = 10 # multiplication factor for meff[autotime] for prior width
-    p["sig_enn"]    = 20 # multiplication factor for meff[autotime] for prior width
+    p["sig_e0"]     = 1 # multiplication factor for meff[autotime] for prior width for deltaE_gs
+    p["sig_enn"]    = 1 # multiplication factor for meff[autotime] for prior width for deltaE_nn
     p["positive_z"] = True
 
-    p["ratio"]      = True
-    p["ratio_type"] = "data"
-    p["irreps"]     = "irreps_ben" #["irreps", "irreps_ben"]
-    p["version"]    = 'agnostic'
-    p["nstates"]    = 2
-    p["r_n_inel"]   = 2
-    p["r_n_el"]     = 0
-    p["trange"]     = {"N": [5, 20], "R": [6, 15]}
+    p["ratio"]       = True
+    p["ratio_type"]  = "data"
+    p["irreps"]      = "irreps_ben" #["irreps", "irreps_ben"]
+    p["version"]     = 'agnostic'
+    p["gs_conspire"] = False # only add deltaE for ground state?
+    p["nstates"]     = 2
+    p["r_n_inel"]    = 2
+    p["r_n_el"]      = 0
+    p["trange"]      = {"N": [5, 20], "R": [6, 15]}
 
     p["ampi"] = 0.310810
     p["amn"]  = 0.70262
