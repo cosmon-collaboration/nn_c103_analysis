@@ -12,9 +12,133 @@ from scipy.special import genlaguerre
 from scipy.special import laguerre
 import copy
 import smatrix
+import argparse
 
-doshow=False
+#
+# Define an argument parser
+#
+parser = argparse.ArgumentParser(prog='halfit', description="Fit model to HalQCD potential and derive effective range expansion.  Supported models are ho-opep and ws-opep. These models fit the long range with a one pion exchange potential.  Having done that they fit either a set of harmonic oscillator states, or a Woods-Saxon model to the remainder.")
+
+parser.add_argument("-odir", nargs='?', action='store', default="<modelname>", help="Directory name for output files")
+parser.add_argument("-model", nargs='?', action='store', default="ho-opep", help= "Model to fit, either ho-opep (harmonic oscillator states + opep), or ws-opep (Woods-Saxon + opep")
+parser.add_argument("-tr", nargs='?', action='store', default="4:15", help= "time slices to analysize, single value or start:stop, default 4:15")
+parser.add_argument("-ofr", nargs='?', action='store', default="0.7:1.3", help="OPEP fit range, default 0.7:1.3")
+parser.add_argument("-fr", nargs='?', action='store', default="0.0:1.3", help="Potential fit range, default 0.0:1.3")
+parser.add_argument("-pr", nargs='?', action='store', default="0.0:1.6", help="Fit plot fit range, default 0.0:1.6")
+parser.add_argument('--show', action=argparse.BooleanOptionalAction, default=True, help="If enabled, graphs will be interactively displayed, default --show")
+parser.add_argument('--sd', action=argparse.BooleanOptionalAction, default=False, help="Scale uncertainties to compensate for rapid sample density increase with r, default --no-sd")
+parser.add_argument('--epdf', action=argparse.BooleanOptionalAction, default=False, help="Enable effective range parameter PDF generation using PDFIntegrate from model parameters. Substantial runtime.   default --no-epdf")
+
+
+# global set of arguments for the run
+args = parser.parse_args()
+
+doshow=True        # Enable interactive display of plots
 DensityScale=False  # scale stddev by relative density of samples at r
+mint = 4            # Start with potential at time slice 8
+maxt = 15           # End with potential at time slice 18
+maxfm = 1.3         # for fitting - no point fitting tail where noise is as big as signal
+minopep=0.7         # min for fitting OPEP, large enough to avoid other contamination
+minplotfm = 0.0
+maxplotfm = 1.6     # Plot past fit to show consistency
+odir = None         # if no argument, then use the model name
+
+# check if string s is a valid integer representation
+def is_int_str(s):
+    try:
+        int(s)
+    except ValueError:
+        return False
+    else:
+        return True
+
+# check if string s is a valid float representation
+def is_float_str(s):
+    try:
+        float(s)
+    except ValueError:
+        return False
+    else:
+        return True
+
+# Parse time range from argument
+# values are integers
+def parsetrange(tr):
+    ilist = tr.split(":")
+    ilen = len(ilist)
+    if ilen < 1 or ilen > 2:
+        print("Expecting <num> or <num>:<num>")
+        raise ValueError("Expecting <num> or <num>:<num>")
+    for i in range(ilen):
+        if not is_int_str(ilist[i]):
+            msg = f"Expecting integer, got {ilist[i]}"
+            print(msg)
+            raise ValueError(msg)
+    if len(ilist) == 1:
+        ilist.append(ilist[0])
+    trng = [int(s) for s in ilist]
+    if trng[0] > trng[1]:
+        trng.reverse()
+    return trng
+
+# Parse "r" range from argument
+# values are floats
+def parserrange(tr):
+    ilist = tr.split(":")
+    ilen = len(ilist)
+    if ilen < 1 or ilen > 2:
+        print("Expecting <num> or <num>:<num>")
+        raise ValueError("Expecting <num> or <num>:<num>")
+    for i in range(ilen):
+        if not is_float_str(ilist[i]):
+            msg = f"Expecting float, got {ilist[i]}"
+            print(msg)
+            raise ValueError(msg)
+    if len(ilist) == 1:
+        ilist.append(ilist[0])
+    flist = [float(s) for s in ilist]
+    for i in range(len(flist)):
+        if flist[i] < 0.0 or flist[i] > 3.0:
+            msg = f"value {flist[i]} out of range 0.0 to 3.0"
+            print(msg)
+            raise ValueError(msg)
+    if flist[0] > flist[1]:
+        flist.reverse()
+    if flist[0] < 0.0:
+        msg = f"Beginning of range for fit or plot should be >= 0.0"
+        raise ValueError(msg)
+    return flist
+
+#
+# Convert args into form we need
+#
+odir = args.odir
+if odir == '<modelname>':
+   odir = args.model
+os.mkdir(odir)
+print(f"Created output directory {odir}")
+doshow = args.show
+if args.sd:
+    DensityScale = True
+
+trlist = parsetrange(args.tr)
+mint = trlist[0]
+maxt = trlist[1]
+trange = range(trlist[0], trlist[1]+1)
+
+ofrlist = parserrange(args.ofr) # OPEP fit range
+minopepfm=ofrlist[0]
+maxopepfm=ofrlist[1]
+
+frlist = parserrange(args.fr) # Full fit range
+minfm=ofrlist[0]
+maxfm=ofrlist[1]
+
+prlist = parserrange(args.pr) # Plot range
+minpltfm = prlist[0]
+maxpltfm = prlist[1]
+
+##   Constants   
 
 # Ken:  Why does HBARC have the electron charge in it???
 HBARC   = const.hbar * const.c / const.e * 1e15 / 1e6
@@ -39,21 +163,7 @@ mnucleonmev = mnucleonmev_gv.mean
 print(f"pion mass = {mpimev} MeV")
 print(f"nucleon mass = {mnucleonmev_gv} MeV")
 
-# Ken:  why are we overriding to 1?    
-# Andre's Answer:   hack to work in lattice units instead of MeV fm
-# a_fm = 1.
-# scale = 1
 
-fitgo=True
-maxt = 18
-mint = 8
-t_V_fit=maxt # time slice to plot
-trange = range(mint,maxt+1)
-
-maxfm = 1.3  # for fitting
-maxplotfm = 1.6
-minopep=0.7  # min for fitting OPEP
-maxlu = maxfm / a_fm
 
 # Top level keys
 # R_pn_TRIP V0_pn_TRIP 
@@ -64,7 +174,7 @@ maxlu = maxfm / a_fm
 # for a given x, find the set of samples close enough to make an
 # important contribution to the density at x.
 def getLocalDensityXset(x):
-    return densityXset[densitya * (densityXset - x)**2 < 8.0];
+    return densityXset[densitya * (densityXset - x)**2 < 8.0]
 
 # Should make a class and instantiate it
 def setDensity():
@@ -79,6 +189,7 @@ def setDensity():
     print(f"density: x range {densityXmin} lu to {densityXmax} lu")
     densityScale = 1.0
     # maxlu is the end of the range used for fitting
+    maxlu = maxfm / a_fm
     d = density((maxlu + densityXmin)*0.5)
     densityScale = 1/d
 
@@ -203,7 +314,7 @@ def hopos(n, L, b, r):
     # pre = (b ** (-3/2)) * np.sqrt(2.0 * scipy.special.gamma(n)/scipy.special.gamma(n + L + 1/2))
     pre = honormtab[n]  #  precalc now
     if L > 0:
-        pre *= rb**L;
+        pre *= rb**L
     rb2 = rb * rb
     pre *= np.exp(-0.5 * rb2)
     return pre * lagL0(n, rb2)
@@ -330,7 +441,7 @@ def V_opep_reg(r, p):
 def V_wsopep(r, p):
     a = p['a']
     r0 = p['r0r']
-    r0 *= r0;
+    r0 *= r0
     ws = p['ws']
     wq = p['wq']
     # support these being in the fit or hardwired
@@ -358,7 +469,7 @@ def W_wsopep(r, p):
 def V_opep(r, p):
     tfpiNN2 = p['tfpiNN2']
     c = p.get('c', V_wsopep_c)  # range of regulator
-    mpifm = p.get('mpi', V_wsopep_mpifm);
+    mpifm = p.get('mpi', V_wsopep_mpifm)
     mpimevx = hc * mpifm
     # mpi is in fm^-1
 
@@ -430,7 +541,7 @@ def V_plot(t, p, xmin, xmax, vf):
     plt.ylabel("Potential [MeV]")
     ax.text(0.5, 100.0, f"potential at $time={t}$", fontsize=16)
     plt.ioff()
-    plt.savefig(f"fit_{t}.png")
+    plt.savefig(f"{odir}/fit_{t}.png")
     if doshow:
         plt.show()
 
@@ -455,8 +566,14 @@ def mean_feffrng(gp, vf):
         xp[key] = v.mean
     return feffrng(xp)
     
+#
+# Computes PDF for effective range parameters from
+# gvars for model parameters
+#
 def get_effrangeexpansion(gp, vf):
-    # return None
+    if not args.epdf:
+        # Return None so means are used for plot
+        return None
     global vfglobal
     vfglobal = vf
     expval = vegas.PDFIntegrator(gp)
@@ -465,6 +582,9 @@ def get_effrangeexpansion(gp, vf):
     result = expval(feffrng, neval=100, nitn=3)
     return result
 
+#
+# Plot kcotd vs k^2 from the means of the model parameters
+#
 def plot_kcotd_vf(t, vf, gp):
     xp = dict()
     for key,v in gp.items():
@@ -479,7 +599,7 @@ def plot_kcotd_vf(t, vf, gp):
     plt.ion() # Enable interactive mode
     fig = plt.figure(dpi=200.0) # creates a figure
     ax = plt.axes([.12,.12,.87,.87]) # can't find docs yet
-    plt.ylim(0.0, 1.25)
+    plt.ylim(0.0, 2.0)
 
     #get x and y limits
     ratio = 0.1
@@ -492,12 +612,17 @@ def plot_kcotd_vf(t, vf, gp):
     plt.xlabel("(k/mpi)^2")
     plt.ylabel("k cot delta / mpi")
     plt.ioff()
-    plt.savefig(f"kcotd_{t}.png")
+    plt.savefig(f"{odir}/kcotd_{t}.png")
     if doshow:
         plt.show()
 
 #
-# effp is a dict containing  'a', 'reff', 'v_2', 'v_3' for an effective range expansion
+# Plot the effective range expansion from the polynomial
+# coefficients for the expansion of k cot \delta
+# The coefficents may be gvars, in which case usegvars
+# should be set True and the resulting plot will
+# include error bars for  k cot \delta
+#
 def plot_kcotd(t, efa, usegvars):
     print("plot_kcotd: coefs=", efa)
     v_0 = efa[0]
@@ -514,7 +639,7 @@ def plot_kcotd(t, efa, usegvars):
     plt.ion() # Enable interactive mode
     fig = plt.figure(dpi=200.0) # creates a figure
     ax = plt.axes([.12,.12,.87,.87]) # can't find docs yet
-    plt.ylim(0.0, 1.25)
+    plt.ylim(0.0, 2.0)
 
     #get x and y limits
     ratio = 0.1
@@ -534,7 +659,7 @@ def plot_kcotd(t, efa, usegvars):
     plt.xlabel("(k/mpi)^2")
     plt.ylabel("k cot delta / mpi")
     plt.ioff()
-    plt.savefig(f"kcotd_{t}.png")
+    plt.savefig(f"{odir}/kcotd_{t}.png")
     if doshow:
         plt.show()
 
@@ -547,12 +672,16 @@ def report_phase(t, vf, gp):
     global elist, klist, k2list
 
     print("phase shift gen from distribution: ", gp)
-    elist = np.array([0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0]);
+    # evenly space in k
+    elist = np.arange(np.sqrt(0.5), np.sqrt(32.0001), (1.0 - np.sqrt(0.5))/2.0)
+    elist = np.square(elist)
+    print("rp elist = ", elist)
+    # elist = np.array([0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0])
     klist = np.array([np.sqrt(mnucleonmev*e)/HBARC for e in elist])
     k2list = np.array([k*k for k in klist])
     result = get_effrangeexpansion(gp, vf)
     if result is None:
-        plot_kcotd_vf(t, vf, gp)
+        # plot_kcotd_vf(t, vf, gp)
         print("Skipping pdf integrate for eff range expansion")
         skip = True
         result = mean_feffrng(gp, vf)
@@ -581,6 +710,7 @@ def report_phase(t, vf, gp):
         be = (1.0 / reff) * (1.0 - np.sqrt(1.0 - 2.0 * z)) # kappa
         be *= (hc / mnucleonmev)**2  # \hbar^2 \kappa^2 / M_N^2
         print(f"Binding energy is {be}")
+    return {'a': a, 'reff' : reff, 'v0': result[0], 'v1' : result[1], 'v2' : result[2], 'v3' : result[3] }
 
 #
 # Strategy:   
@@ -598,10 +728,10 @@ def fit_wsopep():
         r_min_opep = 0.6 / a_fm # to start of roll off to be sensitive to c
     else:
         r_min_opep = 0.6 / a_fm
-    r_max_opep = maxlu
+    r_max_opep = maxfm / a_fm
     print(f"opep fit range {r_min_opep} to {r_max_opep}")
     r_min_wsopep = 0.2 / a_fm
-    r_max_wsopep = maxlu
+    r_max_wsopep = maxfm / a_fm
     print(f"wsopep fit range {r_min_wsopep} to {r_max_wsopep}")
     for t in trange:
         t_c = t
@@ -610,7 +740,6 @@ def fit_wsopep():
         i_r_fit = [i_r for i_r,r in enumerate(r_a) if r > r_min_opep and r < r_max_opep]
         fit_x = r_a[i_r_fit] * a_fm
         # print("fit_x = ", fit_x)
-        # t_V_fit currently set to 10,   need to loop and fit
         fit_y = data_gv[f"pn_trip_t{t}"][i_r_fit] * scale
         # print("fit_y = ", fit_y)
         p = opep_p
@@ -633,7 +762,6 @@ def fit_wsopep():
         print(f"Fitting wsopep from r={r_min_wsopep*a_fm} to r={r_max_wsopep*a_fm}")
         i_r_fit = [i_r for i_r,r in enumerate(r_a) if r > r_min_wsopep and r < r_max_wsopep]
         fit_x = r_a[i_r_fit] * a_fm
-        # t_V_fit currently set to 10,   need to loop and fit
         fit_y = data_gv[f"pn_trip_t{t}"][i_r_fit] * scale
         p = wsopep_p
         p0 = dict()
@@ -650,7 +778,9 @@ def fit_wsopep():
         fit_results[t] = [t, tp, wsopep_fit, opep_fit]  # save everything
         print("twsfit = ", tp)
         V_plot(t, fit_results[t][1], r_min_wsopep, maxplotfm/a_fm, V_wsopep)
-        report_phase(t, W_wsopep, fit_results[t][1])
+        erng = report_phase(t, W_wsopep, fit_results[t][1])
+        trslt = { 't' : t, 'opep_fit' : opep_fit, 'ws_fit' : ws_opep_fit, 'all_fit' : tp, 'erng' : erng }
+        gv.dump(trslt, f"{odir}/ws-opep-t{t}-rslts.pickle", add_dependencies=True)
 
     return
 
@@ -664,15 +794,15 @@ def fit_ho():
     global V_ho_m, V_ho_c, V_ho_regp, V_ho_mpifm
     fit_results = {}
     # Advice from Andre is that discretization errors show up as small r.
-    r_max_opep = maxlu
+    r_max_opep = maxopepfm / a_fm
     # First lets fit the opep from
     if 'c' in opep_p:
-        r_min_opep = minopep / a_fm # to start of roll off to be sensitive to c
+        r_min_opep = minopepfm / a_fm # to start of roll off to be sensitive to c
     else:
-        r_min_opep = minopep / a_fm
+        r_min_opep = minopepfm / a_fm
     r_min = 0.0 / a_fm
-    r_max = maxlu
-    print(f"ho fit range {r_min} to {r_max}")
+    r_max = maxfm / a_fm
+    print(f"ho fit range {r_min} to {r_max} in lattice units")
     for t in trange:
         t_c = t
         tag = f"pn_trip_t{t}"
@@ -682,7 +812,6 @@ def fit_ho():
         i_r_fit = [i_r for i_r,r in enumerate(r_a) if r > r_min_opep and r < r_max_opep]
         fit_x = r_a[i_r_fit] * a_fm
         # print("fit_x = ", fit_x)
-        # t_V_fit currently set to 10,   need to loop and fit
         fit_y = data_gv[tag][i_r_fit] * scale
         # EXPERIMENT
         fit_y_scale = 1.0
@@ -734,12 +863,20 @@ def fit_ho():
         print("Fit Results: ", tp)
         # hack globals to configure wsopep with opep parameters
         fit_results[t] = [t, tp, ho_fit]  # save everything
-        V_plot(t, fit_results[t][1], r_min, maxplotfm/a_fm, V_ho)
-        report_phase(t, W_ho, fit_results[t][1])
+        # V_plot(t, fit_results[t][1], r_min, maxplotfm/a_fm, V_ho)
+        # report_phase(t, W_ho, fit_results[t][1])
+        V_plot(t, tp, r_min, maxplotfm/a_fm, V_ho)
+        erng = report_phase(t, W_ho, tp)
+        trslt = { 't' : t, 'opep_fit' : opep_fit, 'ho_fit' : ho_fit, 'all_fit' : tp, 'erng' : erng }
+        gv.dump(trslt, f"{odir}/ho-opep-t{t}-rslts.pickle", add_dependencies=True)
 
     return
 
 
-# fit_wsopep()
-fit_ho()
+if args.model == 'ho-opep':
+    fit_ho()
+elif args.model == 'ws-opep':
+    fit_wsopep()
+else:
+    print("No model selection!")
 quit()
