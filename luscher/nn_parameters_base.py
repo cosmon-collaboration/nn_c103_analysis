@@ -2,40 +2,16 @@ import numpy as np
 
 def params():
     """
-    Paramter file for exact ratio.
-    The overlaps can be assumed to be positive definite.
-    Masterkey does not need single nucleon keys.
-    The fit will always do a simultaneous fit to
-    - two nucleon, ratio, and the 1 or 2 single nucleon denominator correlators
-    No approximation to the fit function is performed other than nstate truncation
+    User input file to control fitting options.
 
-    debug: [True/False] turns on/off detailed print and plotting statements.
-    latex: [True/False] @walkloud What does this do?
-                        if latex is used for fonts in matplotlib, we have to convert _ to \_ in strings
-    fpath: [dictionary of strings] path to hdf5 files
-
-    save: [True/False] save fit result
-
-    t0: time slice of matrix A for GEVP
-    td: time slice of matrix B for GEVP
-
-    autotime: time slice used to read meff and zeff to set automatic priors and determine ratio denominator.
-    positive_z: [True/False] parameterize overlap as z^2 (true) or z (false)
-
-    ratio: [True/False] Fit NN to ratio?
-    ratio_type: [data / fit] Divide by data or g.s. fit?
-    nstate: [int] number of states for corr fit
-    rstates: [int] number of states in the numerator of the ratio
-    trange: {key: [int, int]} tmin and tmax for "N" single nucleon and "R" ratio
-    masterkey: [[]] a list of lists for chain fitting.
-               The order of lists is the order of the chained fit.
-               Probably more sensible to do single nucleon fits first.
    """
     import numpy as np
 
     p = dict()
-    p["debug"] = False
-    p["latex"] = True
+    p["debug"]   = False
+    p["verbose"] = False
+    p["latex"]   = True
+
     p["fpath"] = {"nucleon": "./data/nucleon_S0.hdf5", "nn": "./data/triplet_S0_avg_mom.hdf5"}
 
     p["save"] = True
@@ -45,14 +21,19 @@ def params():
     p["t0"] = 5
     p["td"] = 10
 
-    p["block"] = 1
+    p["block"] = 2
+
+    p['svd_study'] = False
+    p['svdcut']    = 1e-8
 
     p["bootstrap"] = False
     p['Nbs_max']   = 5000
-    p['bs_seed']   = 'c103_nn'
-    p["nbs"]       = 1000
-    p["nbs_sub"]   = 10
+    p['bs_seed']   = 'nn_c103_b%d' %p["block"]
+    p["nbs"]       = 5000
+    p["nbs_sub"]   = 100
     p['bs0_width'] = 5
+    p['bs_prior']  = 'gs' # 'gs' or 'all': 
+                          # randomize prior mean for gs or all priors
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
     p["sig_e0"]     = 1 # multiplication factor for meff[autotime] for prior width for deltaE_gs
@@ -62,12 +43,12 @@ def params():
     p["ratio"]       = True
     p["ratio_type"]  = "data"
     p["irreps"]      = "irreps_ben" #["irreps", "irreps_ben"]
-    p["version"]     = 'agnostic'
+    p["version"]     = 'conspire'
     p["gs_conspire"] = False # only add deltaE for ground state?
-    p["nstates"]     = 2
+    p["nstates"]     = 3
     p["r_n_inel"]    = 2
     p["r_n_el"]      = 0
-    p["trange"]      = {"N": [5, 20], "R": [6, 15]}
+    p["trange"]      = {"N": [3, 20], "R": [3, 15]}
 
     p["ampi"] = 0.310810
     p["amn"]  = 0.70262

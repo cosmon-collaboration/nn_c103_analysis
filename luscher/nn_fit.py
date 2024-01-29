@@ -94,6 +94,9 @@ class Fit:
         # did we block the data?
         if self.block != 1:
             filename = f"{filename}_block{self.block}"
+        # bs prior gs or all
+        bs_prior = self.params['bs_prior']
+        filename = f"{filename}_bsPrior-{bs_prior}"
         # SVD study?
         if self.params['svd_study']:
             filename = f"{filename}_svdcut"
@@ -733,6 +736,14 @@ class Fit:
                 stats[(tuple(subset), "logGBF")] = result.logGBF
                 if not self.params['bootstrap']:
                     stats[(tuple(subset), "prior")]  = result.prior
+                    stats[(tuple(subset), 'svdcut')] = result.svdcut
+                    stats[(tuple(subset), "svdn")]   = result.svdn
+                    if self.params['verbose']:
+                        print('-------------------------------------------------------')
+                        print('-------------------------------------------------------')
+                        print(subset)
+                        print('-------------------------------------------------------')
+                        print(result)
                 # Change fit to record "result" instead of pieces of "result"
                 #stats[(tuple(subset), "fit")]    = result
 
