@@ -186,6 +186,9 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
 
     q_str = '\_'.join([str(k) for k in state])
 
+    for t in arg.tmin:
+        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData)
+
     k_n     = fitKeys[state][0][2]
     nn_corr = nnData[state][2:]
     n1_corr = nnData[k_n[0]][2:]
@@ -203,12 +206,9 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     dm = np.array([k.sdev for k in r_eff])
     axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
 
-    for t in arg.tmin:
-        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData)
-
-    #handles, labels = axnn.get_legend_handles_labels()
-    #axnn.legend(flip(handles, len(arg.gevp)+1), flip(labels, len(arg.gevp)+1), loc=1, ncol=len(arg.gevp)+1, fontsize=10, columnspacing=0,handletextpad=0.1)
-    axnn.legend(loc=1, ncol=len(arg.gevp)+1, fontsize=10, columnspacing=0,handletextpad=0.1)
+    handles, labels = axnn.get_legend_handles_labels()
+    axnn.legend(flip(handles, len(arg.gevp)), flip(labels, len(arg.gevp)), loc=1, ncol=len(arg.gevp), fontsize=10, columnspacing=0,handletextpad=0.1)
+    #axnn.legend(loc=1, ncol=len(arg.gevp)+1, fontsize=10, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = {
         ('0', 'T1g', 0):(-0.0021,0.0005), ('0', 'T1g', 1):(-0.0051,0.0005),

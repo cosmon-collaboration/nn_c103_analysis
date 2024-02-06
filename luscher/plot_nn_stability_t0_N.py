@@ -21,7 +21,7 @@ def main():
     # NN info
     parser.add_argument('--nn_iso', type=str, default='singlet',
                         help=       'NN system: singlet or triplet [%(default)s]')
-    parser.add_argument('--n_N',    nargs='+', type=int, default=[2,3,4],
+    parser.add_argument('--n_N',    nargs='+', type=int, default=[3, 2],
                         help=       'number of exponentials in single nucleon to sweep over %(default)s')
     parser.add_argument('--nn_el',  nargs='+', default=[0],
                         help=       'number of elastic e.s. to try %(default)s')
@@ -31,16 +31,29 @@ def main():
                         help=       'list of t0_min times for single nucleon %(default)s')
     parser.add_argument('--tmin',   nargs='+', default=range(2,11),
                         help=       'values of t_min in NN fit [%(default)s]')
-   
+    parser.add_argument('--gs_cons',default=False, action='store_true',
+                        help=       'use gs only conspiracy model? [%(default)s]')
+    parser.add_argument('--test',   default=False, action='store_true',
+                        help=       'if test==True, only do T1g [%(default)s]')
+
     args = parser.parse_args()
     print(args)
 
     color = { 2:'orange', 3:'r', 4:'g', 5:'b', 6:'magenta', 7:'gray' }
 
+    if 'block' in args.optimal:
+        block = '_block' + args.optimal.split('block')[1].split('_')[0]
+    else:
+        block = ''
+    bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
+
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
     nn_file  = 'NN_{nn_iso}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
-    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+'.pickle'
+    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)
+    nn_file += block+'_bsPrior-'+bsPrior
+    nn_file += '.pickle'
+
     nn_dict = { 'N_t':N_t, 'nn_iso':args.nn_iso, }
 
     nn_model = 'N_n{N_inel}_NN_{nn_model}_e{nn_el}'
@@ -52,14 +65,15 @@ def main():
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    states = [
-        ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
-        ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
-        ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
-        ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
-    ]
-    #states = [('0', 'T1g', 0)]
-    #states = [('3', 'A2', 0)]
+    if args.test:
+        states = [('0', 'T1g', 0)]
+    else:
+        states = [
+            ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
+            ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
+            ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
+            ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
+        ]
 
     print('\nloading optimal fit:',args.optimal)
     post_optimal  = gv.load(args.optimal)
@@ -73,10 +87,12 @@ def main():
     else:
         sys.exit('you supplied an "agnostic" model, but we require "conspire"')
     
-    optimal_p['r_n_el']     = nn_el
-    optimal_p['nstates']    = N_inel
-    optimal_model['N_inel'] = N_inel
-    optimal_model['nn_el']  = nn_el
+    optimal_p['r_n_el']      = nn_el
+    optimal_p['nstates']     = N_inel
+    optimal_p['gs_conspire'] = args.gs_cons
+    optimal_p['bs_prior']    = bsPrior
+    optimal_model['N_inel']  = N_inel
+    optimal_model['nn_el']   = nn_el
 
     optimal_model = nn_model.format(**optimal_model)
 
@@ -171,90 +187,6 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
 
     for t in arg.tmin:
         plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData)
-        '''
-        e      = []
-        e_nn   = []
-        p      = []
-        m_plot = []
-        c_plot = []
-        t_plot = []
-        mfc_plot = []
-        for model in models:
-            for gevp in arg.gevp:
-                # don't track correlated gvars between all gv.load calls
-                gv.switch_gvar()
-
-                sys.stdout.write('  t=%d, %s, %4s\r' %(t, model, gevp))
-                sys.stdout.flush()
-                fit_model = nnModel.format(**models[model])
-                n_inel    = models[model]['N_inel']
-                nn_el     = models[model]['nn_el']
-                if 'agnostic' in fit_model:
-                    nn    = int(fit_model.split('agnostic_n')[1].split('_')[0])
-                nnDict.update({'gevp':gevp, 'N_inel':n_inel, 'nn_el':nn_el, 't0':t, 
-                               'nn_model':models[model]['nn_model']})
-
-                if t == arg.tmin[0]:
-                    if gevp == arg.gevp[0]:
-                        lbl = r'$N_{\rm inel} = %d, t_0-t_d = %s$' %(n_inel, gevp)
-                    else:
-                        lbl = r'$%d, %s$' %(n_inel, gevp)
-                else:
-                    lbl = ''
-
-                fit_file = 'result/'+nnFile.format(**nnDict)
-                if os.path.exists(fit_file):
-
-                    data = gv.load(fit_file)
-                    if arg.optimal:
-                        e.append(data[fitKeys[state]])
-                        p.append(data[((state,), 'Q')])
-                        k_n = fitKeys[state][0][2]
-                        k_tmp  = fitKeys[state]
-                        k_n1   = (k_tmp[0][0],"N",k_tmp[0][2][0])
-                        k_n2   = (k_tmp[0][0],"N",k_tmp[0][2][1])
-                        e1_opt = data[(k_n1, "e0")]
-                        e2_opt = data[(k_n2, "e0")]
-                        e_nn.append(e[-1] + e1_opt + e2_opt)
-                    else:
-                        for k in data:
-                            if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == state:
-                                e.append(data[(k[0], 'e0')])
-                                p.append(data[((state,), 'Q')])
-                                k_n = fitKeys[state][0][2]
-                    mrkr = marker[fit_model]
-                    clr  = color[gevp]
-                    m_plot.append(marker[fit_model])
-                    c_plot.append(color[gevp])
-                    t_plot.append(t+shift[gevp])
-                    mfc='None'
-                    if arg.optimal and t == opt_tmin and fit_model == optModel and gevp==arg.gevp[0]:
-                        mfc='k'#clr
-                    mfc_plot.append(mfc)
-                    axnnR.errorbar(t+shift[gevp],
-                                  e[-1].mean, yerr=e[-1].sdev,
-                                  marker=mrkr, color=clr, mfc=mfc,
-                                  linestyle='None',label=lbl)
-                    axnn.errorbar(t+shift[gevp],
-                                  e_nn[-1].mean, yerr=e_nn[-1].sdev,
-                                  marker=mrkr, color=clr, mfc=mfc,
-                                  linestyle='None',label=lbl)
-                else:
-                    print('missing', fit_file)
-
-                # delete gvars from memory
-                gv.restore_gvar()
-
-        e = np.array(e)
-        p = np.array(p)
-        mfc='None'
-        for i_p,pp in enumerate(p):
-            axQ.plot(t_plot[i_p], p[i_p], linestyle='None',
-                     marker=m_plot[i_p], color=c_plot[i_p], mfc=mfc_plot[i_p],)
-
-        if t == arg.tmin[0]:
-            p_plot = np.array(p)
-        '''
 
     k_n     = fitKeys[state][0][2]
     nn_corr = nnData[state][2:]
@@ -277,24 +209,24 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axnn.legend(flip(handles, len(arg.t0_N)), flip(labels, len(arg.t0_N)), loc=1, ncol=len(arg.t0_N), fontsize=10, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = {
-        ('0', 'T1g', 0):(-0.0026,0.0009), ('0', 'T1g', 1):(-0.0051,0.0009),
-        ('1', 'A2', 0) :(-0.0051,0.0009), ('1', 'A2', 1) :(-0.0051,0.0009),
-        ('2', 'A2', 0) :(-0.0061,0.0009), ('3', 'A2', 0) :(-0.0081,0.0009),
-        ('4', 'A2', 0) :(-0.0021,0.0009), ('4', 'A2', 1) :(-0.0041,0.0009),
-        ('2', 'B1', 0) :(-0.0061,0.0009), ('2', 'B2', 0) :(-0.0061,0.0009),
-        ('2', 'B2', 3) :(-0.0056,0.0009), ('1', 'E', 0)  :(-0.0031,0.0009),
-        ('1', 'E', 1)  :(-0.0061,0.0009), ('3', 'E', 0)  :(-0.0081,0.0009),
-        ('4', 'E', 0)  :(-0.0021,0.0009), ('4', 'E', 1)  :(-0.0046,0.0009)
+        ('0', 'T1g', 0):(-0.0021,0.0005), ('0', 'T1g', 1):(-0.0051,0.0005),
+        ('1', 'A2', 0) :(-0.0046,0.0005), ('1', 'A2', 1) :(-0.0041,0.0005),
+        ('2', 'A2', 0) :(-0.0066,0.0005), ('3', 'A2', 0) :(-0.0081,0.0005),
+        ('4', 'A2', 0) :(-0.0021,0.0005), ('4', 'A2', 1) :(-0.0041,0.0005),
+        ('2', 'B1', 0) :(-0.0061,0.0005), ('2', 'B2', 0) :(-0.0061,0.0005),
+        ('2', 'B2', 3) :(-0.0056,0.0005), ('1', 'E', 0)  :(-0.0031,0.0005),
+        ('1', 'E', 1)  :(-0.0061,0.0005), ('3', 'E', 0)  :(-0.0081,0.0005),
+        ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005)
     }
     nn_lim = {
-        ('0', 'T1g', 0):(1.400,1.445), ('0', 'T1g', 1):(1.420,1.465),
-        ('1', 'A2', 0) :(1.405,1.450), ('1', 'A2', 1) :(1.430,1.475),
-        ('2', 'A2', 0) :(1.420,1.465), ('3', 'A2', 0) :(1.430,1.475),
-        ('4', 'A2', 0) :(1.420,1.465), ('4', 'A2', 1) :(1.445,1.490),
-        ('2', 'B1', 0) :(1.420,1.465), ('2', 'B2', 0) :(1.420,1.470),
-        ('2', 'B2', 3) :(1.445,1.490), ('1', 'E', 0)  :(1.410,1.465),
-        ('1', 'E', 1)  :(1.430,1.475), ('3', 'E', 0)  :(1.430,1.475),
-        ('4', 'E', 0)  :(1.425,1.470), ('4', 'E', 1)  :(1.445,1.490)
+        ('0', 'T1g', 0):(1.4016,1.4170), ('0', 'T1g', 1):(1.4216,1.4360),
+        ('1', 'A2', 0) :(1.4111,1.4255), ('1', 'A2', 1) :(1.4351,1.4495),
+        ('2', 'A2', 0) :(1.4216,1.4370), ('3', 'A2', 0) :(1.4316,1.4470),
+        ('4', 'A2', 0) :(1.4261,1.4395), ('4', 'A2', 1) :(1.4461,1.4605),
+        ('2', 'B1', 0) :(1.4216,1.4370), ('2', 'B2', 0) :(1.4201,1.4345),
+        ('2', 'B2', 3) :(1.4451,1.4595), ('1', 'E', 0)  :(1.4126,1.4270),
+        ('1', 'E', 1)  :(1.4326,1.4470), ('3', 'E', 0)  :(1.4301,1.4445),
+        ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595)
     }
 
     axnnR.set_ylim(nnr_lim[state])
