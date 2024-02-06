@@ -29,7 +29,7 @@ def main():
                         help=       'fit from RATIO correlator? [%(default)s]')
     parser.add_argument('--t0_N',   nargs='+', type=int, default=[2, 3, 4, 5, 6, 7],
                         help=       'list of t0_min times for single nucleon %(default)s')
-    parser.add_argument('--tmin',   nargs='+', default=range(2,11),
+    parser.add_argument('--tmin',   nargs='+', default=range(2,10),
                         help=       'values of t_min in NN fit [%(default)s]')
     parser.add_argument('--gs_cons',default=False, action='store_true',
                         help=       'use gs only conspiracy model? [%(default)s]')

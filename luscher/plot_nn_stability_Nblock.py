@@ -21,26 +21,35 @@ def main():
     # NN info
     parser.add_argument('--nn_iso', type=str, default='singlet',
                         help=       'NN system: singlet or triplet [%(default)s]')
-    parser.add_argument('--n_N',    nargs='+', type=int, default=[3,4],
+    parser.add_argument('--n_N',    nargs='+', type=int, default=[3],
                         help=       'number of exponentials in single nucleon to sweep over %(default)s')
     parser.add_argument('--nn_el',  nargs='+', default=[0],
                         help=       'number of elastic e.s. to try %(default)s')
     parser.add_argument('--ratio',  default=False, action='store_true',
                         help=       'fit from RATIO correlator? [%(default)s]')
-    parser.add_argument('--Nb',     nargs='+', type=int, default=[1, 2, 5, 10, 20],
+    parser.add_argument('--Nb',     nargs='+', type=int, default=[1, 2, 5, 10],
                         help=       'list of t0_min times for single nucleon %(default)s')
-    parser.add_argument('--tmin',   nargs='+', default=range(2,11),
+    parser.add_argument('--tmin',   nargs='+', default=range(2,10),
                         help=       'values of t_min in NN fit [%(default)s]')
+    parser.add_argument('--gs_cons',default=False, action='store_true',
+                        help=       'use gs only conspiracy model? [%(default)s]')
+    parser.add_argument('--test',   default=False, action='store_true',
+                        help=       'if test==True, only do T1g [%(default)s]')
    
     args = parser.parse_args()
     print(args)
 
     color = { 1:'orange', 2:'r', 5:'g', 10:'b', 20:'magenta'}
 
+    bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
+
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
     nn_file  = 'NN_{nn_iso}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
-    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+'{block}.pickle'
+    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)
+    nn_file += "{block}_bsPrior-"+bsPrior
+    nn_file += '.pickle'
+
     nn_dict = { 'N_t':N_t, 'nn_iso':args.nn_iso, }
 
     nn_model = 'N_n{N_inel}_NN_{nn_model}_e{nn_el}'
@@ -52,14 +61,15 @@ def main():
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    states = [
-        ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
-        ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
-        ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
-        ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
-    ]
-    #states = [('0', 'T1g', 0)]
-    #states = [('3', 'A2', 0)]
+    if args.test:
+        states = [('0', 'T1g', 0)]
+    else:
+        states = [
+            ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
+            ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
+            ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
+            ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
+        ]
 
     print('\nloading optimal fit:',args.optimal)
     post_optimal  = gv.load(args.optimal)
@@ -73,10 +83,12 @@ def main():
     else:
         sys.exit('you supplied an "agnostic" model, but we require "conspire"')
     
-    optimal_p['r_n_el']     = nn_el
-    optimal_p['nstates']    = N_inel
-    optimal_model['N_inel'] = N_inel
-    optimal_model['nn_el']  = nn_el
+    optimal_p['r_n_el']      = nn_el
+    optimal_p['nstates']     = N_inel
+    optimal_p['gs_conspire'] = args.gs_cons
+    optimal_p['bs_prior']    = bsPrior
+    optimal_model['N_inel']  = N_inel
+    optimal_model['nn_el']   = nn_el
 
     optimal_model = nn_model.format(**optimal_model)
 
@@ -85,7 +97,7 @@ def main():
     nn_dict.update({'gevp':gevp_plot})
 
     if 'block' in args.optimal:
-        NB_plot   = int(args.optimal.split('_block')[1].split('.')[0])
+        NB_plot   = int(args.optimal.split('_block')[1].split('_')[0])
     else:
         NB_plot = 1
     opt_clr   = color[NB_plot]
@@ -196,24 +208,24 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axnn.legend(flip(handles, len(arg.Nb)), flip(labels, len(arg.Nb)), loc=1, ncol=len(arg.Nb), fontsize=10, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = {
-        ('0', 'T1g', 0):(-0.0026,0.0009), ('0', 'T1g', 1):(-0.0051,0.0009),
-        ('1', 'A2', 0) :(-0.0051,0.0009), ('1', 'A2', 1) :(-0.0051,0.0009),
-        ('2', 'A2', 0) :(-0.0061,0.0009), ('3', 'A2', 0) :(-0.0081,0.0009),
-        ('4', 'A2', 0) :(-0.0021,0.0009), ('4', 'A2', 1) :(-0.0041,0.0009),
-        ('2', 'B1', 0) :(-0.0061,0.0009), ('2', 'B2', 0) :(-0.0061,0.0009),
-        ('2', 'B2', 3) :(-0.0056,0.0009), ('1', 'E', 0)  :(-0.0031,0.0009),
-        ('1', 'E', 1)  :(-0.0061,0.0009), ('3', 'E', 0)  :(-0.0081,0.0009),
-        ('4', 'E', 0)  :(-0.0021,0.0009), ('4', 'E', 1)  :(-0.0046,0.0009)
+        ('0', 'T1g', 0):(-0.0021,0.0005), ('0', 'T1g', 1):(-0.0051,0.0005),
+        ('1', 'A2', 0) :(-0.0046,0.0005), ('1', 'A2', 1) :(-0.0041,0.0005),
+        ('2', 'A2', 0) :(-0.0066,0.0005), ('3', 'A2', 0) :(-0.0081,0.0005),
+        ('4', 'A2', 0) :(-0.0021,0.0005), ('4', 'A2', 1) :(-0.0041,0.0005),
+        ('2', 'B1', 0) :(-0.0061,0.0005), ('2', 'B2', 0) :(-0.0061,0.0005),
+        ('2', 'B2', 3) :(-0.0056,0.0005), ('1', 'E', 0)  :(-0.0031,0.0005),
+        ('1', 'E', 1)  :(-0.0061,0.0005), ('3', 'E', 0)  :(-0.0081,0.0005),
+        ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005)
     }
     nn_lim = {
-        ('0', 'T1g', 0):(1.400,1.445), ('0', 'T1g', 1):(1.420,1.465),
-        ('1', 'A2', 0) :(1.405,1.450), ('1', 'A2', 1) :(1.430,1.475),
-        ('2', 'A2', 0) :(1.420,1.465), ('3', 'A2', 0) :(1.430,1.475),
-        ('4', 'A2', 0) :(1.420,1.465), ('4', 'A2', 1) :(1.445,1.490),
-        ('2', 'B1', 0) :(1.420,1.465), ('2', 'B2', 0) :(1.420,1.470),
-        ('2', 'B2', 3) :(1.445,1.490), ('1', 'E', 0)  :(1.410,1.465),
-        ('1', 'E', 1)  :(1.430,1.475), ('3', 'E', 0)  :(1.430,1.475),
-        ('4', 'E', 0)  :(1.425,1.470), ('4', 'E', 1)  :(1.445,1.490)
+        ('0', 'T1g', 0):(1.4016,1.4170), ('0', 'T1g', 1):(1.4216,1.4360),
+        ('1', 'A2', 0) :(1.4111,1.4255), ('1', 'A2', 1) :(1.4351,1.4495),
+        ('2', 'A2', 0) :(1.4216,1.4370), ('3', 'A2', 0) :(1.4316,1.4470),
+        ('4', 'A2', 0) :(1.4261,1.4395), ('4', 'A2', 1) :(1.4461,1.4605),
+        ('2', 'B1', 0) :(1.4216,1.4370), ('2', 'B2', 0) :(1.4201,1.4345),
+        ('2', 'B2', 3) :(1.4451,1.4595), ('1', 'E', 0)  :(1.4126,1.4270),
+        ('1', 'E', 1)  :(1.4326,1.4470), ('3', 'E', 0)  :(1.4301,1.4445),
+        ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595)
     }
 
     axnnR.set_ylim(nnr_lim[state])
@@ -264,7 +276,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
             # don't track correlated gvars between all gv.load calls
             gv.switch_gvar()
 
-            sys.stdout.write('  t=%d, %s, Nblock=%d\r' %(t, model, Nb))
+            sys.stdout.write('  t=%d, %s, Nblock=%2d\r' %(t, model, Nb))
             sys.stdout.flush()
             fit_model = nnModel.format(**models[model])
             n_inel    = models[model]['N_inel']

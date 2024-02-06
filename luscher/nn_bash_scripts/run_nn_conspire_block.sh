@@ -4,12 +4,13 @@ ratio="False"
 nn_iso='singlet'
 e=0
 
-for gevp_t in "5-10" "5-12" "6-10" "6-12"; do
+#for gevp_t in "5-10" "5-12" "6-10" "6-12"; do
+gevp_t="5-10"
+for n_N in 3 4; do 
     t0=${gevp_t%-*}
     td=${gevp_t#*-}
     gevp="${t0}-${td}"
     echo "$t0, $td, $gevp_t, $gevp"
-    n_N=3
     for block in 1 2 5 10; do
         for t0_N in 2 3 4 5 6 7 8; do
             nucleon="n${n_N}_t_${t0_N}-20"

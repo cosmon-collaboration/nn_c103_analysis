@@ -30,7 +30,7 @@ def main():
     parser.add_argument('--gevp',   nargs='+', type=str, 
                         default=    ['4-10','5-10','5-12', '6-10', '6-12'],
                         help=       'list of GEVP times in t0-td format %(default)s')
-    parser.add_argument('--tmin',   nargs='+', default=range(2,11),
+    parser.add_argument('--tmin',   nargs='+', default=range(2,10),
                         help=       'values of t_min in NN fit [%(default)s]')
     parser.add_argument('--gs_cons',default=False, action='store_true',
                         help=       'use gs only conspiracy model? [%(default)s]')
