@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import nn_fit as fitter
 import argparse
 import itertools
+#
+import summary_plot
 
 def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
@@ -30,7 +32,7 @@ def main():
     parser.add_argument('--gevp',   nargs='+', type=str, 
                         default=    ['4-10','5-10','5-12', '6-10', '6-12'],
                         help=       'list of GEVP times in t0-td format %(default)s')
-    parser.add_argument('--tmin',   nargs='+', default=range(2,10),
+    parser.add_argument('--tmin',   nargs='+', type=int, default=range(2,10),
                         help=       'values of t_min in NN fit [%(default)s]')
     parser.add_argument('--gs_cons',default=False, action='store_true',
                         help=       'use gs only conspiracy model? [%(default)s]')
@@ -41,6 +43,7 @@ def main():
     print(args)
 
     color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'g', '5-10':'r', '5-12':'magenta', '6-10':'orange', '6-12':'firebrick',}
+    t_color = {'2':'gray', '3':'r', '4':'orange', '5':'yellow', '6':'g', '7':'b', '8':'magenta', '9':'k'}
 
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0]
@@ -111,8 +114,14 @@ def main():
     nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+block+'.pickle')
 
     plt.ion()
+    gevp_results = {}
+    tmin_results = {}
+    gevp_lbls    = []
+    tmin_lbls    = []
     for q in states:
         start_time = time.perf_counter()
+        gevp_results['_'.join([str(k) for k in q])] = {'DE':[],'E1':[],'E2':[]}
+        tmin_results['_'.join([str(k) for k in q])] = {'DE':[],'E1':[],'E2':[]}
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
@@ -120,54 +129,54 @@ def main():
         ax_nnR = plt.axes([0.15, 0.33, 0.84, 0.33])
         ax_Q   = plt.axes([0.15, 0.13, 0.84, 0.20])
 
-        if args.optimal:
-            # plot fit on data
-            params_q = dict(optimal_p)
-            params_q['ratio'] = args.ratio
-            for k in post_optimal:
-                if k[0][0] == q:
-                    #print(k)#,post_optimal[k])
-                    params_q[k] = post_optimal[k]
-                    if k[1] == 'e0' and k[0][1] == 'R':
-                        e0_opt = post_optimal[k]
-                        k_opt  = k[0]
-                        k_n    = k[0][2]
-                        k_n1   = (k[0][0],"N",k[0][2][0])
-                        k_n2   = (k[0][0],"N",k[0][2][1])
-                        e1_opt = post_optimal[(k_n1, "e0")]
-                        e2_opt = post_optimal[(k_n2, "e0")]
-            # plot fit on numerator
-            fit_func = fitter.Functions(params_q)
-            x_plot = np.arange(0,20,.1)
-            nn_opt = fit_func.pure_ratio(k_opt, x_plot, params_q)
-            eff_opt = np.log(nn_opt / np.roll(nn_opt,-10))
-            y  = np.array([eff.mean for eff in eff_opt])
-            dy = np.array([eff.sdev for eff in eff_opt])
-            ax_nn.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
-            ax_nn.axvspan(15.5,20,color='k',alpha=.2)
-            ax_nn.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
-            # plot g.s. e0
-            e_nn = e0_opt +e1_opt +e2_opt
-            ax_nn.axhline(e_nn.mean-e_nn.sdev, linestyle='--',color=opt_clr, alpha=.3)
-            ax_nn.axhline(e_nn.mean+e_nn.sdev, linestyle='--',color=opt_clr, alpha=.3)
+        # plot fit on data
+        params_q = dict(optimal_p)
+        params_q['ratio'] = args.ratio
+        for k in post_optimal:
+            if k[0][0] == q:
+                #print(k)#,post_optimal[k])
+                params_q[k] = post_optimal[k]
+                if k[1] == 'e0' and k[0][1] == 'R':
+                    e0_opt = post_optimal[k]
+                    k_opt  = k[0]
+                    k_n    = k[0][2]
+                    k_n1   = (k[0][0],"N",k[0][2][0])
+                    k_n2   = (k[0][0],"N",k[0][2][1])
+                    e1_opt = post_optimal[(k_n1, "e0")]
+                    e2_opt = post_optimal[(k_n2, "e0")]
+                    #print(k, k_n1, k_n2)
+        # plot fit on numerator
+        fit_func = fitter.Functions(params_q)
+        x_plot = np.arange(0,20,.1)
+        nn_opt = fit_func.pure_ratio(k_opt, x_plot, params_q)
+        eff_opt = np.log(nn_opt / np.roll(nn_opt,-10))
+        y  = np.array([eff.mean for eff in eff_opt])
+        dy = np.array([eff.sdev for eff in eff_opt])
+        ax_nn.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
+        ax_nn.axvspan(15.5,20,color='k',alpha=.2)
+        ax_nn.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
+        # plot g.s. e0
+        e_nn = e0_opt +e1_opt +e2_opt
+        ax_nn.axhline(e_nn.mean-e_nn.sdev, linestyle='--',color=opt_clr, alpha=.3)
+        ax_nn.axhline(e_nn.mean+e_nn.sdev, linestyle='--',color=opt_clr, alpha=.3)
 
-            # plot fit on ratio
-            n1_opt = fit_func.twopoint(k_n1, x_plot, params_q, "N")
-            n2_opt = fit_func.twopoint(k_n2, x_plot, params_q, "N")
-            r_opt  = nn_opt / n1_opt / n2_opt
-            eff_opt = np.log(r_opt / np.roll(r_opt,-10))
-            y  = np.array([eff.mean for eff in eff_opt])
-            dy = np.array([eff.sdev for eff in eff_opt])
-            ax_nnR.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
-            ax_nnR.axvspan(15.5,20,color='k',alpha=.2)
-            ax_nnR.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
-            # plot g.s. e0
-            ax_nnR.axhline(e0_opt.mean-e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
-            ax_nnR.axhline(e0_opt.mean+e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
+        # plot fit on ratio
+        n1_opt = fit_func.twopoint(k_n1, x_plot, params_q, "N")
+        n2_opt = fit_func.twopoint(k_n2, x_plot, params_q, "N")
+        r_opt  = nn_opt / n1_opt / n2_opt
+        eff_opt = np.log(r_opt / np.roll(r_opt,-10))
+        y  = np.array([eff.mean for eff in eff_opt])
+        dy = np.array([eff.sdev for eff in eff_opt])
+        ax_nnR.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
+        ax_nnR.axvspan(15.5,20,color='k',alpha=.2)
+        ax_nnR.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
+        # plot g.s. e0
+        ax_nnR.axhline(e0_opt.mean-e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
+        ax_nnR.axhline(e0_opt.mean+e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
         
 
         # plot e0 from stability
-        plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data)
+        plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, gevp_results, gevp_lbls, tmin_results, tmin_lbls)
 
         if args.optimal:
             fig_name = '%s_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
@@ -178,16 +187,26 @@ def main():
         stop_time = time.perf_counter()
         print('\n%.0f seconds' %(stop_time - start_time))
 
+    #import IPython; IPython.embed()
+    # make summary plot
+    try:
+        mN = gevp_results['0_T1g_0']['E1'][0]
+    except:
+        pass# add I=1 nn version
+    # plot GEVP
+    summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, lbl0=r'GEVP: $t_0-t_d$=')
+    # plot tmin
+    summary_plot.summary_ENN(tmin_results, mN, tmin_lbls, t_color, lbl0=r'$t_{\rm min}^{NN}=$')
 
     plt.ioff()
     plt.show()
 
-def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, ratio=True):
+def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_gevp, l_gevp, r_tmin, l_tmin, ratio=True):
 
     q_str = '\_'.join([str(k) for k in state])
 
     for t in arg.tmin:
-        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData)
+        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_gevp, l_gevp, r_tmin, l_tmin)
 
     k_n     = fitKeys[state][0][2]
     nn_corr = nnData[state][2:]
@@ -255,7 +274,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axQ.set_yticks([0, .25, .5, .75])
 
 
-def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData):
+def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_gevp, l_gevp, r_tmin, l_tmin):
     marker = {
         'N_n4_NN_conspire_e0':'s',
         'N_n3_NN_conspire_e0':'*',
@@ -264,8 +283,8 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
     color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'g', '5-10':'r', '5-12':'magenta', '6-10':'orange', '6-12':'firebrick',}
     shift = { '3-6' :-0.2, '3-8' :-0.15, '4-8' :-0.1, '4-10':-0.05, '5-10':0.05, '5-12':0.1, '6-10':0.15, '6-12':0.2}
 
-    if arg.optimal:
-        opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
+    opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
+    opt_gevp = arg.optimal.split('t0-td_')[1].split('_')[0]
 
     e      = []
     e_nn   = []
@@ -327,7 +346,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 c_plot.append(color[gevp])
                 t_plot.append(t+shift[gevp])
                 mfc='None'
-                if t == opt_tmin and fit_model == optModel and gevp==arg.gevp[0]:
+                if t == opt_tmin and fit_model == optModel and gevp==opt_gevp:
                     mfc='k'#clr
                 mfc_plot.append(mfc)
                 axnnR.errorbar(t+shift[gevp],
@@ -338,6 +357,20 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                                 e_nn[-1].mean, yerr=e_nn[-1].sdev,
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
+                # populate results for comparison
+                if t == opt_tmin and fit_model == optModel:
+                    if gevp not in l_gevp:
+                        l_gevp.append(gevp)
+                    r_gevp['_'.join([str(k) for k in state])]['DE'].append(e[-1])
+                    r_gevp['_'.join([str(k) for k in state])]['E1'].append(e1_opt)
+                    r_gevp['_'.join([str(k) for k in state])]['E2'].append(e2_opt)
+                if fit_model == optModel and gevp == opt_gevp:
+                    if t not in l_tmin:
+                        l_tmin.append(str(t))
+                    r_tmin['_'.join([str(k) for k in state])]['DE'].append(e[-1])
+                    r_tmin['_'.join([str(k) for k in state])]['E1'].append(e1_opt)
+                    r_tmin['_'.join([str(k) for k in state])]['E2'].append(e2_opt)
+                    
             else:
                 print('missing', fit_file)
 
