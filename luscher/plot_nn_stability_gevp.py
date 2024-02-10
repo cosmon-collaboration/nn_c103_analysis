@@ -194,9 +194,9 @@ def main():
     except:
         pass# add I=1 nn version
     # plot GEVP
-    summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, lbl0=r'GEVP: $t_0-t_d$=')
+    summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, lbl0=r'GEVP: $t_0-t_d$=', fig='nn_gevp_summary')
     # plot tmin
-    summary_plot.summary_ENN(tmin_results, mN, tmin_lbls, t_color, lbl0=r'$t_{\rm min}^{NN}=$')
+    summary_plot.summary_ENN(tmin_results, mN, tmin_lbls, t_color, lbl0=r'$t_{\rm min}^{NN}=$', fig='nn_tmin_summary')
 
     plt.ioff()
     plt.show()

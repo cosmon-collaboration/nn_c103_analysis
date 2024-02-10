@@ -4,7 +4,7 @@ import os
 
 import gvar as gv
 
-def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, format='pdf'):
+def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', format='pdf'):
     irreps = {('0', 'T1g'):0,
               ('1', 'A2') :10, 
               ('1', 'E')  :20,
@@ -23,7 +23,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, format='pdf'):
     ]
     #import IPython; IPython.embed()
     #plt.ion()
-    plt.figure(figsize=(6, 6/1.618))
+    plt.figure(fig, figsize=(6, 6/1.618))
     ax = plt.axes([.12,.12,.85,.85])
     for k in all_results:
         irrep = (k.split('_')[0], k.split('_')[1])
@@ -56,4 +56,4 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, format='pdf'):
     ax.set_ylim(1.995,2.0651)
     if not os.path.exists('figures'):
         os.makedirs('figures')
-    plt.savefig('figures/nn_gevp_summary.'+format, transparent=True)
+    plt.savefig('figures/'+fig+'.'+format, transparent=True)
