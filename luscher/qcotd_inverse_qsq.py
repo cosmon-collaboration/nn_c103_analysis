@@ -66,7 +66,7 @@ momRay = {0 : 'ar', 1 : 'oa', 2 : 'pd', 3 : 'cd', 4 : 'oa'}
 irreps_clrs = {
     'T1g':'k', 'A2':'b', 'E':'r', 'B1':'g', 'B2':'magenta',
     'A1g':'k', 'A1':'b',
-    'A2E':'r', 'B1B2':'g',
+    'A2E':'magenta', 'A2B1B2':'magenta',
 }
 level_mrkr = {0:'s', 1:'o', 2:'d', 3:'p', 4:'h', 5:'8', 6:'v'}
 
@@ -125,13 +125,12 @@ if args.irrep_avg:
         ('0', 'T1g' , 1): [(1,   ('0', 'T1g', 1))],
         ('1', 'A2E' , 0): [(1/3, ('1', 'A2', 0)), (2/3, ('1', 'E', 0))],
         ('1', 'A2E' , 1): [(1/3, ('1', 'A2', 1)), (2/3, ('1', 'E', 1))],
-        ('2', 'A2'  , 0): [(1,   ('2', 'A2', 0))],
         ('3', 'A2'  , 0): [(1,   ('3', 'A2', 0))],
         ('3', 'E'   , 0): [(1,   ('3', 'E', 0))],
         ('4', 'A2E' , 0): [(1/3, ('4', 'A2', 0)), (2/3, ('4', 'E', 0))],
         ('4', 'A2E' , 1): [(1/3, ('4', 'A2', 1)), (2/3, ('4', 'E', 1))],
-        ('2', 'B1B2', 0): [(1/3, ('2', 'B1', 0)), (2/3, ('2', 'B2', 0))],
-        #('2', 'B2'  , 3): [(1,   ('2', 'B2', 3))],
+        ('2', 'A2B1B2', 0): [(1/3, ('2', 'A2', 0)), (1/3, ('2', 'B1', 0)), (1/3, ('2', 'B2', 0))],
+        ('2', 'B2'  , 3): [(1,   ('2', 'B2', 3))],
     }
 else:
     irrep_grps = {}
@@ -210,6 +209,9 @@ for k in qcotd_0:
         linestyle='None', color=clr, marker=mkr, label=lbl)
 
 y_gv = gv.dataset.avg_data(y_dict, bstrap=True)
+#y_gv = {}
+#for k in y_dict:
+#    y_gv[k] = gv.dataset.avg_data(y_dict[k], bstrap=True)
 
 class qsqFit:
 
@@ -384,20 +386,20 @@ ax.axvline(color='k')
 qcotd_m = qsq_fit.ere3(qsq_mN_plot,ere3_fit['p_opt'][0],ere3_fit['p_opt'][1],ere3_fit['p_opt'][2],ere3_fit['p_opt'][3])
 y  = np.array([k.mean for k in qcotd_m]) * rescale
 dy = np.array([k.sdev for k in qcotd_m]) * rescale
-ax.fill_between(qsq_mN_plot*rescale**2,y-dy,y+dy,color='k',alpha=.2)
+ax.fill_between(qsq_mN_plot*rescale**2,y-dy,y+dy,color='r',alpha=.2)
 """
 
 # q^4 fit
 qcotd_m = qsq_fit.ere2(qsq_mN_plot,ere2_fit['p_opt'][0],ere2_fit['p_opt'][1],ere2_fit['p_opt'][2])
 y  = np.array([k.mean for k in qcotd_m]) * rescale
 dy = np.array([k.sdev for k in qcotd_m]) * rescale
-ax.fill_between(qsq_mN_plot*rescale**2,y-dy,y+dy,color='k',alpha=.2)
+ax.fill_between(qsq_mN_plot*rescale**2,y-dy,y+dy,color='g',alpha=.2)
 
 # q^2 fit
 qcotd_m = qsq_fit.ere1(qsq_mN_plot,ere1_fit['p_opt'][0],ere1_fit['p_opt'][1])
 y  = np.array([k.mean for k in qcotd_m]) * rescale
 dy = np.array([k.sdev for k in qcotd_m]) * rescale
-ax.fill_between(qsq_mN_plot*rescale**2,y-dy,y+dy,color='g',alpha=.2)
+ax.fill_between(qsq_mN_plot*rescale**2,y-dy,y+dy,color='k',alpha=.2)
 
 
 
