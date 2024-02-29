@@ -179,6 +179,21 @@ class Fit:
                             else:
                                 corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
                     corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
+
+                    # normalize data
+                    # C_ij -> C_ij / sqrt(C_ii(t_norm) C_jj(t_norm))
+                    if 't_norm' in self.params:
+                        t_norm = self.params['t_norm']
+                    else:
+                        t_norm = self.params['t0']
+                    C_norm = np.diagonal(corr.mean(axis=0)[:,:,t_norm]).real
+                    corr_full = np.zeros_like(corr)
+                    for i in range(corr.shape[1]):
+                        for j in range(corr.shape[2]):
+                            corr_full[:,i,j,:] = corr[:,i,j,:] / np.sqrt(C_norm[i]*C_norm[j])
+                    corr = corr_full
+
+
             data[tag] = corr
         if self.block != 1:
             new_data = dict()
