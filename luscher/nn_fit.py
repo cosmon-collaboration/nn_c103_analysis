@@ -330,7 +330,8 @@ class Fit:
                         eval, evec = eigh(Gt)
                         drot[key]  = evec
                         if verbose:
-                            print(f"\n{key} Success, condition numbers:")
+                            C_shape = Ct0.shape
+                            print(f"\n{key} {C_shape}, Success, condition numbers:")
                             print("  cond(Ct0) = %.3f" %cond(Ct0))
                             print("  cond(Gt)  = %.3f" %cond(Gt))
 
