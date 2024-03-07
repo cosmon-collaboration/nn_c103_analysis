@@ -8,6 +8,11 @@ import numpy as np
 np.set_printoptions(linewidth=180)
 import opt_einsum
 import scipy as sp
+from scipy.linalg import eigh
+from scipy.linalg import sqrtm
+from scipy.linalg import inv
+from numpy.linalg import cond
+
 from os import path
 
 import tqdm
@@ -179,6 +184,21 @@ class Fit:
                             else:
                                 corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
                     corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
+
+                    # normalize data
+                    # C_ij -> C_ij / sqrt(C_ii(t_norm) C_jj(t_norm))
+                    if 't_norm' in self.params:
+                        t_norm = self.params['t_norm']
+                    else:
+                        t_norm = self.params['t0']
+                    C_norm = np.diagonal(corr.mean(axis=0)[:,:,t_norm]).real
+                    corr_full = np.zeros_like(corr)
+                    for i in range(corr.shape[1]):
+                        for j in range(corr.shape[2]):
+                            corr_full[:,i,j,:] = corr[:,i,j,:] / np.sqrt(C_norm[i]*C_norm[j])
+                    corr = corr_full
+
+
             data[tag] = corr
         if self.block != 1:
             new_data = dict()
@@ -296,29 +316,30 @@ class Fit:
     def gevp_correlators(self):
 
         def get_gevp_rotation(data, verbose=True):
-            from scipy.linalg import eigh
-            from numpy.linalg import cond
 
             t0 = self.params["t0"]
             td = self.params["td"]
             drot = dict()
             for key in data:
                 if len(np.shape(data[key])) == 4:
+                    Ct  = np.average(data[key], axis=0)
                     try:
-                        mean = np.average(data[key], axis=0)
-                        val, vec = eigh(a=mean[:, :, td], b=mean[:, :, t0])
-                        drot[key] = vec
+                        Ct0 = Ct[:,:, t0]
+                        Ctd = Ct[:,:, td]
+                        Gt  = inv(sqrtm(Ct0)) @ Ctd @ inv(sqrtm(Ct0))
+                        eval, evec = eigh(Gt)
+                        drot[key]  = evec
                         if verbose:
-                            print(f"{key} Success, condition numbers:")
-                            print(cond(mean[:, :, t0]), cond(mean[:, :, td]))
-                            print('scipy.linalg.ishermitian @ t0, td',
-                                sp.linalg.ishermitian(mean[:, :, t0]),
-                                sp.linalg.ishermitian(mean[:, :, td]))
+                            C_shape = Ct0.shape
+                            print(f"\n{key} {C_shape}, Success, condition numbers:")
+                            print("  cond(Ct0) = %.3f" %cond(Ct0))
+                            print("  cond(Gt)  = %.3f" %cond(Gt))
+
                     except:
                         print(f"{key} Fail, condition numbers:")
-                        print(cond(mean[:, :, td]), cond(mean[:, :, t0]))
-                        val1, vec1 = eigh(mean[:, :, td])
-                        val2, vec2 = eigh(mean[:, :, t0])
+                        print(cond(Ct[:, :, td]), cond(Ct[:, :, t0]))
+                        val1, vec1 = eigh(Ct[:, :, td])
+                        val2, vec2 = eigh(Ct[:, :, t0])
                         print(f"{key} {t0} Eigenvalue spectrum and vector:")
                         print(val1)
                         print(vec1[0])
@@ -338,7 +359,13 @@ class Fit:
             drot = get_gevp_rotation(singlet, verbose=verbose)
             for key in drot:
                 eigVecs = np.fliplr(drot[key])
-                rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', singlet[key], np.conj(eigVecs), eigVecs)
+                # construct G(t)
+                Ct0 = singlet[key].mean(axis=0)[:,:,self.params["t0"]]
+                Ct0InvSqrt = inv(sqrtm(Ct0))
+                Gt = opt_einsum.contract('ik,cklt,lj->cijt', Ct0InvSqrt, singlet[key], Ct0InvSqrt)
+                # rotate G(t)
+                rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', Gt, np.conj(eigVecs), eigVecs)
+                # take the diagonal elements only
                 rotated_singlet = np.diagonal(rotated_singlet, axis1=1, axis2=2)
                 for operator in range(np.shape(rotated_singlet)[-1]):
                     opkey = (key[0], key[1], operator)

@@ -18,8 +18,9 @@ def params():
 
     p["fitter"] = 'scipy_least_squares'
 
-    p["t0"] = 6
-    p["td"] = 12
+    p["t0"] = 5
+    p["td"] = 10
+    p['t_norm'] = 3
 
     p["block"] = 2
 
@@ -45,10 +46,10 @@ def params():
     p["irreps"]      = "irreps_ben" #["irreps", "irreps_ben"]
     p["version"]     = 'conspire'
     p["gs_conspire"] = False # only add deltaE for ground state?
-    p["nstates"]     = 4
+    p["nstates"]     = 3
     p["r_n_inel"]    = 2
     p["r_n_el"]      = 0
-    p["trange"]      = {"N": [7, 20], "R": [11, 15]}
+    p["trange"]      = {"N": [3, 20], "R": [3, 15]}
 
     p["ampi"] = 0.310810
     p["amn"]  = 0.70262

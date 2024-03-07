@@ -20,6 +20,7 @@ def params():
 
     p["t0"] = 5
     p["td"] = 10
+    p['t_norm'] = 3
 
     p["block"] = 2
 
