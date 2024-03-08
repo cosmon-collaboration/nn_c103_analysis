@@ -39,9 +39,9 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', for
 
         for i,e in enumerate(Ecm_mN):
             if irrep in [('0', 'T1g')] and int(k.split('_')[-1]) == 0:
-                lbl = all_lbls[i]
+                lbl = str(all_lbls[i])
                 if i == 0:
-                    lbl = lbl0+lbl
+                    lbl = lbl0 + lbl
             else:
                 lbl = None
             color = colors[all_lbls[i]]

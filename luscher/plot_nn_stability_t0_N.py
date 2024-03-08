@@ -41,7 +41,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { '2':'orange', '3':'r', '4':'g', '5':'b', '6':'magenta', '7':'gray' }
+    color = { 2:'orange', 3:'r', 4:'g', 5:'b', 6:'magenta', 7:'gray' }
 
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0]
@@ -103,7 +103,7 @@ def main():
     nn_dict.update({'gevp':gevp_plot})
 
     t0_plot   = int(args.optimal.split('_t_')[1].split('_NN')[0].split('-')[0])
-    opt_clr   = color[str(t0_plot)]
+    opt_clr   = color[t0_plot]
 
     # get data keys
     fit_keys = {}
@@ -274,8 +274,8 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
     shift = { 2:-0.2, 3:-0.1, 4:0., 5:0.1, 6:0.2, 7:0.3 }
     color = { 2:'orange', 3:'r', 4:'g', 5:'b', 6:'magenta', 7:'gray' }
 
-    if arg.optimal:
-        opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
+    opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
+    opt_t0N  = int(arg.optimal.split('_NN_')[0].split('_t_')[1].split('-')[0])
 
     e      = []
     e_nn   = []
@@ -338,7 +338,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 c_plot.append(color[t0])
                 t_plot.append(t+shift[t0])
                 mfc='None'
-                if t == opt_tmin and fit_model == optModel and t0==arg.t0_N[0]:
+                if t == opt_tmin and fit_model == optModel and t0==opt_t0N:
                     mfc='k'#clr
                 mfc_plot.append(mfc)
                 axnnR.errorbar(t+shift[t0],
@@ -350,8 +350,10 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
                 # populate results for comparison
-                if t == opt_tmin:
-                    l_t0N.append(str(t0))
+                # t  == tNN_0
+                # t0 == tN_0
+                if t == opt_tmin and fit_model == optModel:
+                    l_t0N.append(t0)
                     r_t0N['_'.join([str(k) for k in state])]['DE'].append(e[-1])
                     r_t0N['_'.join([str(k) for k in state])]['E1'].append(e1_opt)
                     r_t0N['_'.join([str(k) for k in state])]['E2'].append(e2_opt)

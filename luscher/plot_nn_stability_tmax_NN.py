@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import nn_fit as fitter
 import argparse
 import itertools
+#
+import summary_plot
 
 def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
@@ -21,7 +23,7 @@ def main():
     # NN info
     parser.add_argument('--nn_iso', type=str, default='singlet',
                         help=       'NN system: singlet or triplet [%(default)s]')
-    parser.add_argument('--n_N',    nargs='+', type=int, default=[2,3],
+    parser.add_argument('--n_N',    nargs='+', type=int, default=[3],
                         help=       'number of exponentials in single nucleon to sweep over %(default)s')
     parser.add_argument('--nn_el',  nargs='+', default=[0],
                         help=       'number of elastic e.s. to try %(default)s')
@@ -29,7 +31,7 @@ def main():
                         help=       'fit from RATIO correlator? [%(default)s]')
     parser.add_argument('--tf_NN',  nargs='+', type=int, default=[10, 11, 12, 13, 14, 15],
                         help=       'list of t0_min times for single nucleon %(default)s')
-    parser.add_argument('--tmin',   nargs='+', type=int, default=[3,5,7],
+    parser.add_argument('--tmin',   nargs='+', type=int, default=[3,4,5,6,7],
                         help=       'values of t_min in NN fit [%(default)s]')
     parser.add_argument('--gs_cons',default=False, action='store_true',
                         help=       'use gs only conspiracy model? [%(default)s]')
@@ -112,11 +114,14 @@ def main():
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
 
-    nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+'.pickle')
+    nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+block+'.pickle')
 
     plt.ion()
+    tf_results = {}
+    tf_lbls    = []
     for q in states:
         start_time = time.perf_counter()
+        tf_results['_'.join([str(k) for k in q])] = {'DE':[],'E1':[],'E2':[]}
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
@@ -171,7 +176,7 @@ def main():
         
 
         # plot e0 from stability
-        plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data)
+        plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, tf_results, tf_lbls)
 
         fig_name = '%s_tf_NN_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
         plt.savefig('figures/'+fig_name,transparent=True)
@@ -179,16 +184,23 @@ def main():
         stop_time = time.perf_counter()
         print('\n%.0f seconds' %(stop_time - start_time))
 
+    # make summary plot
+    try:
+        mN = tf_results['0_T1g_0']['E1'][0]
+    except:
+        pass# add I=1 nn version
+    # plot t0_N
+    summary_plot.summary_ENN(tf_results, mN, tf_lbls, color, lbl0=r'$t_f^{NN}$=', fig='tfNN_summary')
 
     plt.ioff()
     plt.show()
 
-def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, ratio=True):
+def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_tf, l_tf, ratio=True):
 
     q_str = '\_'.join([str(k) for k in state])
 
     for t in arg.tf_NN:
-        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData)
+        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_tf, l_tf)
 
     k_n     = fitKeys[state][0][2]
     nn_corr = nnData[state][2:]
@@ -255,14 +267,15 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axQ.set_yticks([0, .25, .5, .75])
 
 
-def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData):
+def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_tf, l_tf):
+    # t = tNN_f
     marker = {
         'N_n4_NN_conspire_e0':'s',
         'N_n3_NN_conspire_e0':'*',
         'N_n2_NN_conspire_e0':'o',
     }
-    shift = { 5:-0.2, 2:-0.1, 3:0., 4:0.1, 6:0.2, 7:0.3 }
-    color = { 5:'orange', 2:'r', 3:'g', 4:'b', 6:'magenta', 7:'gray' }
+    shift = { 10:-0.2, 11:-0.1, 12:0., 13:0.1, 14:0.2, 15:0.3 }
+    color = { 10:'orange', 11:'r', 12:'g', 13:'b', 14:'magenta', 15:'gray' }
 
 
     opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
@@ -324,22 +337,30 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 #            p.append(data[((state,), 'Q')])
                 #            k_n = fitKeys[state][0][2]
                 mrkr = marker[fit_model]
-                clr  = color[t0]
+                clr  = color[t]
                 m_plot.append(marker[fit_model])
-                c_plot.append(color[t0])
-                t_plot.append(t+shift[t0])
+                c_plot.append(color[t])
+                t_plot.append(t0+shift[t])
                 mfc='None'
                 if t == opt_tmin and fit_model == optModel and t0==opt_tmin:
                     mfc='k'#clr
                 mfc_plot.append(mfc)
-                axnnR.errorbar(t+shift[t0],
+                axnnR.errorbar(t0+shift[t],
                                 e[-1].mean, yerr=e[-1].sdev,
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
-                axnn.errorbar(t+shift[t0],
+                axnn.errorbar(t0+shift[t],
                                 e_nn[-1].mean, yerr=e_nn[-1].sdev,
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
+                # populate results for comparison
+                # t0 == tNN_0
+                # t  == tNN_f
+                if t0 == opt_tmin and fit_model == optModel:
+                    l_tf.append(t)
+                    r_tf['_'.join([str(k) for k in state])]['DE'].append(e[-1])
+                    r_tf['_'.join([str(k) for k in state])]['E1'].append(e1_opt)
+                    r_tf['_'.join([str(k) for k in state])]['E2'].append(e2_opt)
             else:
                 print('missing', fit_file)
 
