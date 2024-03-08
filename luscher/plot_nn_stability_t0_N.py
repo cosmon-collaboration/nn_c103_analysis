@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import nn_fit as fitter
 import argparse
 import itertools
+#
+import summary_plot
 
 def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
@@ -21,7 +23,7 @@ def main():
     # NN info
     parser.add_argument('--nn_iso', type=str, default='singlet',
                         help=       'NN system: singlet or triplet [%(default)s]')
-    parser.add_argument('--n_N',    nargs='+', type=int, default=[3, 2],
+    parser.add_argument('--n_N',    nargs='+', type=int, default=[3],
                         help=       'number of exponentials in single nucleon to sweep over %(default)s')
     parser.add_argument('--nn_el',  nargs='+', default=[0],
                         help=       'number of elastic e.s. to try %(default)s')
@@ -39,7 +41,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { 2:'orange', 3:'r', 4:'g', 5:'b', 6:'magenta', 7:'gray' }
+    color = { '2':'orange', '3':'r', '4':'g', '5':'b', '6':'magenta', '7':'gray' }
 
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0]
@@ -101,7 +103,7 @@ def main():
     nn_dict.update({'gevp':gevp_plot})
 
     t0_plot   = int(args.optimal.split('_t_')[1].split('_NN')[0].split('-')[0])
-    opt_clr   = color[t0_plot]
+    opt_clr   = color[str(t0_plot)]
 
     # get data keys
     fit_keys = {}
@@ -110,11 +112,14 @@ def main():
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
 
-    nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+'.pickle')
+    nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+block+'.pickle')
 
     plt.ion()
+    t0N_results = {}
+    t0N_lbls    = []
     for q in states:
         start_time = time.perf_counter()
+        t0N_results['_'.join([str(k) for k in q])] = {'DE':[],'E1':[],'E2':[]}
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
@@ -169,7 +174,7 @@ def main():
         
 
         # plot e0 from stability
-        plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data)
+        plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, t0N_results, t0N_lbls)
 
         fig_name = '%s_t0_N_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
         plt.savefig('figures/'+fig_name,transparent=True)
@@ -177,16 +182,23 @@ def main():
         stop_time = time.perf_counter()
         print('\n%.0f seconds' %(stop_time - start_time))
 
+    # make summary plot
+    try:
+        mN = t0N_results['0_T1g_0']['E1'][0]
+    except:
+        pass# add I=1 nn version
+    # plot t0_N
+    summary_plot.summary_ENN(t0N_results, mN, t0N_lbls, color, lbl0=r'$t_0^N$=', fig='t0N_summary')
 
     plt.ioff()
     plt.show()
 
-def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, ratio=True):
+def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_t0N, l_t0N, ratio=True):
 
     q_str = '\_'.join([str(k) for k in state])
 
     for t in arg.tmin:
-        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData)
+        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_t0N, l_t0N)
 
     k_n     = fitKeys[state][0][2]
     nn_corr = nnData[state][2:]
@@ -253,7 +265,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axQ.set_yticks([0, .25, .5, .75])
 
 
-def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData):
+def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_t0N, l_t0N):
     marker = {
         'N_n4_NN_conspire_e0':'s',
         'N_n3_NN_conspire_e0':'*',
@@ -289,6 +301,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
 
             if t == arg.tmin[0]:
                 if t0 == arg.t0_N[0]:
+
                     lbl = r'$N_{\rm inel} = %d, t_0^N = %d$' %(n_inel, t0)
                 else:
                     lbl = r'$%d, %d$' %(n_inel, t0)
@@ -336,6 +349,12 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                                 e_nn[-1].mean, yerr=e_nn[-1].sdev,
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
+                # populate results for comparison
+                if t == opt_tmin:
+                    l_t0N.append(str(t0))
+                    r_t0N['_'.join([str(k) for k in state])]['DE'].append(e[-1])
+                    r_t0N['_'.join([str(k) for k in state])]['E1'].append(e1_opt)
+                    r_t0N['_'.join([str(k) for k in state])]['E2'].append(e2_opt)
             else:
                 print('missing', fit_file)
 
