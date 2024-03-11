@@ -12,7 +12,7 @@ for n_N in 3 4; do
     gevp="${t0}-${td}"
     echo "$t0, $td, $gevp_t, $gevp"
     for block in 1 2 5 10; do
-        for t0_N in 2 3 4 5 6 7 8; do
+        for t0_N in 2 3 4 5; do
             nucleon="n${n_N}_t_${t0_N}-20"
             for t in $(seq 2 11); do
                 if [[ $block -eq 1 ]]; then

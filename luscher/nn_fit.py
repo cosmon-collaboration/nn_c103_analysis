@@ -100,8 +100,9 @@ class Fit:
         if self.block != 1:
             filename = f"{filename}_block{self.block}"
         # bs prior gs or all
-        bs_prior = self.params['bs_prior']
-        filename = f"{filename}_bsPrior-{bs_prior}"
+        if self.params['bootstrap']:
+            bs_prior = self.params['bs_prior']
+            filename = f"{filename}_bsPrior-{bs_prior}"
         # SVD study?
         if self.params['svd_study']:
             filename = f"{filename}_svdcut"
@@ -112,6 +113,8 @@ class Fit:
                 filename = f"{filename}Opt"
 
         self.filename = f"{filename}.pickle"
+        if self.params['bootstrap']:
+            self.boot0_file = self.filename.replace('_bsPrior-'+bs_prior,"")
 
     def nucleon_data(self):
         """ Reads nucleon data from h5.
@@ -829,10 +832,10 @@ class Fit:
         return Nbs
 
     def get_b0_posteriors(self):
-        if os.path.exists(f"./result/{self.filename}"):
-            return gv.load(f"./result/{self.filename}")
+        if os.path.exists(f"./result/{self.boot0_file}"):
+            return gv.load(f"./result/{self.boot0_file}")
         else:
-            print("can't get boot0, DOES NOT EXISTS: "+f"result/{self.filename}")
+            print("can't get boot0, DOES NOT EXISTS: "+f"result/{self.boot0_file}")
             sys.exit('run again with p["bootstrap"] = False')
 
 

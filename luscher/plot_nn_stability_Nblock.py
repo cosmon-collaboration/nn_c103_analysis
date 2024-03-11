@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import nn_fit as fitter
 import argparse
 import itertools
+#
+import summary_plot
 
 def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
@@ -40,6 +42,11 @@ def main():
     print(args)
 
     color = { 1:'orange', 2:'r', 5:'g', 10:'b', 20:'magenta'}
+
+    if 'block' in args.optimal:
+        block = '_block' + args.optimal.split('block')[1].split('_')[0]
+    else:
+        block = ''
 
     bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
 
@@ -109,11 +116,14 @@ def main():
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
 
-    nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+'.pickle')
+    nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+block+'.pickle')
 
     plt.ion()
+    blk_results = {}
+    blk_lbls    = []
     for q in states:
         start_time = time.perf_counter()
+        blk_results['_'.join([str(k) for k in q])] = {'DE':[],'E1':[],'E2':[]}
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
@@ -168,7 +178,7 @@ def main():
         
 
         # plot e0 from stability
-        plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data)
+        plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, blk_results, blk_lbls)
 
         fig_name = '%s_Nb_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
         plt.savefig('figures/'+fig_name,transparent=True)
@@ -176,16 +186,23 @@ def main():
         stop_time = time.perf_counter()
         print('\n%.0f seconds' %(stop_time - start_time))
 
+    # make summary plot
+    try:
+        mN = blk_results['0_T1g_0']['E1'][0]
+    except:
+        pass# add I=1 nn version
+    # plot t0_N
+    summary_plot.summary_ENN(blk_results, mN, blk_lbls, color, lbl0=r'$N_{\rm block}$=', fig='NBlock_summary')
 
     plt.ioff()
     plt.show()
 
-def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, ratio=True):
+def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_blk, l_blk, ratio=True):
 
     q_str = '\_'.join([str(k) for k in state])
 
     for t in arg.tmin:
-        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData)
+        plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_blk, l_blk)
 
     k_n     = fitKeys[state][0][2]
     nn_corr = nnData[state][2:]
@@ -252,7 +269,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axQ.set_yticks([0, .25, .5, .75])
 
 
-def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData):
+def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_blk, l_blk):
     marker = {
         'N_n4_NN_conspire_e0':'s',
         'N_n3_NN_conspire_e0':'*',
@@ -339,6 +356,14 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                                 e_nn[-1].mean, yerr=e_nn[-1].sdev,
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
+                # populate results for comparison
+                # t  == tNN_o
+                # Nb == Nblock
+                if t == opt_tmin and fit_model == optModel:
+                    l_blk.append(Nb)
+                    r_blk['_'.join([str(k) for k in state])]['DE'].append(e[-1])
+                    r_blk['_'.join([str(k) for k in state])]['E1'].append(e1_opt)
+                    r_blk['_'.join([str(k) for k in state])]['E2'].append(e2_opt)
             else:
                 print('missing', fit_file)
 
