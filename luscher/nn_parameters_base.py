@@ -12,7 +12,7 @@ def params():
     p["verbose"] = False
     p["latex"]   = True
 
-    p["fpath"] = {"nucleon": "./data/nucleon_S0.hdf5", "nn": "./data/triplet_S0_avg_mom.hdf5"}
+    p["fpath"] = {"nucleon": "./data/nucleon_S0.hdf5", "nn": "./data/singlet_S0_avg_mom.hdf5"}
 
     p["save"] = True
 
