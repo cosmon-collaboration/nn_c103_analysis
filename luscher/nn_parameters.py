@@ -12,7 +12,7 @@ def params():
     p["verbose"] = False
     p["latex"]   = True
 
-    p["fpath"] = {"nucleon": "./data/nucleon_S0.hdf5", "nn": "./data/singlet_S0_avg_mom.hdf5"}
+    p["fpath"] = {"nucleon": "./data/nucleon_S0.hdf5", "nn": "./data/triplet_S0_avg_mom.hdf5"}
 
     p["save"] = True
 
@@ -33,7 +33,7 @@ def params():
     p["nbs"]       = 5000
     p["nbs_sub"]   = 100
     p['bs0_width'] = 5
-    p['bs_prior']  = 'gs' # 'gs' or 'all': 
+    p['bs_prior']  = 'all' # 'gs' or 'all': 
                           # randomize prior mean for gs or all priors
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
@@ -49,7 +49,7 @@ def params():
     p["nstates"]     = 3
     p["r_n_inel"]    = 2
     p["r_n_el"]      = 0
-    p["trange"]      = {"N": [3, 20], "R": [3, 15]}
+    p["trange"]      = {"N": [5, 20], "R": [5, 15]}
 
     p["ampi"] = 0.310810
     p["amn"]  = 0.70262
@@ -99,6 +99,7 @@ def params():
         [('3', 'A2', 0)], [('3', 'E', 0)],
     '''
     # fit choices for individual correlators
+    '''
     p["fit_choices"] = dict()
     p["fit_choices"][("0", "A1g", 0)] = {'rstates':2, 'trange':[5,15]}
     p["fit_choices"][("0", "A1g", 1)] = {'rstates':2, 'trange':[6,15]}
@@ -108,6 +109,7 @@ def params():
     p["fit_choices"][("3", "A1", 0)]  = {'rstates':2, 'trange':[6,15]}
     p["fit_choices"][("4", "A1", 0)]  = {'rstates':2, 'trange':[5,15]}
     p["fit_choices"][("4", "A1", 1)]  = {'rstates':2, 'trange':[7,15]}
+    '''
     '''
     p["fit_choices"][("0", "T1g", 0)] = {'rstates':2, 'trange':[5,15]}
     p["fit_choices"][("0", "T1g", 1)] = {'rstates':2, 'trange':[5,15]}

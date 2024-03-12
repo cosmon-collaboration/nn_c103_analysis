@@ -99,6 +99,7 @@ def params():
         [('3', 'A2', 0)], [('3', 'E', 0)],
     '''
     # fit choices for individual correlators
+    '''
     p["fit_choices"] = dict()
     p["fit_choices"][("0", "A1g", 0)] = {'rstates':2, 'trange':[5,15]}
     p["fit_choices"][("0", "A1g", 1)] = {'rstates':2, 'trange':[6,15]}
@@ -108,6 +109,7 @@ def params():
     p["fit_choices"][("3", "A1", 0)]  = {'rstates':2, 'trange':[6,15]}
     p["fit_choices"][("4", "A1", 0)]  = {'rstates':2, 'trange':[5,15]}
     p["fit_choices"][("4", "A1", 1)]  = {'rstates':2, 'trange':[7,15]}
+    '''
     '''
     p["fit_choices"][("0", "T1g", 0)] = {'rstates':2, 'trange':[5,15]}
     p["fit_choices"][("0", "T1g", 1)] = {'rstates':2, 'trange':[5,15]}
