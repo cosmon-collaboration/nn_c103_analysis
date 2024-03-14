@@ -33,7 +33,7 @@ def params():
     p["nbs"]       = 5000
     p["nbs_sub"]   = 100
     p['bs0_width'] = 5
-    p['bs_prior']  = 'gs' # 'gs' or 'all': 
+    p['bs_prior']  = 'all' # 'gs' or 'all': 
                           # randomize prior mean for gs or all priors
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior

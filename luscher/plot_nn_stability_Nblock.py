@@ -29,7 +29,7 @@ def main():
                         help=       'number of elastic e.s. to try %(default)s')
     parser.add_argument('--ratio',  default=False, action='store_true',
                         help=       'fit from RATIO correlator? [%(default)s]')
-    parser.add_argument('--Nb',     nargs='+', type=int, default=[1, 2, 5, 10],
+    parser.add_argument('--Nb',     nargs='+', type=int, default=[1, 2, 4, 8, 16],
                         help=       'list of t0_min times for single nucleon %(default)s')
     parser.add_argument('--tmin',   nargs='+', default=range(2,10),
                         help=       'values of t_min in NN fit [%(default)s]')
@@ -41,20 +41,22 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { 1:'orange', 2:'r', 5:'g', 10:'b', 20:'magenta'}
+    color = { 1:'orange', 2:'r', 4:'g', 8:'b', 16:'magenta'}
 
     if 'block' in args.optimal:
-        block = '_block' + args.optimal.split('block')[1].split('_')[0]
+        block = '_block' + args.optimal.split('block')[1].split('_')[0].split('.')[0]
     else:
         block = ''
-
-    bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
 
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
     nn_file  = 'NN_{nn_iso}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
-    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)
-    nn_file += "{block}_bsPrior-"+bsPrior
+    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+block
+    if 'bsPrior' in args.optimal:
+        bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
+        nn_file += "_bsPrior-"+bsPrior
+    else:
+        bsPrior = ''
     nn_file += '.pickle'
 
     nn_dict = { 'N_t':N_t, 'nn_iso':args.nn_iso, }
@@ -104,7 +106,7 @@ def main():
     nn_dict.update({'gevp':gevp_plot})
 
     if 'block' in args.optimal:
-        NB_plot   = int(args.optimal.split('_block')[1].split('_')[0])
+        NB_plot   = int(args.optimal.split('_block')[1].split('_')[0].split('.')[0])
     else:
         NB_plot = 1
     opt_clr   = color[NB_plot]
@@ -275,8 +277,8 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
         'N_n3_NN_conspire_e0':'*',
         'N_n2_NN_conspire_e0':'o',
     }
-    shift = { 1:-0.2, 2:-0.1, 5:0., 10:0.1, 20:0.2}
-    color = { 1:'orange', 2:'r', 5:'g', 10:'b', 20:'magenta'}
+    shift = { 1:-0.2, 2:-0.1, 4:0., 8:0.1, 16:0.2}
+    color = { 1:'orange', 2:'r', 4:'g', 8:'b', 16:'magenta'}
 
     if arg.optimal:
         opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])

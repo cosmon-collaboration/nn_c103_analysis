@@ -30,7 +30,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', for
         DE_i = np.array(all_results[k]['DE'])
         E1_i = np.array(all_results[k]['E1'])
         E2_i = np.array(all_results[k]['E2'])
-        nsq  = int(k.split('_')[-1])
+        nsq  = int(k.split('_')[0])
         Psq  = nsq * (2*np.pi / 48)**2
         ENN  = DE_i + E1_i + E2_i
         EcmSq= ENN**2 - Psq
@@ -53,7 +53,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', for
     ax.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
     ax.set_ylabel(r'$E_{\rm cm} / m_N$', fontsize=16)
     ax.axhline(2, linestyle='--', color='k')
-    ax.set_ylim(1.995,2.0651)
+    ax.set_ylim(1.995,2.0551)
     if not os.path.exists('figures'):
         os.makedirs('figures')
     plt.savefig('figures/'+fig+'.'+format, transparent=True)

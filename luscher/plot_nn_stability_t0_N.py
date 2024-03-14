@@ -44,16 +44,19 @@ def main():
     color = { 2:'orange', 3:'r', 4:'g', 5:'b', 6:'magenta', 7:'gray' }
 
     if 'block' in args.optimal:
-        block = '_block' + args.optimal.split('block')[1].split('_')[0]
+        block = '_block' + args.optimal.split('block')[1].split('_')[0].split('.')[0]
     else:
         block = ''
-    bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
 
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
     nn_file  = 'NN_{nn_iso}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
-    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)
-    nn_file += block+'_bsPrior-'+bsPrior
+    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+block
+    if 'bsPrior' in args.optimal:
+        bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
+        nn_file += '_bsPrior-'+bsPrior
+    else:
+        bsPrior = ''
     nn_file += '.pickle'
 
     nn_dict = { 'N_t':N_t, 'nn_iso':args.nn_iso, }

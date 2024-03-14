@@ -11,14 +11,14 @@ for n_N in 3 4; do
     td=${gevp_t#*-}
     gevp="${t0}-${td}"
     echo "$t0, $td, $gevp_t, $gevp"
-    for block in 1 2 5 10; do
-        for t0_N in 2 3 4 5; do
+    for block in 1 2 4 8 16; do
+        for t0_N in 3 4 5; do
             nucleon="n${n_N}_t_${t0_N}-20"
             for t in $(seq 2 11); do
                 if [[ $block -eq 1 ]]; then
-                    result="result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}_bsPrior-gs.pickle"
+                    result="result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}.pickle"
                 else
-                    result="result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}_block${block}_bsPrior-gs.pickle"
+                    result="result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}_block${block}.pickle"
                 fi
                 echo ""
                 echo $result
