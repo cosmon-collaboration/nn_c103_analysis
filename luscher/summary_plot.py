@@ -24,7 +24,9 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', for
     #import IPython; IPython.embed()
     #plt.ion()
     plt.figure(fig, figsize=(6, 6/1.618))
-    ax = plt.axes([.12,.12,.85,.85])
+    ax = plt.axes([.135,.135,.85,.85])
+    plt.figure(fig+'_dElab', figsize=(6, 6/1.618))
+    ax_dE = plt.axes([.135,.135,.85,.85])
     for k in all_results:
         irrep = (k.split('_')[0], k.split('_')[1])
         DE_i = np.array(all_results[k]['DE'])
@@ -36,6 +38,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', for
         EcmSq= ENN**2 - Psq
         Ecm  = np.sqrt(EcmSq)
         Ecm_mN = Ecm / mN.mean
+        dE_lab = DE_i / mN.mean
 
         for i,e in enumerate(Ecm_mN):
             if irrep in [('0', 'T1g')] and int(k.split('_')[-1]) == 0:
@@ -48,12 +51,25 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', for
             ax.errorbar(irreps[irrep]+i-len(Ecm_mN)/2, e.mean, yerr=e.sdev, 
                         marker='s', linestyle='None', mfc='None',
                         color=color, label=lbl)
+            
+            ax_dE.errorbar(irreps[irrep]+i-len(Ecm_mN)/2, dE_lab[i].mean, yerr=dE_lab[i].sdev, 
+                        marker='s', linestyle='None', mfc='None',
+                        color=color, label=lbl)
     ticks = [v for k,v in irreps.items()]
     ax.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
     ax.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
     ax.set_ylabel(r'$E_{\rm cm} / m_N$', fontsize=16)
     ax.axhline(2, linestyle='--', color='k')
     ax.set_ylim(1.995,2.0551)
+    plt.figure(fig)
     if not os.path.exists('figures'):
         os.makedirs('figures')
     plt.savefig('figures/'+fig+'.'+format, transparent=True)
+
+    ax_dE.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
+    ax_dE.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
+    ax_dE.set_ylabel(r'$\Delta E_{\rm lab} / m_N$', fontsize=16)
+    ax_dE.set_ylim(-0.009,0)
+    plt.figure(fig+'_dElab')
+    plt.savefig('figures/'+fig+'_dElab'+'.'+format, transparent=True)
+    
