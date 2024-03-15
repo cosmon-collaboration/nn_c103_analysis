@@ -38,6 +38,8 @@ def main():
                         help=       'use gs only conspiracy model? [%(default)s]')
     parser.add_argument('--test',   default=False, action='store_true',
                         help=       'if test==True, only do T1g [%(default)s]')
+    parser.add_argument('--debug',  default=False, action='store_true',
+                        help=       'add extra debug print statements? [%(default)s]')
    
     args = parser.parse_args()
     print(args)
@@ -318,6 +320,10 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
 
             fit_file = 'result/'+nnFile.format(**nnDict)
             if os.path.exists(fit_file):
+                if arg.debug:
+                    print('\nDEBUG: fit file', fit_file)
+                    print('DEBUG: GEVP = ',gevp)
+                    print('DEBUG: nn_file', nnFile)
 
                 data = gv.load(fit_file)
                 #if arg.optimal:

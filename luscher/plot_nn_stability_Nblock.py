@@ -37,6 +37,8 @@ def main():
                         help=       'use gs only conspiracy model? [%(default)s]')
     parser.add_argument('--test',   default=False, action='store_true',
                         help=       'if test==True, only do T1g [%(default)s]')
+    parser.add_argument('--debug',  default=False, action='store_true',
+                        help=       'add extra debug print statements? [%(default)s]')
    
     args = parser.parse_args()
     print(args)
@@ -51,7 +53,8 @@ def main():
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
     nn_file  = 'NN_{nn_iso}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
-    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+block
+    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)
+    nn_file += '{BLOCK}'
     if 'bsPrior' in args.optimal:
         bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
         nn_file += "_bsPrior-"+bsPrior
@@ -59,7 +62,7 @@ def main():
         bsPrior = ''
     nn_file += '.pickle'
 
-    nn_dict = { 'N_t':N_t, 'nn_iso':args.nn_iso, }
+    nn_dict = { 'N_t':N_t, 'nn_iso':args.nn_iso, 'BLOCK':block}
 
     nn_model = 'N_n{N_inel}_NN_{nn_model}_e{nn_el}'
 
@@ -306,7 +309,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 block = ''
             else:
                 block = f'_block{Nb}'
-            nnDict.update({'N_inel':n_inel, 'nn_el':nn_el, 't0':t, 'block':block,
+            nnDict.update({'N_inel':n_inel, 'nn_el':nn_el, 't0':t, 'BLOCK':block,
                            'nn_model':models[model]['nn_model']})
 
             if t == arg.tmin[0]:
@@ -319,6 +322,10 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
 
             fit_file = 'result/'+nnFile.format(**nnDict)
             if os.path.exists(fit_file):
+                if arg.debug:
+                    print('\nDEBUG: fit file', fit_file)
+                    print('DEBUG: Nb = ',Nb)
+                    print('DEBUG: nn_file', nnFile)
 
                 data = gv.load(fit_file)
                 #if arg.optimal:

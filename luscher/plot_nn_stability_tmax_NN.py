@@ -38,7 +38,8 @@ def main():
     parser.add_argument('--test',   default=False, action='store_true',
                         help=       'if test==True, only do T1g [%(default)s]')
     
-    parser.add_argument('-v','--verbose', default=False, action='store_true')
+    parser.add_argument('--debug',  default=False, action='store_true',
+                        help=       'add extra debug print statements? [%(default)s]')
    
     args = parser.parse_args()
     print(args)
@@ -53,7 +54,7 @@ def main():
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
     nn_file  = 'NN_{nn_iso}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
-    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+block
+    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-{tf}_ratio_'+str(args.ratio)+block
     if 'bsPrior' in args.optimal:
         bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
         nn_file += '_bsPrior-'+bsPrior
@@ -223,7 +224,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
 
     handles, labels = axnnR.get_legend_handles_labels()
-    axnn.legend(flip(handles, len(arg.tmin)), flip(labels, len(arg.tmin)), loc=1, ncol=len(arg.tmin), fontsize=10, columnspacing=0,handletextpad=0.1)
+    axnn.legend(flip(handles, len(arg.tf_NN)), flip(labels, len(arg.tf_NN)), loc=1, ncol=len(arg.tf_NN), fontsize=10, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = {
         ('0', 'T1g', 0):(-0.0021,0.0005), ('0', 'T1g', 1):(-0.0051,0.0005),
@@ -302,21 +303,24 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
             nn_el     = models[model]['nn_el']
             if 'agnostic' in fit_model:
                 nn    = int(fit_model.split('agnostic_n')[1].split('_')[0])
-            nnDict.update({'N_t':'%d-20' %3, 'N_inel':n_inel, 'nn_el':nn_el, 't0':t0, 'tf_NN':t,
+            nnDict.update({'N_t':'%d-20' %3, 'N_inel':n_inel, 'nn_el':nn_el, 't0':t0, 'tf':t,
                            'nn_model':models[model]['nn_model']})
 
-            if t == arg.tf_NN[0]:
-                if t0 == arg.tmin[0]:
-                    lbl = r'$N_{\rm inel} = %d, t^{NN} = %d-t_f^{NN}$' %(n_inel, t0)
+            if t0 == arg.tmin[0]:
+                if t == arg.tf_NN[0]:
+                    lbl = r'$N_{\rm inel} = %d, t_f^{NN} = %d$' %(n_inel, t)
                 else:
-                    lbl = r'$%d, %d-t_f^{NN}$' %(n_inel, t0)
+                    lbl = r'$%d, %d$' %(n_inel, t)
             else:
                 lbl = ''
 
             fit_file = 'result/'+nnFile.format(**nnDict)
             if os.path.exists(fit_file):
-                if arg.verbose:
-                    print(fit_file)
+                if arg.debug:
+                    print('\nDEBUG: fit file', fit_file)
+                    print('DEBUG: t0 = ',t0)
+                    print('DEBUG: tf = ',t)
+                    print('DEBUG: nn_file', nnFile)
 
                 data = gv.load(fit_file)
                 #if arg.optimal:
