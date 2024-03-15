@@ -13,7 +13,7 @@ for gevp_t in "3-6" "3-8" "4-8" "4-10" "5-10" "5-12" "6-10" "6-12"; do
         for t0_N in 3 4 5 7; do
             nucleon="n${n_N}_t_${t0_N}-20"
             for t in $(seq 2 11); do
-                block=5
+                block=2
                 result="result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}_block${block}_bsPrior-gs.pickle"
                 echo ""
                 echo $result
