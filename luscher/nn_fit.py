@@ -389,11 +389,15 @@ class Fit:
 
         t0 = self.params["t0"]
         td = self.params["td"]
+        if 't_norm' in self.params:
+            t_norm = self.params['t_norm']
+        else:
+            t_norm = self.params['t0']
         nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
         if self.block != 1:
-            datapath = f"./data/gevp_{nn}_{t0}-{td}_block{self.block}.pickle"
+            datapath = f"./data/gevp_{nn}_tnorm{t_norm}_{t0}-{td}_block{self.block}.pickle"
         else:
-            datapath = f"./data/gevp_{nn}_{t0}-{td}.pickle"
+            datapath = f"./data/gevp_{nn}_tnorm{t_norm}_{t0}-{td}.pickle"
         if path.exists(datapath) and self.params["bootstrap"] is False:
             print("Read data from gvar dump")
             gvdata = gv.load(datapath)
@@ -434,7 +438,7 @@ class Fit:
 
         return gvdata, irrep_dim
 
-    def set_priors(self, prior, data, nbs, type="auto"):
+    def set_priors(self, prior, data, nbs, type="auto", seed=''):
         """
         Will always generate new, uncorrelated priors for single nucleon in each chain.
 
@@ -471,8 +475,10 @@ class Fit:
                     # for the g.s., we tighten the random shift of the prior
                     # since our g.s. prior is very broad.
                     # Otherwise, we end up in local minimum in the BS samples
-                    e0_bs = bs_utils.bs_prior(Nbs, mean=meff_mean, sdev=bs_w_fac*s_e0, seed=str((key, 'e0')))
-                    z0_bs = bs_utils.bs_prior(Nbs, mean=zeff_mean, sdev=bs_w_fac*s_z0, seed=str((key, 'z0')))
+                    e0_seed = str((key, 'e0'+seed))
+                    z0_seed = str((key, 'z0'+seed))
+                    e0_bs = bs_utils.bs_prior(Nbs, mean=meff_mean, sdev=bs_w_fac*s_e0, seed=e0_seed)
+                    z0_bs = bs_utils.bs_prior(Nbs, mean=zeff_mean, sdev=bs_w_fac*s_z0, seed=z0_seed)
 
                     if key[1] in ["R"]:
                         prior[(key, "e0")] = gv.gvar(e0_bs[nbs-1], self.params["sig_e0"] * meff_sdev)
@@ -494,9 +500,9 @@ class Fit:
                     for n in range(1, states):
                         en_mean = self.params["ampi"] * 2
                         if nbs > 0 and self.params['bs_prior'] == 'all':
-                            en_bs = bs_utils.bs_prior(Nbs, mean=en_mean, sdev=en_mean/2, seed=str((key, f"e{n}")), dist='lognormal')
+                            en_bs = bs_utils.bs_prior(Nbs, mean=en_mean, sdev=en_mean/2, seed=str((key, f"e{n}"+seed)), dist='lognormal')
                             s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
-                            zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
+                            zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}"+seed)))
                             en    = np.log(en_bs[nbs-1])
                             zn    = zn_bs[nbs-1]
                         else:
@@ -510,9 +516,9 @@ class Fit:
                     dE_elastic = self.params["dE_elastic"]
                     for n in range(1,1 + self.r_n_el):
                         if nbs > 0:
-                            en_bs = bs_utils.bs_prior(Nbs, mean=dE_elastic, sdev=dE_elastic/2, seed=str((key, f"e_el{n}")), dist='lognormal')
+                            en_bs = bs_utils.bs_prior(Nbs, mean=dE_elastic, sdev=dE_elastic/2, seed=str((key, f"e_el{n}"+seed)), dist='lognormal')
                             s_z = bs_w_fac * self.posterior[(key, f"z_el{n}")].sdev
-                            zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_el{n}")))
+                            zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_el{n}"+seed)))
                             en    = np.log(en_bs[nbs-1])
                             zn    = zn_bs[nbs-1]
                         else:
@@ -527,9 +533,9 @@ class Fit:
                             if nbs > 0:
                                 dE    = np.exp(self.posterior[(key, f"e{n}")])
                                 en_bs = bs_utils.bs_prior(Nbs, mean=dE.mean, sdev=bs_w_fac*dE.sdev,
-                                                          seed=str((key, f"e{n}")), dist='lognormal')
+                                                          seed=str((key, f"e{n}"+seed)), dist='lognormal')
                                 s_z   = bs_w_fac * self.posterior[(key, f"z{n}")].sdev
-                                zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}")))
+                                zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z{n}"+seed)))
                                 en    = en_bs[nbs-1]
                                 zn    = zn_bs[nbs-1]
                             else:
@@ -555,9 +561,9 @@ class Fit:
                                     s_e = sig_factor * e0
                                     if nbs > 0 and self.params['bs_prior'] == 'all':
                                         # deltaE gets normal, not lognormal
-                                        en_bs = bs_utils.bs_prior(Nbs, mean=0, sdev=s_e, seed=str((key, f"e_{n1}_{n2}")))
+                                        en_bs = bs_utils.bs_prior(Nbs, mean=0, sdev=s_e, seed=str((key, f"e_{n1}_{n2}"+seed)))
                                         s_z   = bs_w_fac * self.posterior[(key, f"z_{n1}_{n2}")].sdev
-                                        zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_{n1}_{n2}")))
+                                        zn_bs = bs_utils.bs_prior(Nbs, mean=1, sdev=s_z, seed=str((key, f"z_{n1}_{n2}"+seed)))
                                         en    = en_bs[nbs-1]
                                         zn    = zn_bs[nbs-1]
                                     else:
@@ -624,7 +630,7 @@ class Fit:
             y0[key_ratio] = numerator / denominator
             y0[key_nucl0] = self.data[k0][x[key_nucl0]]
             y0[key_nucl1] = self.data[k1][x[key_nucl1]]
-
+            #import IPython; IPython.embed()
             if svdcut:
                 if 'svdcut' not in dir(self) or ('svdcut' in dir(self) and key_ratio not in self.svdcut):
                     ysvd[key_ratio] = self.bsdata[key][x[key_ratio]]
@@ -752,11 +758,35 @@ class Fit:
                     p0[subset[0]] = {k:v.mean for k,v in result.p.items()}
                 else:
                     p0_bs = {k:p0[subset[0]][k] for k in prior}
-                    result = lsqfit.nonlinear_fit(
-                        data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, 
-                        maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
-                    )
-
+                    try:
+                        result = lsqfit.nonlinear_fit(
+                            data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, 
+                            maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
+                        )
+                    except Exception as e:
+                        print(e)
+                        print('trying new BS prior_mean')
+                        prior = self.set_priors(prior, data=(x, y0), nbs=nbs, type="auto", seed='2')
+                        result = lsqfit.nonlinear_fit(
+                            data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, 
+                            maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
+                        )
+                        '''
+                        have_result = False
+                        svdcut = 1e-11
+                        while not have_result:
+                            try:
+                                result = lsqfit.nonlinear_fit(
+                                    data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, 
+                                    maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
+                                )
+                                have_result = True
+                            except:
+                                if svdcut <= 1e-4:
+                                    svdcut = 10 * svdcut
+                                else:
+                                    sys.exit('we tried up to svdcut = %e' %svdcut)
+                        '''
                 if ndraws == 0:
                     self.plot.plot_result(result, subset)
                 stats = dict()

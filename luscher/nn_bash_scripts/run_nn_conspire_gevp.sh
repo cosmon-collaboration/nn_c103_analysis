@@ -3,8 +3,10 @@
 ratio="False"
 nn_iso='singlet'
 e=0
+block=8
 
-for gevp_t in "3-6" "3-8" "4-8" "4-10" "5-10" "5-12" "6-10" "6-12"; do
+#for gevp_t in "3-6" "3-8" "4-8" "4-10" "5-10" "5-12" "6-10" "6-12"; do
+for gevp_t in "5-10" "5-11" "5-12" "5-13" "5-14" "6-10" "6-11" "6-12" "6-13" "6-14" "7-13" "7-14"; do
     t0=${gevp_t%-*}
     td=${gevp_t#*-}
     gevp="${t0}-${td}"
@@ -13,7 +15,6 @@ for gevp_t in "3-6" "3-8" "4-8" "4-10" "5-10" "5-12" "6-10" "6-12"; do
         for t0_N in 3 4 5 7; do
             nucleon="n${n_N}_t_${t0_N}-20"
             for t in $(seq 2 11); do
-                block=2
                 result="result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}_block${block}_bsPrior-gs.pickle"
                 echo ""
                 echo $result

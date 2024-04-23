@@ -22,7 +22,7 @@ def params():
     p["td"] = 10
     p['t_norm'] = 3
 
-    p["block"] = 2
+    p["block"] = 8
 
     p['svd_study'] = False
     p['svdcut']    = 1e-8
@@ -49,7 +49,7 @@ def params():
     p["nstates"]     = 3
     p["r_n_inel"]    = 2
     p["r_n_el"]      = 0
-    p["trange"]      = {"N": [5, 20], "R": [5, 15]}
+    p["trange"]      = {"N": [4, 20], "R": [4, 15]}
 
     p["ampi"] = 0.310810
     p["amn"]  = 0.70262

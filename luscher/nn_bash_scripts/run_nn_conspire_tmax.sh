@@ -3,7 +3,7 @@
 ratio="False"
 nn_iso='singlet'
 e=0
-block=2
+block=8
 
 #for gevp_t in "5-10" "5-12" "6-10" "6-12"; do
 for gevp_t in "5-10"; do
