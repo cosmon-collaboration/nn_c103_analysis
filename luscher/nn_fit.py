@@ -60,6 +60,11 @@ class Fit:
         else:
             self.block = 1
 
+        if 't_norm' in self.params:
+            self.t_norm = self.params['t_norm']
+        else:
+            self.t_norm = self.params['t0']
+
         self.plot = Plot(self.params)
         self.func = Functions(self.params)
         self.data, self.irrep_dim = self.gevp_correlators()
@@ -83,7 +88,7 @@ class Fit:
                 self.r_n_inel = self.params['r_n_inel']
 
         nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
-        filename = f"NN_{nn}_t0-td_{self.params['t0']}-{self.params['td']}"
+        filename = f"NN_{nn}_tnorm{self.t_norm}_t0-td_{self.params['t0']}-{self.params['td']}"
         filename = f"{filename}_N_n{self.nstates}"
         filename = f"{filename}_t_{self.params['trange']['N'][0]}-{self.params['trange']['N'][1]}"
         filename = f"{filename}_NN_{self.params['version']}"
@@ -390,15 +395,11 @@ class Fit:
 
         t0 = self.params["t0"]
         td = self.params["td"]
-        if 't_norm' in self.params:
-            t_norm = self.params['t_norm']
-        else:
-            t_norm = self.params['t0']
         nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
         if self.block != 1:
-            datapath = f"./data/gevp_{nn}_tnorm{t_norm}_{t0}-{td}_block{self.block}.pickle"
+            datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{t0}-{td}_block{self.block}.pickle"
         else:
-            datapath = f"./data/gevp_{nn}_tnorm{t_norm}_{t0}-{td}.pickle"
+            datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{t0}-{td}.pickle"
         if path.exists(datapath) and self.params["bootstrap"] is False:
             print("Read data from gvar dump")
             gvdata = gv.load(datapath)
