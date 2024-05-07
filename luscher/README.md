@@ -24,6 +24,7 @@ The analysis proceeds in 3 steps:
 The analysis code requires a few Python libraries to work.  The version of each library with which this code has been tested are
 - Python: 3.9.16
 - numpy: 1.23.5
+- opt_einsum: v3.3.0
 - scipy: 1.10.0
 - matplotlib: 3.6.3
 - h5py: 3.7.0

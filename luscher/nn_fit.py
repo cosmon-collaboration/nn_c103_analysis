@@ -44,6 +44,7 @@ def block_data(data, bl):
 class Fit:
     def __init__(self, params=None):
         print('numpy:',      np.__version__)
+        print('opt_einsum:', opt_einsum.__version__)
         print('scipy:',      sp.__version__)
         print('matplotlib:', sys.modules[plt.__package__].__version__)
         print('h5py:',       h5.__version__)
