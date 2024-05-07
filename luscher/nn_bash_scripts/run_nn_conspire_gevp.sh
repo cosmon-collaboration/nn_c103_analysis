@@ -15,7 +15,7 @@ for gevp_t in "5-10" "5-11" "5-12" "5-13" "5-14" "6-10" "6-11" "6-12" "6-13" "6-
         for t0_N in 3 4 5 7; do
             nucleon="n${n_N}_t_${t0_N}-20"
             for t in $(seq 2 11); do
-                result="result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}_block${block}_bsPrior-gs.pickle"
+                result="result/NN_${nn_iso}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}_block${block}.pickle"
                 echo ""
                 echo $result
                 if [[ ! -e $result ]]; then
