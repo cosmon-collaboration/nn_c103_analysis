@@ -21,8 +21,6 @@ def main():
                         help=       'add optimal fit result')
 
     # NN info
-    parser.add_argument('--nn_iso', type=str, default='singlet',
-                        help=       'NN system: singlet or triplet [%(default)s]')
     parser.add_argument('--n_N',    nargs='+', type=int, default=[3],
                         help=       'number of exponentials in single nucleon to sweep over %(default)s')
     parser.add_argument('--nn_el',  nargs='+', default=[0],
@@ -54,7 +52,7 @@ def main():
 
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
-    nn_file  = 'NN_{nn_iso}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
+    nn_file  = 'NN_{nn_iso}_{t_norm}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
     nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+block
     if 'bsPrior' in args.optimal:
         bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
@@ -63,7 +61,11 @@ def main():
         bsPrior = ''
     nn_file += '.pickle'
 
-    nn_dict = { 'N_t':N_t, 'nn_iso':args.nn_iso, }
+    nn_iso    = args.optimal.split('/')[-1].split('_')[1]
+    tnorm     = args.optimal.split('/')[-1].split('_')[2]
+    gevp_plot = args.optimal.split('t0-td_')[1].split('_')[0]
+
+    nn_dict = { 'N_t':N_t, 't_norm':tnorm, 'nn_iso':nn_iso, }
 
     nn_model = 'N_n{N_inel}_NN_{nn_model}_e{nn_el}'
 
@@ -106,7 +108,6 @@ def main():
     optimal_model = nn_model.format(**optimal_model)
 
     opt_tmin  = int(args.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
-    gevp_plot = args.optimal.split('t0-td_')[1].split('_')[0]
     opt_clr   = color[gevp_plot]
 
     # get data keys
@@ -116,7 +117,7 @@ def main():
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
 
-    nn_data = gv.load('data/gevp_'+args.nn_iso+'_'+gevp_plot+block+'.pickle')
+    nn_data = gv.load('data/gevp_'+nn_iso+'_'+tnorm+'_'+gevp_plot+block+'.pickle')
 
     plt.ion()
     gevp_results = {}
