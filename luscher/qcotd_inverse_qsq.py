@@ -21,9 +21,17 @@ sys.path.append(BMat_path)
 import BMat
 
 def main():
-    parser = argparse.ArgumentParser(description='Perform ERE analysis')
-    parser.add_argument('fit_result',        default='deuteron',
-                        help=                'deuteron or dineutron? [%(default)s]')
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                     description='Fit parameters of an effective range expansion (ERE) to the q_cm**2 values\n'\
+                                        +'determined in a fit of the NN and N correlation functions.  This code has one required\n'\
+                                        +'argument, which is an input file of an expected form that contains bootstrap resamplings\n'\
+                                        +'of the ground state NN and N energy spectrum in various irreps (channels).  An example\n'\
+                                        +'of an input file in the Isospin=0, Spin=1 channel is\n\n'\
+                                        +'    result/NN_singlet_tnorm3_t0-td_5-10_N_n3_t_4-20_NN_conspire_e0_t_4-15_ratio_False_block8_bsPrior-all.pickle_bs\n\n'\
+                                        +'The code works for both the deuteron and di-neutron (Isospin=1, Spin=singlet) irreps.\n'\
+                                        +'The optional command line arguments all the user to conrol various features in the analysis.')
+    parser.add_argument('fit_result',        help='bootstrap pickle file from analysis')
+
     parser.add_argument('--ere_order',       default=2, type=int,
                         help=                'max order in ERE expansion, [%(default)s]')
     parser.add_argument('--irrep_avg',       default=True, action='store_false',
@@ -42,6 +50,9 @@ def main():
 
     args = parser.parse_args()
     print(args)
+
+    if args.Nbs:
+        sys.exit('This feature of controlling the number of bootstrap samples (Nbs) is not yet supported')
 
     qsq_fit = qsqFit(args)
     plt.ion()
