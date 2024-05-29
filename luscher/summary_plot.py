@@ -4,23 +4,36 @@ import os
 
 import gvar as gv
 
-def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', format='pdf'):
-    irreps = {('0', 'T1g'):0,
-              ('1', 'A2') :10, 
-              ('1', 'E')  :20,
-              ('2', 'A2') :30, 
-              ('2', 'B1') :40,  
-              ('2', 'B2') :50,
-              ('3', 'A2') :60, 
-              ('3', 'E')  :70,
-              ('4', 'A2') :80, 
-              ('4', 'E')  :90
-    }
-    irrep_lbls = [
-        r'$T_{1g}(0)$', r'$A_2(1)$', r'$E(1)$',
-        r'$A_2(2)$', r'$B_1(2)$', r'$B_2(2)$',
-        r'$A_2(3)$', r'$E(3)$', r'$A_2(4)$', r'$E(4)$'
-    ]
+def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fig='summary', format='pdf'):
+    if spin == 'singlet':
+        irreps = {('0', 'T1g'):0,
+                ('1', 'A2') :10, 
+                ('1', 'E')  :20,
+                ('2', 'A2') :30, 
+                ('2', 'B1') :40,  
+                ('2', 'B2') :50,
+                ('3', 'A2') :60, 
+                ('3', 'E')  :70,
+                ('4', 'A2') :80, 
+                ('4', 'E')  :90
+                }
+    elif spin == 'triplet':
+        irreps = {('0', 'A1g'):0,
+                  ('1', 'A1') :10,
+                  ('2', 'A1') :20,
+                  ('3', 'A1') :30,
+                  ('4', 'A1') :40
+                  }
+    if spin == 'singlet':
+        irrep_lbls = [
+            r'$T_{1g}(0)$', r'$A_2(1)$', r'$E(1)$',
+            r'$A_2(2)$', r'$B_1(2)$', r'$B_2(2)$',
+            r'$A_2(3)$', r'$E(3)$', r'$A_2(4)$', r'$E(4)$'
+        ]
+    elif spin == 'triplet':
+        irrep_lbls = [
+            r'$A_{1g}(0)$', r'$A_1(1)$', r'$A_1(2)$', r'$A_1(3)$', r'$A_1(4)$'
+        ]
     #import IPython; IPython.embed()
     #plt.ion()
     plt.figure(fig, figsize=(6, 6/1.618))
@@ -41,7 +54,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, fig='summary', for
         dE_lab = DE_i / mN.mean
 
         for i,e in enumerate(Ecm_mN):
-            if irrep in [('0', 'T1g')] and int(k.split('_')[-1]) == 0:
+            if irrep in [('0', 'T1g'), ('0', 'A1g')] and int(k.split('_')[-1]) == 0:
                 lbl = str(all_lbls[i])
                 if i == 0:
                     lbl = lbl0 + lbl

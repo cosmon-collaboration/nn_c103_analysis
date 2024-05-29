@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--ratio',  default=False, action='store_true',
                         help=       'fit from RATIO correlator? [%(default)s]')
     parser.add_argument('--gevp',   nargs='+', type=str, 
-                        default=    ['4-10','5-10','5-12', '6-10', '6-12'],
+                        default=    ['5-10','5-12', '5-14', '6-10', '6-12', '6-14'],
                         help=       'list of GEVP times in t0-td format %(default)s')
     parser.add_argument('--tmin',   nargs='+', type=int, default=range(2,10),
                         help=       'values of t_min in NN fit [%(default)s]')
@@ -42,9 +42,12 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'g', '5-10':'r', '5-12':'magenta', '6-10':'orange', '6-12':'firebrick',}
+    color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'g', 
+             '5-10':'r', '5-12':'magenta', '5-14':'yellow',
+             '6-10':'orange', '6-12':'firebrick','6-14':'b'}
     t_color = {'2':'gray', '3':'r', '4':'orange', '5':'yellow', '6':'g', '7':'b', '8':'magenta', '9':'k'}
 
+    result_dir = args.optimal.split('/')[0]
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0].split('.')[0]
     else:
@@ -76,15 +79,27 @@ def main():
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    if args.test:
-        states = [('0', 'T1g', 0)]
-    else:
-        states = [
-            ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
-            ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
-            ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
-            ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
-        ]
+    if nn_iso == 'singlet':
+        if args.test:
+            states = [('0', 'T1g', 0)]
+        else:
+            states = [
+                ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
+                ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
+                ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
+                ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
+            ]
+    elif nn_iso == 'triplet':
+        if args.test:
+            states = [('0', 'A1g', 0)]
+        else:
+            states = [
+                ("0", "A1g", 0), ("0", "A1g", 1),
+                ("1", "A1", 0),  ("1", "A1", 1),
+                ("2", "A1", 0),  ("2", "A1", 1),
+                ("3", "A1", 0),  ("3", "A1", 1),
+                ("4", "A1", 0),  ("4", "A1", 1),
+            ]
 
     print('\nloading optimal fit:',args.optimal)
     post_optimal  = gv.load(args.optimal)
@@ -192,14 +207,16 @@ def main():
 
     #import IPython; IPython.embed()
     # make summary plot
-    try:
+    if nn_iso == 'singlet':
         mN = gevp_results['0_T1g_0']['E1'][0]
-    except:
-        pass# add I=1 nn version
+    elif nn_iso == 'triplet':
+        mN = gevp_results['0_A1g_0']['E1'][0]
     # plot GEVP
-    summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, lbl0=r'GEVP: $t_0-t_d$=', fig='nn_gevp_summary')
+    summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, spin=nn_iso, 
+                             lbl0=r'GEVP: $t_0-t_d$=', fig='nn_gevp_summary')
     # plot tmin
-    summary_plot.summary_ENN(tmin_results, mN, tmin_lbls, t_color, lbl0=r'$t_{\rm min}^{NN}=$', fig='nn_tmin_summary')
+    summary_plot.summary_ENN(tmin_results, mN, tmin_lbls, t_color, spin=nn_iso,
+                             lbl0=r'$t_{\rm min}^{NN}=$', fig='nn_tmin_summary')
 
     plt.ioff()
     plt.show()
@@ -233,6 +250,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     #axnn.legend(loc=1, ncol=len(arg.gevp)+1, fontsize=10, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = {
+        # isosinglet
         ('0', 'T1g', 0):(-0.0021,0.0005), ('0', 'T1g', 1):(-0.0051,0.0005),
         ('1', 'A2', 0) :(-0.0046,0.0005), ('1', 'A2', 1) :(-0.0041,0.0005),
         ('2', 'A2', 0) :(-0.0066,0.0005), ('3', 'A2', 0) :(-0.0081,0.0005),
@@ -240,9 +258,16 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
         ('2', 'B1', 0) :(-0.0061,0.0005), ('2', 'B2', 0) :(-0.0061,0.0005),
         ('2', 'B2', 3) :(-0.0056,0.0005), ('1', 'E', 0)  :(-0.0031,0.0005),
         ('1', 'E', 1)  :(-0.0061,0.0005), ('3', 'E', 0)  :(-0.0081,0.0005),
-        ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005)
+        ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005),
+        # isotriplet
+        ('0', 'A1g', 0):(-0.0021,0.0005), ('0', 'A1g', 1):(-0.0051,0.0005),
+        ('1', 'A1',  0):(-0.0021,0.0005), ('1', 'A1',  1):(-0.0051,0.0005),
+        ('2', 'A1',  0):(-0.0046,0.0005), ('2', 'A1',  1):(-0.001,0.0005),
+        ('3', 'A1',  0):(-0.0046,0.0005), ('3', 'A1',  1):(-0.0051,0.0005),
+        ('4', 'A1',  0):(-0.0021,0.0005), ('4', 'A1',  1):(-0.0051,0.0005),
     }
     nn_lim = {
+        # isosinglet
         ('0', 'T1g', 0):(1.4016,1.4170), ('0', 'T1g', 1):(1.4216,1.4360),
         ('1', 'A2', 0) :(1.4111,1.4255), ('1', 'A2', 1) :(1.4351,1.4495),
         ('2', 'A2', 0) :(1.4216,1.4370), ('3', 'A2', 0) :(1.4316,1.4470),
@@ -250,7 +275,13 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
         ('2', 'B1', 0) :(1.4216,1.4370), ('2', 'B2', 0) :(1.4201,1.4345),
         ('2', 'B2', 3) :(1.4451,1.4595), ('1', 'E', 0)  :(1.4126,1.4270),
         ('1', 'E', 1)  :(1.4326,1.4470), ('3', 'E', 0)  :(1.4301,1.4445),
-        ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595)
+        ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595),
+        # isotriplet
+        ('0', 'A1g', 0):(1.4016,1.4170), ('0', 'A1g', 1):(1.4216,1.4360),
+        ('1', 'A1',  0):(1.4131,1.4275), ('1', 'A1',  1):(1.4351,1.4495),
+        ('2', 'A1',  0):(1.4216,1.4370), ('2', 'A1',  1):(1.4271,1.4415),
+        ('3', 'A1',  0):(1.4351,1.4495), ('3', 'A1',  1):(1.4391,1.4535),
+        ('4', 'A1',  0):(1.4251,1.4395), ('4', 'A1',  1):(1.4461,1.4605),
     }
 
     axnnR.set_ylim(nnr_lim[state])
@@ -283,11 +314,16 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
         'N_n3_NN_conspire_e0':'*',
         'N_n2_NN_conspire_e0':'o',
     }
-    color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'g', '5-10':'r', '5-12':'magenta', '6-10':'orange', '6-12':'firebrick',}
-    shift = { '3-6' :-0.2, '3-8' :-0.15, '4-8' :-0.1, '4-10':-0.05, '5-10':0.05, '5-12':0.1, '6-10':0.15, '6-12':0.2}
+    color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'g', 
+             '5-10':'r', '5-12':'magenta', '5-14':'yellow',
+             '6-10':'orange', '6-12':'firebrick','6-14':'b'}
+    shift = { '3-6' :-0.2, '3-8' :-0.15, '4-8' :-0.1, '4-10':-0.05, 
+             '5-10':0.05, '5-12':0.1, '5-14':0,
+             '6-10':0.15, '6-12':0.2, '6-14':0.25}
 
     opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
     opt_gevp = arg.optimal.split('t0-td_')[1].split('_')[0]
+    result_dir = arg.optimal.split('/')[0]
 
     e      = []
     e_nn   = []
@@ -319,7 +355,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
             else:
                 lbl = ''
 
-            fit_file = 'result/'+nnFile.format(**nnDict)
+            fit_file = result_dir+'/'+nnFile.format(**nnDict)
             if os.path.exists(fit_file):
                 if arg.debug:
                     print('\nDEBUG: fit file', fit_file)
