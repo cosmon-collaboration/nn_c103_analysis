@@ -134,8 +134,20 @@ class qsqFit:
             if not self.args.irrep_avg:
                 self.irrep_grps = { k:[(1, k)] for k in self.states}
         elif self.channel == 'dineutron':
-            self.states = []
-            self.irrep_grps = []
+            self.states = [
+                ("0", "A1g", 0),
+                ("1", "A1", 0),
+                ("2", "A1", 0),
+                ("3", "A1", 0),
+                ("4", "A1", 0)
+            ]
+            self.irrep_grps = {
+                ('0', 'A1g' , 0):   [(1,   ('0', 'A1g', 0))],
+                ('1', 'A1' , 0):   [(1,   ('1', 'A1', 0))],
+                ('2', 'A1' , 0):   [(1,   ('2', 'A1', 0))],
+                ('3', 'A1' , 0):   [(1,   ('3', 'A1', 0))],
+                ('4', 'A1' , 0):   [(1,   ('4', 'A1', 0))],
+            }
             sys.exit('add dineutron states')
 
         # load the data
@@ -144,7 +156,7 @@ class qsqFit:
         self.make_qcotd()
         # prepare data for fit (cut Psq > Psq_max and do irrep averaging)
         self.prepare_data()
-
+    
     def load_data(self):
         fit_results = gv.load(self.args.fit_result)
         # load the nucleon mass
@@ -167,7 +179,6 @@ class qsqFit:
                     st2   = ((k[0][0], 'N', s2), 'e0')
                     en1   = np.array(fit_results[st1])
                     en2   = np.array(fit_results[st2])
-
                     data[state]['dE_NN'] = de_nn
                     data[state]['Psq']   = int(Psq)
                     data[state]['E_N1']  = en1
@@ -188,7 +199,7 @@ class qsqFit:
                 return not (JtimesTwo==2 and Lp==0 and L==0 and chanp==0 
                             and chan==0 and SptimesTwo==2 and StimesTwo==2)
             
-        elif self.channel == 'dineutron':
+        elif self.channel == 'dineutron': 
             def isZero(JtimesTwo, Lp, SptimesTwo, chanp, L, StimesTwo, chan):
                 return not (JtimesTwo==0 and Lp==0 and L==0 and chanp==0 
                             and chan==0 and SptimesTwo==0 and StimesTwo==0)
@@ -259,8 +270,8 @@ class qsqFit:
                                         irrep, chanList, 
                                         [0,], self.Kinv, True)
             boxQ.setMassesOverRef(0, 1, 1)
-            self.qcotd[irrep_grp]['qcotd_lab'] = np.zeros(self.Nbs +1)
-            self.qcotd[irrep_grp]['qcotd_cm']  = np.zeros(self.Nbs +1)
+            self.qcotd[irrep_grp]['qcotd_lab'] = np.zeros(self.Nbs+1)
+            self.qcotd[irrep_grp]['qcotd_cm']  = np.zeros(self.Nbs+1)
             for bs in range(self.Nbs +1):
                 boxQ.setRefMassL(self.data['mN'][bs]*self.args.L)
                 self.qcotd[irrep_grp]['qcotd_lab'][bs] = boxQ.getBoxMatrixFromElab(E_NN[bs] / self.data['mN'][bs]).real
@@ -311,7 +322,7 @@ class qsqFit:
         if n == 0:
             p = [0.2]
         if n == 1:
-            p = [0.2, 5]
+            p = [0.2, 5] 
         if n == 2:
             p = [0.2, 5, -5]
         if n == 3:

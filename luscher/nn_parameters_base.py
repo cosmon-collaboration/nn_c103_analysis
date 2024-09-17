@@ -9,10 +9,15 @@ def params():
 
     p = dict()
     p["debug"]   = False
-    p["verbose"] = False
+    p["verbose"] = True
     p["latex"]   = True
 
-    p["fpath"] = {"nucleon": "./data/nucleon_S0.hdf5", "nn": "./data/triplet_S0_avg_mom.hdf5"}
+    p["fpath"] = {"nucleon": "./data/cls21_c103_r005-8_nucleon_S0.hdf5",'nn':0,'isospin':'singlet'}
+    #"nn": "./data/cls21_c103_r005-8_triplet_S0_avg_mom.hdf5"
+    if p["fpath"]['isospin'] == 'singlet':
+        p["fpath"]['nn'] = "./data/cls21_c103_r005-8_singlet_S0_avg_mom.hdf5"
+    elif p["fpath"]['isospin'] == 'triplet':
+        p["fpath"]['nn'] = "./data/cls21_c103_r005-8_triplet_S0_avg_mom.hdf5"
 
     p["save"] = True
 
@@ -27,21 +32,21 @@ def params():
     p['svd_study'] = False
     p['svdcut']    = 1e-8
 
-    p["bootstrap"] = False
-    p['Nbs_max']   = 5000
+    p["bootstrap"] = True
+    p['Nbs_max']   = 1000
     p['bs_seed']   = 'nn_c103_b%d' %p["block"]
-    p["nbs"]       = 5000
+    p["nbs"]       = 1000
     p["nbs_sub"]   = 100
     p['bs0_width'] = 5
-    p['bs_prior']  = 'all' # 'gs' or 'all': 
+    p['bs_prior']  = 'all'# 'gs' or 'all': 
                           # randomize prior mean for gs or all priors
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
-    p["sig_e0"]     = 1 # multiplication factor for meff[autotime] for prior width for deltaE_gs
-    p["sig_enn"]    = 1 # multiplication factor for meff[autotime] for prior width for deltaE_nn
+    p["sig_e0"]     = 1  # multiplication factor for meff[autotime] for prior width for deltaE_gs
+    p["sig_enn"]    = 1  # multiplication factor for meff[autotime] for prior width for deltaE_nn
     p["positive_z"] = True
 
-    p["ratio"]       = True
+    p["ratio"]       = False
     p["ratio_type"]  = "data"
     p["irreps"]      = "irreps_ben" #["irreps", "irreps_ben"]
     p["version"]     = 'conspire'
@@ -55,7 +60,12 @@ def params():
     p["amn"]  = 0.70262
     p["dE_elastic"] = 2 * np.sqrt(p["amn"]**2 + 1 * (2 * np.pi / 48) ** 2) -2*p["amn"]
 
-    if 'singlet' in p["fpath"]["nn"]:
+    p['continuum_disp'] = True
+    p['vs_mpi'] = False #whether to rescale to mpi for plots
+    p['ere_order'] = 2
+    p['ere_fit'] = './result/NN_triplet_tnorm3_t0-td_3-6_N_n2_t_5-20_NN_conspire_e0_t_7-15_ratio_False_bsPrior-all.pickle_bs'
+
+    if 'singlet' in p["fpath"]["isospin"]:
         p["masterkey"] = [
             [("0", "T1g", 0)], [('0', 'T1g', 1)],
             [('1', 'A2', 0)], [('1', 'A2', 1)], 
@@ -67,17 +77,17 @@ def params():
 
         #p["masterkey"] = [[("0", "T1g", 0)]]
 
-    elif 'triplet' in p["fpath"]["nn"]:
+    elif 'triplet' in p["fpath"]["isospin"]:
         p["masterkey"] = []
-        for n in range(2):#6):
+        for n in range(6):#6):
             p["masterkey"].append([("0", "A1g", n)])
-        for n in range(3):#10):
+        for n in range(10):#10):
             p["masterkey"].append([("1", "A1", n)])
-        for n in range(6):#21):
+        for n in range(21):#21):
             p["masterkey"].append([("2", "A1", n)])
-        for n in range(3):#9):
+        for n in range(9):#9):
             p["masterkey"].append([("3", "A1", n)])
-        for n in range(4):#10):
+        for n in range(10):#10):
             p["masterkey"].append([("4", "A1", n)])
     ''' The masterkey gives a list of lists of states to fit in a given fit.
         The states of interest are listed as

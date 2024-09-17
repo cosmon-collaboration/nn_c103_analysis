@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--ratio',  default=False, action='store_true',
                         help=       'fit from RATIO correlator? [%(default)s]')
     parser.add_argument('--gevp',   nargs='+', type=str, 
-                        default=    ['5-10','5-12', '5-14', '6-10', '6-12', '6-14'],
+                        default=    [ '5-10','5-14', '6-10', '7-13', '8-15'],
                         help=       'list of GEVP times in t0-td format %(default)s')
     parser.add_argument('--tmin',   nargs='+', type=int, default=range(2,10),
                         help=       'values of t_min in NN fit [%(default)s]')
@@ -42,9 +42,11 @@ def main():
     args = parser.parse_args()
     print(args)
 
+    # "4-8" "5-10" "5-14" "6-10" "7-13" "8-15"
     color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'g', 
              '5-10':'r', '5-12':'magenta', '5-14':'yellow',
-             '6-10':'orange', '6-12':'firebrick','6-14':'b'}
+             '6-10':'orange', '6-12':'firebrick','6-14':'b',
+             '7-13':'green', '8-15':'violet'}
     t_color = {'2':'gray', '3':'r', '4':'orange', '5':'yellow', '6':'g', '7':'b', '8':'magenta', '9':'k'}
 
     result_dir = args.optimal.split('/')[0]
@@ -131,8 +133,10 @@ def main():
         for k in post_optimal:
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
-
-    nn_data = gv.load('data/gevp_'+nn_iso+'_'+tnorm+'_'+gevp_plot+block+'.pickle')
+    print("Optimal")
+    print(optimal_p)
+    print(fit_keys)
+    nn_data = gv.load('./data/gevp_'+nn_iso+'_'+tnorm+'_'+gevp_plot+block+'.pickle')
 
     plt.ion()
     gevp_results = {}
@@ -142,14 +146,14 @@ def main():
     for q in states:
         start_time = time.perf_counter()
         gevp_results['_'.join([str(k) for k in q])] = {'DE':[],'E1':[],'E2':[]}
+        #print("gevp_dict",gevp_results)
         tmin_results['_'.join([str(k) for k in q])] = {'DE':[],'E1':[],'E2':[]}
-        print(q)
+        #print("state",q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
         ax_nn  = plt.axes([0.15, 0.66, 0.84, 0.33])
         ax_nnR = plt.axes([0.15, 0.33, 0.84, 0.33])
         ax_Q   = plt.axes([0.15, 0.13, 0.84, 0.20])
-
         # plot fit on data
         params_q = dict(optimal_p)
         params_q['ratio'] = args.ratio
@@ -157,14 +161,20 @@ def main():
             if k[0][0] == q:
                 #print(k)#,post_optimal[k])
                 params_q[k] = post_optimal[k]
+                #print("params_q",params_q[k])
                 if k[1] == 'e0' and k[0][1] == 'R':
-                    e0_opt = post_optimal[k]
-                    k_opt  = k[0]
-                    k_n    = k[0][2]
+                    e0_opt = post_optimal[k] #Delta E
+                    gevp_results['_'.join([str(k) for k in q])]['DE'].append(e0_opt )
+                    #print(e0_opt)
+                    k_opt  = k[0] # the psq,irrep,level
+                    k_n    = k[0][2] #level 
                     k_n1   = (k[0][0],"N",k[0][2][0])
                     k_n2   = (k[0][0],"N",k[0][2][1])
                     e1_opt = post_optimal[(k_n1, "e0")]
+                    gevp_results['_'.join([str(k) for k in q])]['E1'].append(e1_opt )
+                    #print(e1_opt)
                     e2_opt = post_optimal[(k_n2, "e0")]
+                    gevp_results['_'.join([str(k) for k in q])]['E2'].append(e2_opt )
                     #print(k, k_n1, k_n2)
         # plot fit on numerator
         fit_func = fitter.Functions(params_q)
@@ -205,11 +215,13 @@ def main():
         stop_time = time.perf_counter()
         print('\n%.0f seconds' %(stop_time - start_time))
 
+    print(gevp_results)
     #import IPython; IPython.embed()
     # make summary plot
     if nn_iso == 'singlet':
         mN = gevp_results['0_T1g_0']['E1'][0]
     elif nn_iso == 'triplet':
+        print(gevp_results['0_A1g_0'])
         mN = gevp_results['0_A1g_0']['E1'][0]
     # plot GEVP
     summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, spin=nn_iso, 
@@ -415,7 +427,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                     r_tmin['_'.join([str(k) for k in state])]['E2'].append(e2_opt)
                     
             else:
-                print('missing', fit_file)
+                pass#print('missing', fit_file)
 
             # delete gvars from memory
             gv.restore_gvar()

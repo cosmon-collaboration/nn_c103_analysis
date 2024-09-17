@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ratio="False"
-nn_iso='singlet'
+nn_iso='triplet'
 tnorm=3
 e=0
 
@@ -15,7 +15,7 @@ for n_N in 3 4; do
     for block in 1 2 4 8 16; do
         for t0_N in 3 4 5; do
             nucleon="n${n_N}_t_${t0_N}-20"
-            for t in $(seq 2 11); do
+            for t in $(seq 3 11); do
                 if [[ $block -eq 1 ]]; then
                     result="result/NN_${nn_iso}_tnorm${tnorm}_t0-td_${gevp}_N_${nucleon}_NN_conspire_e${e}_t_${t}-15_ratio_${ratio}.pickle"
                 else
@@ -24,8 +24,8 @@ for n_N in 3 4; do
                 echo ""
                 echo $result
                 if [[ ! -e $result ]]; then
-                    sed   "s/triplet_S0/${nn_iso}_S0/" nn_parameters_base.py \
-                    | sed "s/t0\"\] = 5/t0\"\] = ${t0}/" \
+                    #sed   "s/triplet_S0/${nn_iso}_S0/" nn_parameters_base.py \
+                    sed "s/t0\"\] = 5/t0\"\] = ${t0}/" nn_parameters_base.py \
                     | sed "s/td\"\] = 10/td\"\] = ${td}/" \
                     | sed "s/t_norm\'\] = 3/t_norm\'\] = ${tnorm}/" \
                     | sed "s/block\"\] = 2/block\"\] = $block/" \
@@ -34,7 +34,7 @@ for n_N in 3 4; do
                     | sed "s/R\": \[3, 15\]/R\": \[$t, 15\]/" \
                     | sed "s/ratio\"]       = True/ratio\"]       = ${ratio}/" \
                     > nn_parameters.py
-                    python nn_fit.py
+                    python3 nn_fit.py
                 else
                     echo "  already fit"
                 fi

@@ -25,6 +25,8 @@ import nn_parameters as parameters
 import bs_utils
 
 def block_data(data, bl):
+    # function to block data 
+    # according to bootstrap data
     ''' data shape is [Ncfg, others]
         bl = block length in configs
     '''
@@ -43,51 +45,51 @@ def block_data(data, bl):
 
 class Fit:
     def __init__(self, params=None):
-        print('numpy:',      np.__version__)
-        print('opt_einsum:', opt_einsum.__version__)
-        print('scipy:',      sp.__version__)
-        print('matplotlib:', sys.modules[plt.__package__].__version__)
-        print('h5py:',       h5.__version__)
-        print('gvar:',       gv.__version__)
-        print('lsqfit:',     lsqfit.__version__)
+        # print('numpy:',      np.__version__)
+        # print('opt_einsum:', opt_einsum.__version__)
+        # print('scipy:',      sp.__version__)
+        # print('matplotlib:', sys.modules[plt.__package__].__version__)
+        # print('h5py:',       h5.__version__)
+        # print('gvar:',       gv.__version__)
+        # print('lsqfit:',     lsqfit.__version__)
         if params is None:
             self.params = parameters.params()
         else:
             self.params = params
 
-        if 'block' in self.params:
+        if 'block' in self.params: #data block multiplicative factor
             self.block = self.params['block']
         else:
             self.block = 1
 
-        if 't_norm' in self.params:
+        if 't_norm' in self.params: #normalization time for gevp
             self.t_norm = self.params['t_norm']
         else:
             self.t_norm = self.params['t0']
 
-        self.plot = Plot(self.params)
-        self.func = Functions(self.params)
-        self.data, self.irrep_dim = self.gevp_correlators()
-        self.ratio_denom = self.get_ratio_combinations()
+        self.plot = Plot(self.params)  #simple plots for correlators
+        self.func = Functions(self.params) #functions for fitting, ratio and exponentials
+        self.data, self.irrep_dim = self.gevp_correlators() #construct GEVP to extract data
+        self.ratio_denom = self.get_ratio_combinations() 
 
-        self.ratio = self.params['ratio']
+        self.ratio = self.params['ratio'] #True or False, fitting Ratio
 
-        self.version = self.params['version']
+        self.version = self.params['version'] #fitting form
         if self.version not in ['agnostic', 'conspire']:
             sys.exit('version must be in [ agnostic, conspire]')
 
-        self.nstates = self.params['nstates']
+        self.nstates = self.params['nstates'] # Number of higher states to fitß
         try:
             self.r_n_el = self.params['fit_choices'][key[0]]['r_n_el']
         except:
             self.r_n_el = self.params["r_n_el"]
-        if self.params['version'] == 'agnostic':
+        if self.params['version'] == 'agnostic': #agnostic fit takes number of inelastic fits
             try:
                 self.r_n_inel = self.params['fit_choices'][key[0]]['r_n_inel']
             except:
                 self.r_n_inel = self.params['r_n_inel']
-
-        nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
+        # implement isosinglet or tripletß
+        nn = self.params['fpath']['isospin']#self.params["fpath"]["nn"].split('/')[-1].split('_')[0]ß
         filename = f"NN_{nn}_tnorm{self.t_norm}_t0-td_{self.params['t0']}-{self.params['td']}"
         filename = f"{filename}_N_n{self.nstates}"
         filename = f"{filename}_t_{self.params['trange']['N'][0]}-{self.params['trange']['N'][1]}"
@@ -110,7 +112,7 @@ class Fit:
             bs_prior = self.params['bs_prior']
             filename = f"{filename}_bsPrior-{bs_prior}"
         # SVD study?
-        if self.params['svd_study']:
+        if self.params['svd_study']: #svd cut tests sensitivity of data to correlatiosn
             filename = f"{filename}_svdcut"
             if 'svdcut' in self.params:
                 svd = str(self.params['svdcut'])
@@ -165,7 +167,7 @@ class Fit:
                 self.plot.simple_plot(data, mom2)
         return data
 
-    def singlet_data(self):
+    def singlet_data(self): #singlet_data is function to extract data, either triplet or singlet
         if 'make_Hermitian' in self.params:
             self.make_Hermitian = self.params['make_Hermitian']
         else:
@@ -178,7 +180,7 @@ class Fit:
         for correlator in correlators:
             irrep = correlator.split("_")[0]
             mom2  = correlator.split("Psq")[1]
-            tag   = (mom2, irrep)
+            tag   = (mom2, irrep) # tags based on momentum and irrep
             corr  = file[f"{correlator}/data"][()]
             if self.make_Hermitian:
                 # restore Hermiticity of NN data
@@ -208,7 +210,7 @@ class Fit:
                     corr = corr_full
 
 
-            data[tag] = corr
+            data[tag] = corr #tags are keys here
         if self.block != 1:
             new_data = dict()
             for k in data:
@@ -217,7 +219,8 @@ class Fit:
 
         return data
 
-    def get_equivalent_momenta(self, file):
+
+    def gt_equivalent_momenta(self, file):
         correlators = file.keys()
         avglist = dict()
         dcorr = dict()
@@ -237,34 +240,15 @@ class Fit:
         import re
 
         fpath = self.params["fpath"]["nn"]
-
-        if fpath in ["./data/singlet_S0.hdf5"]:
-            file = h5.File(fpath, "r")
-            _, avglist = self.get_equivalent_momenta(file)
-            n_irrep = dict()
-            for tag in avglist:
-                oplist = list(file[f"/{avglist[tag][0]}"].attrs["opList"])
-                momlist = []
-                for idx, op in enumerate(oplist):
-                    mom = re.findall(r"P=\((.*?)\)", op)
-                    mom2 = [sum([int(i) ** 2 for i in m.split(",")]) for m in mom]
-                    irrep = [i.split(" ")[1] for i in re.findall(r"\[(.*?)\]", op)]
-                    if mom2[0] == 5:
-                        mom2[0] = f"5{irrep[0]}"
-                    if mom2[1] == 5:
-                        mom2[1] = f"5{irrep[1]}"
-                    momlist.append(mom2)
-                n_irrep[tag] = momlist
-        elif fpath in ["./data/singlet_S0_avg_mom.hdf5", "./data/triplet_S0_avg_mom.hdf5"]:
-            file = h5.File(fpath, "r")
-            n_irrep = dict()
-            correlators = file.keys()
-            for correlator in correlators:
-                irrep = correlator.split("_")[0]
-                mom2 = correlator.split("Psq")[1]
-                tag = (mom2, irrep)
-                n_irrep[tag] = [[i.decode('utf-8') for i in c] for c in
-                                file[f"{correlator}/" + self.params["irreps"]][()]]
+        file = h5.File(fpath, "r")
+        n_irrep = dict()
+        correlators = file.keys()
+        for correlator in correlators:
+            irrep = correlator.split("_")[0]
+            mom2 = correlator.split("Psq")[1]
+            tag = (mom2, irrep)
+            n_irrep[tag] = [[i.decode('utf-8') for i in c] for c in
+                            file[f"{correlator}/" + self.params["irreps"]][()]]
         return n_irrep
 
     def get_ratio_combinations(self):
@@ -294,6 +278,7 @@ class Fit:
     def make_bootstrap_list(self):
         try:
             ncfgs = len(self.nucleon_data()[0])
+            print("ncfgs",ncfgd)
             bslist = pd.read_csv(f"./data/bslist_{ncfgs}.csv", sep=";", header=0)
         except:
             from random import randint
@@ -325,17 +310,17 @@ class Fit:
     def gevp_correlators(self):
 
         def get_gevp_rotation(data, verbose=True):
-
-            t0 = self.params["t0"]
+            # single pivot method
+            t0 = self.params["t0"] 
             td = self.params["td"]
             drot = dict()
             for key in data:
                 if len(np.shape(data[key])) == 4:
-                    Ct  = np.average(data[key], axis=0)
+                    Ct  = np.average(data[key], axis=0) #taking average over the ncfgs axis
                     try:
-                        Ct0 = Ct[:,:, t0]
+                        Ct0 = Ct[:,:, t0] #choosing data at time slice
                         Ctd = Ct[:,:, td]
-                        Gt  = inv(sqrtm(Ct0)) @ Ctd @ inv(sqrtm(Ct0))
+                        Gt  = inv(sqrtm(Ct0)) @ Ctd @ inv(sqrtm(Ct0)) 
                         eval, evec = eigh(Gt)
                         drot[key]  = evec
                         if verbose:
@@ -359,9 +344,9 @@ class Fit:
         
         def do_gevp_rotation(verbose=True):
             nucleon = self.nucleon_data()
-            singlet = self.singlet_data()
+            singlet = self.singlet_data() #based on data in nn
 
-            allsing = {
+            allsing = { #key is (mom2,irrep)
                 key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
 
@@ -395,13 +380,14 @@ class Fit:
 
         t0 = self.params["t0"]
         td = self.params["td"]
-        nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
+        nn = self.params["fpath"]["isospin"]#self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
         if self.block != 1:
             datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{t0}-{td}_block{self.block}.pickle"
         else:
             datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{t0}-{td}.pickle"
         if path.exists(datapath) and self.params["bootstrap"] is False:
             print("Read data from gvar dump")
+            print(datapath)
             gvdata = gv.load(datapath)
             self.h5_bs = False
             if self.params['svd_study']:
@@ -1112,6 +1098,7 @@ class Functions:
 if __name__ == "__main__":
     fit = Fit()
     bs_p = parameters.params()
+
     if not bs_p['bootstrap']:
         print('bs fits: boot0')
         fit.fit(n_start=0,ndraws=0)

@@ -75,15 +75,27 @@ def main():
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    if args.test:
-        states = [('0', 'T1g', 0)]
-    else:
-        states = [
-            ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
-            ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
-            ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
-            ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
-        ]
+
+    if nn_iso == 'triplet':
+        if args.test:
+            states = [("0", "A1g", 0)]
+        else:
+            states = [ 
+            [("0", "A1g", 0)], [("0", "A1g", 1)],
+            [("1", "A1", 0)], [("1", "A1", 1)],
+            [("2", "A1", 0)], [("2", "A1", 1)],
+            [("3", "A1", 0)], [("3", "A1", 1)],
+            [("4", "A1", 0)], [("4", "A1", 1)],
+            ]
+    # if args.test:
+    #     states = [('0', 'T1g', 0)]
+    # else:
+    #     states = [
+    #         ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
+    #         ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
+    #         ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
+    #         ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
+    #     ]
 
     print('\nloading optimal fit:',args.optimal)
     post_optimal  = gv.load(args.optimal)
@@ -156,6 +168,7 @@ def main():
             # plot fit on numerator
             fit_func = fitter.Functions(params_q)
             x_plot = np.arange(0,20,.1)
+            print(k_opt)
             nn_opt = fit_func.pure_ratio(k_opt, x_plot, params_q)
             eff_opt = np.log(nn_opt / np.roll(nn_opt,-10))
             y  = np.array([eff.mean for eff in eff_opt])
@@ -196,6 +209,7 @@ def main():
     try:
         mN = blk_results['0_T1g_0']['E1'][0]
     except:
+        mN = blk_results['0_A1g_0']['E1'][0]
         pass# add I=1 nn version
     # plot t0_N
     summary_plot.summary_ENN(blk_results, mN, blk_lbls, color, lbl0=r'$N_{\rm block}$=', fig='NBlock_summary')
@@ -251,8 +265,8 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
         ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595)
     }
 
-    axnnR.set_ylim(nnr_lim[state])
-    axnn.set_ylim(nn_lim[state])
+    # axnnR.set_ylim(nnr_lim[state])
+    # axnn.set_ylim(nn_lim[state])
     axnnR.set_ylabel(r'$\Delta E_0^{\rm %s}$' %q_str, fontsize=20)
     axnn.set_ylabel(r'$E_0^{\rm %s}$' %q_str, fontsize=20)
     axQ.set_ylabel(r'$Q$', fontsize=20)
