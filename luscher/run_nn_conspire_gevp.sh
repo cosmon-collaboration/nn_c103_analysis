@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ratio="False"
-nn_iso='triplet'
+nn_iso='singlet'
 tnorm=3
 e=0
-block=2
+#block=2
 
 #for gevp_t in "3-6" "3-8" "4-8" "4-10" "5-10" "5-12" "6-10" "6-12"; do
 # "4-8" "5-10" "5-14" "6-10" "7-13" "8-15" 

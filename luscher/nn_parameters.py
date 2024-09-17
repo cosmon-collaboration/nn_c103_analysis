@@ -2,11 +2,9 @@ import numpy as np
 
 def params():
     """
-    User input file to control fitting options.
+    User input file to control fitting and irrep number 
 
    """
-    import numpy as np
-
     p = dict()
     p["debug"]   = False
     p["verbose"] = True
@@ -67,14 +65,35 @@ def params():
     #'./result/NN_triplet_tnorm3_t0-td_3-6_N_n2_t_5-20_NN_conspire_e0_t_7-15_ratio_False_bsPrior-all.pickle_bs'
 
     if 'singlet' in p["fpath"]["isospin"]:
-        p["masterkey"] = [
-            [("0", "T1g", 0)], [('0', 'T1g', 1)],[('0', 'T1g', 2)],
-            [('1', 'A2', 0)], [('1', 'A2', 1)], [('1', 'A2', 2)], 
-            [('1', 'E', 0)], [('1', 'E', 1)],  [('1', 'E', 2)],#[('4', 'E', 0)], [('4', 'E', 1)],
-            [('2', 'A2', 0)], [('2', 'A2', 1)],[('2', 'A2', 2)], #[('4', 'A2', 0)], [('4', 'A2', 1)], 
-            [('2', 'B1', 0)], [('2', 'B2', 0)], [('2', 'B2', 3)],
-            [('3', 'A2', 0)], [('3', 'A2', 1)], [('3', 'E', 0)],[('3', 'E', 1)]
-            ]
+        p["masterkey"] = []
+        for n in range(15): #15
+            p["masterkey"].append([("0", "T1g", n)])
+        for n in range(10): #10
+            p["masterkey"].append([("1", "A2", n)])
+        for n in range(18): #18
+            p["masterkey"].append([("1", "E", n)])
+        for n in range(15): #15
+            p["masterkey"].append([("2", "A2", n)])
+        for n in range(19): #19
+            p["masterkey"].append([("2", "B1", n)])
+        for n in range(21): #21
+            p["masterkey"].append([("2", "B2", n)])
+        for n in range(9): #9
+            p["masterkey"].append([("3", "A2", n)])
+        for n in range(17): #17
+            p["masterkey"].append([("3", "E", n)])
+        for n in range(15): #15
+            p["masterkey"].append([("4", "E", n)])
+        for n in range(7): #7
+            p["masterkey"].append([("4", "A2", n)])
+        # p["masterkey"] = [
+        #     [("0", "T1g", 0)], [('0', 'T1g', 1)],[('0', 'T1g', 2)],
+        #     [('1', 'A2', 0)], [('1', 'A2', 1)], [('1', 'A2', 2)], 
+        #     [('1', 'E', 0)], [('1', 'E', 1)],  [('1', 'E', 2)],#[('4', 'E', 0)], [('4', 'E', 1)],
+        #     [('2', 'A2', 0)], [('2', 'A2', 1)],[('2', 'A2', 2)], #[('4', 'A2', 0)], [('4', 'A2', 1)], 
+        #     [('2', 'B1', 0)], [('2', 'B2', 0)], [('2', 'B2', 3)],
+        #     [('3', 'A2', 0)], [('3', 'A2', 1)], [('3', 'E', 0)],[('3', 'E', 1)]
+        #     ]
 
         #p["masterkey"] = [[("0", "T1g", 0)]]
 
