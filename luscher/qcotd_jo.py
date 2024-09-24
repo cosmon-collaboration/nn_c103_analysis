@@ -60,10 +60,10 @@ class qsqFit:
                 ('2', 'B2', 3),
                 ('3', 'A2', 0),
                 ('3', 'E', 0),
-                ('4', 'A2', 0),
-                ('4', 'E', 0),
-                ('4', 'A2', 1),
-                ('4', 'E', 1),
+                # ('4', 'A2', 0),
+                # ('4', 'E', 0),
+                # ('4', 'A2', 1),
+                # ('4', 'E', 1),
             ]
             self.irrep_grps = {
                 ('0', 'T1g' , 0):   [(1,   ('0', 'T1g', 0))],
@@ -72,8 +72,8 @@ class qsqFit:
                 ('1', 'A2E' , 1):   [(1/3, ('1', 'A2', 1)), (2/3, ('1', 'E', 1))],
                 ('3', 'A2'  , 0):   [(1,   ('3', 'A2', 0))],
                 ('3', 'E'   , 0):   [(1,   ('3', 'E', 0))],
-                ('4', 'A2E' , 0):   [(1/3, ('4', 'A2', 0)), (2/3, ('4', 'E', 0))],
-                ('4', 'A2E' , 1):   [(1/3, ('4', 'A2', 1)), (2/3, ('4', 'E', 1))],
+                # ('4', 'A2E' , 0):   [(1/3, ('4', 'A2', 0)), (2/3, ('4', 'E', 0))],
+                # ('4', 'A2E' , 1):   [(1/3, ('4', 'A2', 1)), (2/3, ('4', 'E', 1))],
                 ('2', 'A2B1B2', 0): [(1/3, ('2', 'A2', 0)), (1/3, ('2', 'B1', 0)), (1/3, ('2', 'B2', 0))],
                 ('2', 'B2'  , 3):   [(1,   ('2', 'B2', 3))],
             }
@@ -183,6 +183,7 @@ class qsqFit:
             dENN_w = 0
             for w,state in self.irrep_grps[irrep_grp]:
                 self.qcotd_raw[state] = {}
+                print(state)
                 if self.params['continuum_disp']:
                     EN1 = np.sqrt(self.data['mN']**2 + self.data[state]['psq_1']*(2*np.pi / self.L)**2)
                     EN2 = np.sqrt(self.data['mN']**2 + self.data[state]['psq_2']*(2*np.pi / self.L)**2)
@@ -722,6 +723,8 @@ def main():
     # plt.ion()
     # fit data
     print("Starting fit")
+    print(f"Channel {qsq_fit .channel}")
+    print(f"Fit file {params['ere_fit']}")
     for n in range(1,ere_order+1):
         qsq_fit.fit_ere(n)
         qsq_fit.report_results(n)
@@ -731,7 +734,7 @@ def main():
 
 
     #plt.ioff()
-    plt.show()
+    #plt.show()
 
 
 if __name__ == "__main__":
