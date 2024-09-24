@@ -56,7 +56,6 @@ class Fit:
             self.params = parameters.params()
         else:
             self.params = params
-
         if 'block' in self.params: #data block multiplicative factor
             self.block = self.params['block']
         else:
@@ -88,7 +87,7 @@ class Fit:
                 self.r_n_inel = self.params['fit_choices'][key[0]]['r_n_inel']
             except:
                 self.r_n_inel = self.params['r_n_inel']
-        # implement isosinglet or tripletß
+        # implement isosinglet or triplet
         nn = self.params['fpath']['isospin']#self.params["fpath"]["nn"].split('/')[-1].split('_')[0]ß
         filename = f"NN_{nn}_tnorm{self.t_norm}_t0-td_{self.params['t0']}-{self.params['td']}"
         filename = f"{filename}_N_n{self.nstates}"
@@ -739,8 +738,7 @@ class Fit:
                     svdcut=None
 
                 if nbs == 0:
-                    result = lsqfit.nonlinear_fit(
-                        data=(x, y0), prior=prior, fcn=self.func, 
+                    result = lsqfit.nonlinear_fit(data=(x, y0), prior=prior, fcn=self.func, 
                         maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
                     )
                     p0[subset[0]] = {k:v.mean for k,v in result.p.items()}
@@ -945,8 +943,8 @@ class Plot:
         ax = plt.axes()
         ax.errorbar(x=x, y=[i.mean for i in y], yerr=[i.sdev for i in y])
         if self.params['latex']:
-            ltype = type.replace('_', '\_')
-            ltag = stag.replace('_', '\_')
+            ltype = type.replace('_', r'\_')
+            ltag = stag.replace('_', r'\_')
             plt.title(f"{ltype} {ltag}")
         else:
             plt.title(f"{type} {tag}")
@@ -1083,7 +1081,8 @@ class Functions:
             x = range(2, len(data) + 2)[:-1]
         else:
             x = x[:-1]
-        y = np.log(data / np.roll(data, -1))[:-1]
+        epsilon = 1e-11
+        y = np.log((data+epsilon) / (np.roll(data, -1)+epsilon))[:-1]
         return x, y
 
     def zeff(self, data, x=None):
