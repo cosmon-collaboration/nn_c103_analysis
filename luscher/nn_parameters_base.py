@@ -32,7 +32,7 @@ def params():
     p['svd_study'] = False
     p['svdcut']    = 1e-8
 
-    p["bootstrap"] = True
+    p["bootstrap"] = False
     p['Nbs_max']   = 1000
     p['bs_seed']   = 'nn_c103_b%d' %p["block"]
     p["nbs"]       = 1000
@@ -67,25 +67,25 @@ def params():
 
     if 'singlet' in p["fpath"]["isospin"]:
         p["masterkey"] = []
-        for n in range(15): #15
+        for n in range(4): #15
             p["masterkey"].append([("0", "T1g", n)])
-        for n in range(10): #10
+        for n in range(4): #10
             p["masterkey"].append([("1", "A2", n)])
-        for n in range(18): #18
+        for n in range(4): #18
             p["masterkey"].append([("1", "E", n)])
-        for n in range(15): #15
+        for n in range(4): #15
             p["masterkey"].append([("2", "A2", n)])
-        for n in range(19): #19
+        for n in range(4): #19
             p["masterkey"].append([("2", "B1", n)])
-        for n in range(21): #21
+        for n in range(4): #21
             p["masterkey"].append([("2", "B2", n)])
-        for n in range(9): #9
+        for n in range(4): #9
             p["masterkey"].append([("3", "A2", n)])
-        for n in range(17): #17
+        for n in range(4): #17
             p["masterkey"].append([("3", "E", n)])
-        for n in range(15): #15
+        for n in range(4): #15
             p["masterkey"].append([("4", "E", n)])
-        for n in range(7): #7
+        for n in range(4): #7
             p["masterkey"].append([("4", "A2", n)])
         # p["masterkey"] = [
         #     [("0", "T1g", 0)], [('0', 'T1g', 1)],[('0', 'T1g', 2)],
