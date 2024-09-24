@@ -129,6 +129,7 @@ class qsqTables:
                     data[state]['$d^2$'] = Psq
                     data[state]['Irrep'] = irrep
                     data[state]['State'] = n
+                    Psq = int(Psq)
                     de_nn = np.array(fit_results[k])
                     data[state]['dE_NN'] = de_nn
                     s1,s2 = k[0][2]
@@ -144,7 +145,7 @@ class qsqTables:
                     EN2 = np.sqrt(data['mN']**2 + int(s2)*(2*np.pi / self.L)**2)
                     E_NN   = de_nn + EN1 + EN2
                     data[state]['E_NN']  = E_NN
-                    E_cmSq = E_NN**2 - int(Psq) * (2 * np.pi / self.L)**2
+                    E_cmSq = E_NN**2 - Psq * (2 * np.pi / self.L)**2
                     E_cm   = np.sqrt(E_cmSq)
                     data[state]['E_cm']  = E_cm
                     qsq    = E_cmSq / 4 - data['mN']**2
