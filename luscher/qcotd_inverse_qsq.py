@@ -42,6 +42,8 @@ def main():
                         help=                'use continuum dispersion relation to construct E_NN = dE + E1 + E2? [%(default)s]')
     parser.add_argument('--L',               type=int, default=48, help='spatial box size [%(default)s]')
     parser.add_argument('--Nbs',             type=int, help='set number of bs samples to Nbs')
+    parser.add_argument('--plot_hal',        default=False, action='store_true', 
+                        help=                'plot HAL potential results? [%(default)s]')
     parser.add_argument('--vs_mpi',          default=True,  action='store_false',
                         help=                'scale qcotd and qsq by mpi? [%(default)s]')
     parser.add_argument('--fig_type',        default='pdf', help='what fig type? [%(default)s]')
@@ -134,9 +136,26 @@ class qsqFit:
             if not self.args.irrep_avg:
                 self.irrep_grps = { k:[(1, k)] for k in self.states}
         elif self.channel == 'dineutron':
-            self.states = []
-            self.irrep_grps = []
-            sys.exit('add dineutron states')
+            self.states = [
+                # (Psq, irrep, level)
+                ("0", "A1g", 0),
+                ("0", "A1g", 1),
+                ("1", "A1",  0),
+                ("1", "A1",  1),
+                ("2", "A1",  0),
+                ("2", "A1",  3),
+                ("3", "A1",  0),
+                ("4", "A1",  0),
+                ("4", "A1",  1),
+                #("1", "A1",  2),
+                #("2", "A1",  1),
+                #("2", "A1",  2),
+                #("3", "A1",  1),
+                #("3", "A1",  2),
+            ]
+            if self.args.irrep_avg:
+                print('\nit does not make sense to irrep avg for di-neutron - ignoring\n')
+            self.irrep_grps = { k:[(1, k)] for k in self.states}
 
         # load the data
         self.load_data()
@@ -378,7 +397,7 @@ class qsqFit:
         ax = plt.axes([0.12,0.16,0.87,0.83])
 
         # plot fit results
-        fit_clrs = {1:'k', 2:'r', 3:'b'}
+        fit_clrs = {1:'r', 2:'g', 3:'b'}
         qsq      = np.arange(-0.26, 0.53, .001)
         x        = qsq * self.rescale**2
         for n in range(1,self.args.ere_order+1)[::-1]:
@@ -388,15 +407,50 @@ class qsqFit:
             ax.fill_between(x, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10)
 
         # plot the data
-        self.plot_data(ax, data='raw')
+        #self.plot_data(ax, data='raw')
         # plot the processed data
         self.plot_data(ax, data='processed')
+
+        if self.args.plot_hal:
+            '''
+            # plot HAL QCD results
+            '''
+            if self.channel == 'deuteron':
+                hal_in = open('data/pcotd_t13.txt').readlines()
+            elif self.channel == 'dineutron':
+                hal_in = open('data/pcotd_nn_t13.txt').readlines()
+            qsq_hal = []
+            hal_results = []
+            for i in range(24):
+                tmp_hal = []
+                for qi in range(21):
+                    if i == 0:
+                        qsq_hal.append(float(hal_in[i*22+qi].split(',')[0]))
+                    tmp_hal.append(gv.gvar(hal_in[i*22+qi].split(',')[1]))
+                hal_results.append(tmp_hal)
+            qsq_hal = np.array(qsq_hal)
+            hal_results = np.array(hal_results)
+            dhal = []
+            for i in range(hal_results.shape[1]):
+                dhal.append(max([k.sdev for k in hal_results[:,i]]))
+            dhal = np.array(dhal)
+            hal_mean = np.array([k.mean for k in hal_results.mean(axis=0)])
+            hal_var  = np.array([k.mean for k in (hal_results**2 - hal_mean**2).mean(axis=0)])
+            dhal_tot = np.sqrt(dhal**2 + hal_var)
+
+            #import IPython; IPython.embed()
+            ax.fill_between(qsq_hal, hal_mean-dhal_tot, hal_mean+dhal_tot, color='k', 
+                            alpha=0.3, label='HAL QCD Potential')
+            #ax.fill_between(qsq_hal, hal_mean-dhal, hal_mean+dhal, color='k', alpha=0.3)
 
         # set the axes and legend labels
         #ax.legend(loc=2, ncol=5, columnspacing=0, handletextpad=0.1)
         ax.legend(loc=2, columnspacing=0, handletextpad=0.1)
         if self.args.vs_mpi:
-            ax.axis([-.12, 0.26, -.4,1.2])
+            if self.channel == 'deuteron':
+                ax.axis([-.12, 0.26, -.4,1.2])
+            elif self.channel == 'dineutron':
+                ax.axis([-.12, 0.26, -.4,2.0])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_\pi$', fontsize=24)
         else:
@@ -414,11 +468,20 @@ class qsqFit:
             plt.savefig(f'figures/qcotd_{fig_base}.{self.args.fig_type}')
 
     def plot_data(self, ax, data='raw'):
-        irrep_clrs = {
-            'T1g':'k', 'A2':'b', 'E':'r', 'B1':'g', 'B2':'magenta',
-            'A1g':'k', 'A1':'b',
-            'A2E':'g', 'A2B1B2':'g',
-            }
+        if self.channel == 'deuteron':
+            irrep_clrs = {
+                'T1g':'k', 'A2':'b', 'E':'r', 'B1':'g', 'B2':'magenta',
+                'A1g':'k', 'A1':'b',
+                'A2E':'g', 'A2B1B2':'g',
+                }
+        elif self.channel == 'dineutron':
+            irrep_clrs = {
+                'A1g-0':'k',
+                'A1-1' :'r',
+                'A1-2' :'g',
+                'A1-3' :'b',
+                'A1-4' :'magenta'
+                }
         level_mrkr = {0:'s', 1:'o', 2:'d', 3:'p', 4:'h', 5:'8', 6:'v'}
 
         if data == 'raw':
@@ -465,7 +528,10 @@ class qsqFit:
             qsq_plot = qsq_bs[q_sort][self.Nbs//2]
             # check if data is raw, and also exists in processed data
             alpha = 0.8
-            clr   = irrep_clrs[irrep]
+            if self.channel == 'deuteron':
+                clr   = irrep_clrs[irrep]
+            elif self.channel == 'dineutron':
+                clr   = irrep_clrs[irrep+'-'+str(Psq)]
             mfc   = clr
             if data == 'raw':
                 if state not in self.data_fit:
