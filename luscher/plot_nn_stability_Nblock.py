@@ -75,15 +75,30 @@ def main():
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    if args.test:
-        states = [('0', 'T1g', 0)]
-    else:
-        states = [
-            ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
-            ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
-            ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
-            ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
-        ]
+    if nn_iso == 'singlet':
+        if args.test:
+            states = [('0', 'T1g', 0)]
+        else:
+            states = [
+                ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
+                ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
+                ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
+                ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
+            ]
+    elif nn_iso == 'triplet':
+        if args.test:
+            states = [('0', 'A1g', 0)]
+        else:
+            states = [
+                ("0", "A1g", 0), ("0", "A1g", 1),
+                ("1", "A1", 0),  ("1", "A1", 1),
+                ("1", "A1", 2),
+                ("2", "A1", 0),  ("2", "A1", 1),
+                ("2", "A1", 2),  ("2", "A1", 3),
+                ("3", "A1", 0),  ("3", "A1", 1),
+                ("3", "A1", 2),
+                ("4", "A1", 0),  ("4", "A1", 1),
+            ]
 
     print('\nloading optimal fit:',args.optimal)
     post_optimal  = gv.load(args.optimal)
@@ -137,50 +152,49 @@ def main():
         ax_nnR = plt.axes([0.15, 0.33, 0.84, 0.33])
         ax_Q   = plt.axes([0.15, 0.13, 0.84, 0.20])
 
-        if args.optimal:
-            # plot fit on data
-            params_q = dict(optimal_p)
-            params_q['ratio'] = args.ratio
-            for k in post_optimal:
-                if k[0][0] == q:
-                    #print(k)#,post_optimal[k])
-                    params_q[k] = post_optimal[k]
-                    if k[1] == 'e0' and k[0][1] == 'R':
-                        e0_opt = post_optimal[k]
-                        k_opt  = k[0]
-                        k_n    = k[0][2]
-                        k_n1   = (k[0][0],"N",k[0][2][0])
-                        k_n2   = (k[0][0],"N",k[0][2][1])
-                        e1_opt = post_optimal[(k_n1, "e0")]
-                        e2_opt = post_optimal[(k_n2, "e0")]
-            # plot fit on numerator
-            fit_func = fitter.Functions(params_q)
-            x_plot = np.arange(0,20,.1)
-            nn_opt = fit_func.pure_ratio(k_opt, x_plot, params_q)
-            eff_opt = np.log(nn_opt / np.roll(nn_opt,-10))
-            y  = np.array([eff.mean for eff in eff_opt])
-            dy = np.array([eff.sdev for eff in eff_opt])
-            ax_nn.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
-            ax_nn.axvspan(15.5,20,color='k',alpha=.2)
-            ax_nn.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
-            # plot g.s. e0
-            e_nn = e0_opt +e1_opt +e2_opt
-            ax_nn.axhline(e_nn.mean-e_nn.sdev, linestyle='--',color=opt_clr, alpha=.3)
-            ax_nn.axhline(e_nn.mean+e_nn.sdev, linestyle='--',color=opt_clr, alpha=.3)
+        # plot fit on data
+        params_q = dict(optimal_p)
+        params_q['ratio'] = args.ratio
+        for k in post_optimal:
+            if k[0][0] == q:
+                #print(k)#,post_optimal[k])
+                params_q[k] = post_optimal[k]
+                if k[1] == 'e0' and k[0][1] == 'R':
+                    e0_opt = post_optimal[k]
+                    k_opt  = k[0]
+                    k_n    = k[0][2]
+                    k_n1   = (k[0][0],"N",k[0][2][0])
+                    k_n2   = (k[0][0],"N",k[0][2][1])
+                    e1_opt = post_optimal[(k_n1, "e0")]
+                    e2_opt = post_optimal[(k_n2, "e0")]
+        # plot fit on numerator
+        fit_func = fitter.Functions(params_q)
+        x_plot = np.arange(0,20,.1)
+        nn_opt = fit_func.pure_ratio(k_opt, x_plot, params_q)
+        eff_opt = np.log(nn_opt / np.roll(nn_opt,-10))
+        y  = np.array([eff.mean for eff in eff_opt])
+        dy = np.array([eff.sdev for eff in eff_opt])
+        ax_nn.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
+        ax_nn.axvspan(15.5,20,color='k',alpha=.2)
+        ax_nn.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
+        # plot g.s. e0
+        e_nn = e0_opt +e1_opt +e2_opt
+        ax_nn.axhline(e_nn.mean-e_nn.sdev, linestyle='--',color=opt_clr, alpha=.3)
+        ax_nn.axhline(e_nn.mean+e_nn.sdev, linestyle='--',color=opt_clr, alpha=.3)
 
-            # plot fit on ratio
-            n1_opt = fit_func.twopoint(k_n1, x_plot, params_q, "N")
-            n2_opt = fit_func.twopoint(k_n2, x_plot, params_q, "N")
-            r_opt  = nn_opt / n1_opt / n2_opt
-            eff_opt = np.log(r_opt / np.roll(r_opt,-10))
-            y  = np.array([eff.mean for eff in eff_opt])
-            dy = np.array([eff.sdev for eff in eff_opt])
-            ax_nnR.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
-            ax_nnR.axvspan(15.5,20,color='k',alpha=.2)
-            ax_nnR.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
-            # plot g.s. e0
-            ax_nnR.axhline(e0_opt.mean-e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
-            ax_nnR.axhline(e0_opt.mean+e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
+        # plot fit on ratio
+        n1_opt = fit_func.twopoint(k_n1, x_plot, params_q, "N")
+        n2_opt = fit_func.twopoint(k_n2, x_plot, params_q, "N")
+        r_opt  = nn_opt / n1_opt / n2_opt
+        eff_opt = np.log(r_opt / np.roll(r_opt,-10))
+        y  = np.array([eff.mean for eff in eff_opt])
+        dy = np.array([eff.sdev for eff in eff_opt])
+        ax_nnR.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
+        ax_nnR.axvspan(15.5,20,color='k',alpha=.2)
+        ax_nnR.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
+        # plot g.s. e0
+        ax_nnR.axhline(e0_opt.mean-e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
+        ax_nnR.axhline(e0_opt.mean+e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
         
 
         # plot e0 from stability
@@ -196,9 +210,11 @@ def main():
     try:
         mN = blk_results['0_T1g_0']['E1'][0]
     except:
-        pass# add I=1 nn version
+        mN = blk_results['0_A1g_0']['E1'][0]
+    
     # plot t0_N
-    summary_plot.summary_ENN(blk_results, mN, blk_lbls, color, lbl0=r'$N_{\rm block}$=', fig='NBlock_summary')
+    summary_plot.summary_ENN(blk_results, mN, blk_lbls, color, 
+                             lbl0=r'$N_{\rm block}$=', spin='triplet', fig='NBlock_summary')
 
     plt.ioff()
     plt.show()
@@ -231,6 +247,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axnn.legend(flip(handles, len(arg.Nb)), flip(labels, len(arg.Nb)), loc=1, ncol=len(arg.Nb), fontsize=10, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = {
+        # isosinglet
         ('0', 'T1g', 0):(-0.0021,0.0005), ('0', 'T1g', 1):(-0.0051,0.0005),
         ('1', 'A2', 0) :(-0.0046,0.0005), ('1', 'A2', 1) :(-0.0041,0.0005),
         ('2', 'A2', 0) :(-0.0066,0.0005), ('3', 'A2', 0) :(-0.0081,0.0005),
@@ -238,9 +255,19 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
         ('2', 'B1', 0) :(-0.0061,0.0005), ('2', 'B2', 0) :(-0.0061,0.0005),
         ('2', 'B2', 3) :(-0.0056,0.0005), ('1', 'E', 0)  :(-0.0031,0.0005),
         ('1', 'E', 1)  :(-0.0061,0.0005), ('3', 'E', 0)  :(-0.0081,0.0005),
-        ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005)
+        ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005),
+        # isotriplet
+        ('0', 'A1g', 0):(-0.0021,0.0005), ('0', 'A1g', 1):(-0.0051,0.0005),
+        ('1', 'A1',  0):(-0.0021,0.0005), ('1', 'A1',  1):(-0.0051,0.0005),
+        ('1', 'A1',  2):(-0.0021,0.0005),
+        ('2', 'A1',  0):(-0.0046,0.0005), ('2', 'A1',  1):(-0.001,0.0005),
+        ('2', 'A1',  2):(-0.0046,0.0005), ('2', 'A1',  3):(-0.001,0.0005),
+        ('3', 'A1',  0):(-0.0046,0.0005), ('3', 'A1',  1):(-0.0051,0.0005),
+        ('3', 'A1',  2):(-0.0046,0.0005),
+        ('4', 'A1',  0):(-0.0021,0.0005), ('4', 'A1',  1):(-0.0051,0.0005),
     }
     nn_lim = {
+        # isosinglet
         ('0', 'T1g', 0):(1.4016,1.4170), ('0', 'T1g', 1):(1.4216,1.4360),
         ('1', 'A2', 0) :(1.4111,1.4255), ('1', 'A2', 1) :(1.4351,1.4495),
         ('2', 'A2', 0) :(1.4216,1.4370), ('3', 'A2', 0) :(1.4316,1.4470),
@@ -248,7 +275,16 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
         ('2', 'B1', 0) :(1.4216,1.4370), ('2', 'B2', 0) :(1.4201,1.4345),
         ('2', 'B2', 3) :(1.4451,1.4595), ('1', 'E', 0)  :(1.4126,1.4270),
         ('1', 'E', 1)  :(1.4326,1.4470), ('3', 'E', 0)  :(1.4301,1.4445),
-        ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595)
+        ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595),
+        # isotriplet
+        ('0', 'A1g', 0):(1.4016,1.4170), ('0', 'A1g', 1):(1.4216,1.4360),
+        ('1', 'A1',  0):(1.4131,1.4275), ('1', 'A1',  1):(1.4351,1.4495),
+        ('1', 'A1',  2):(1.4351,1.4551),
+        ('2', 'A1',  0):(1.4216,1.4370), ('2', 'A1',  1):(1.4271,1.4415),
+        ('2', 'A1',  2):(1.4271,1.4815), ('2', 'A1',  3):(1.4271,1.4815),
+        ('3', 'A1',  0):(1.4351,1.4495), ('3', 'A1',  1):(1.4391,1.4535),
+        ('3', 'A1',  2):(1.4391,1.4735),
+        ('4', 'A1',  0):(1.4251,1.4395), ('4', 'A1',  1):(1.4461,1.4605),
     }
 
     axnnR.set_ylim(nnr_lim[state])
