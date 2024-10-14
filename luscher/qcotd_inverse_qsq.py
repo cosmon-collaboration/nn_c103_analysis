@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 import matplotlib
+import h5py as h5
 from numpy.linalg import cond
 from scipy.optimize import least_squares
 from scipy.optimize import curve_fit
@@ -46,6 +47,8 @@ def main():
                         help=                'plot HAL potential results? [%(default)s]')
     parser.add_argument('--vs_mpi',          default=True,  action='store_false',
                         help=                'scale qcotd and qsq by mpi? [%(default)s]')
+    parser.add_argument('--h5_results',      default=False, action='store_true',
+                        help=                'create h5 file with spectrum results? [%(default)s]')
     parser.add_argument('--fig_type',        default='pdf', help='what fig type? [%(default)s]')
     parser.add_argument('--interact',        default=False, action='store_true',
                         help=                'jump to iPython to interact with results? [%(default)s]')
@@ -175,6 +178,10 @@ class qsqFit:
         # load all the NN and N data
         data = {}
         data['mN']  = mN
+        if self.args.h5_results:
+            h5_results = 'data/nn_'+self.channel+'_spectrum.h5'
+            with h5.File(h5_results,'w') as f5:
+                f5.create_dataset('mN/E0', data=mN)
         for state in self.states:
             data[state] = {}
             for k in fit_results:
@@ -193,7 +200,17 @@ class qsqFit:
                     data[state]['psq_1'] = int(s1)
                     data[state]['E_N2']  = en2
                     data[state]['psq_2'] = int(s2)
+                    if self.args.h5_results:
+                        nn_str = irrep+'_Psq'+str(Psq)+'_level'+str(n)
+                        with h5.File(h5_results,'a') as f5:
+                            f5.create_dataset(nn_str+'/dE_NN',  data=de_nn)
+                            f5.create_dataset(nn_str+'/E_N1',   data=en1)
+                            f5.create_dataset(nn_str+'/E_N2',   data=en2)
+                            f5.create_dataset(nn_str+'/Psq_N1', data=np.array([int(s1)]))
+                            f5.create_dataset(nn_str+'/Psq_N2', data=np.array([int(s2)]))
         self.data = data
+            
+
 
     def make_qcotd(self):
         # BMat functions
