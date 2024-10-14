@@ -30,8 +30,7 @@ The analysis code requires a few Python libraries to work.  The version of each 
 - h5py: 3.7.0
 - gvar: 11.11.1
 - lsqfit: 13.0
-
-
+! compatibility warning: lsqfit versions 13.2 and above encounter unresolved issues with the analysis.
 
 ## Single Nucleon
 
