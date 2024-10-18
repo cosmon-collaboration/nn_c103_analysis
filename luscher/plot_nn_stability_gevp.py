@@ -108,6 +108,11 @@ def main():
     post_optimal  = gv.load(args.optimal)
     optimal_p     = {'positive_z':True, 'debug':False}
     N_inel        = int(args.optimal.split('N_n')[1].split('_')[0])
+    if N_inel not in args.n_N:
+        print('\nyour optimal fit has an N_inel = %d which is not in the default range' %N_inel) 
+        print('  - we are adding it to the list models')
+        print('  - avoid this by adding it to --n_N in the optional args')
+        models['N_n%d_NN_conspire_e0' %N_inel] = {'N_inel':N_inel, 'nn_model':'conspire', 'nn_el':0}
     nn_el         = int(args.optimal.split('_e')[1].split('_')[0])
     optimal_model = {}
     if 'conspire' in args.optimal:
@@ -268,7 +273,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
         ('1', 'A1',  0):(-0.0021,0.0005), ('1', 'A1',  1):(-0.0051,0.0005),
         ('1', 'A1',  2):(-0.0021,0.0005),
         ('2', 'A1',  0):(-0.0046,0.0005), ('2', 'A1',  1):(-0.001,0.0005),
-        ('2', 'A1',  2):(-0.0046,0.0005), ('2', 'A1',  3):(-0.001,0.0005),
+        ('2', 'A1',  2):(-0.0046,0.0005), ('2', 'A1',  3):(-0.002,0.0005),
         ('3', 'A1',  0):(-0.0046,0.0005), ('3', 'A1',  1):(-0.0051,0.0005),
         ('3', 'A1',  2):(-0.0046,0.0005),
         ('4', 'A1',  0):(-0.0021,0.0005), ('4', 'A1',  1):(-0.0051,0.0005),
@@ -370,10 +375,9 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 if arg.debug:
                     print('\nDEBUG: fit file', fit_file)
                     print('DEBUG: GEVP = ',gevp)
-                    print('DEBUG: nn_file', nnFile)
+                    print('DEBUG: nn_file', nnFile.format(**nnDict))
 
                 data = gv.load(fit_file)
-                #if arg.optimal:
                 try:
                     e.append(data[fitKeys[state]])
                 except:
@@ -387,12 +391,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 e1_opt = data[(k_n1, "e0")]
                 e2_opt = data[(k_n2, "e0")]
                 e_nn.append(e[-1] + e1_opt + e2_opt)
-                #else:
-                #    for k in data:
-                #        if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == state:
-                #            e.append(data[(k[0], 'e0')])
-                #            p.append(data[((state,), 'Q')])
-                #            k_n = fitKeys[state][0][2]
+
                 mrkr = marker[fit_model]
                 clr  = color[gevp]
                 m_plot.append(marker[fit_model])
@@ -410,6 +409,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                                 e_nn[-1].mean, yerr=e_nn[-1].sdev,
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
+
                 # populate results for comparison
                 if t == opt_tmin and fit_model == optModel:
                     if gevp not in l_gevp:
