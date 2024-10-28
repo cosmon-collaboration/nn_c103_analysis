@@ -24,6 +24,7 @@ import BMat
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
                                      description='Fit parameters of an effective range expansion (ERE) to the q_cm**2 values\n'\
+                                        +'or to a relativistic model of qcotd = A Ecm + B (Ecm**2 - 4M**2)+...\n'\
                                         +'determined in a fit of the NN and N correlation functions.  This code has one required\n'\
                                         +'argument, which is an input file of an expected form that contains bootstrap resamplings\n'\
                                         +'of the ground state NN and N energy spectrum in various irreps (channels).  An example\n'\
@@ -35,6 +36,10 @@ def main():
 
     parser.add_argument('--ere_order',       default=2, type=int,
                         help=                'max order in ERE expansion, [%(default)s]')
+    parser.add_argument('--rel_order',       default=1, type=int,
+                        help=                'max order in Rel. qcotd fit [%(default)s]')
+    parser.add_argument('--plot_rel',        default=False, action='store_true',
+                        help=                'plot Rel. qcotd fits? [%(default)s]')
     parser.add_argument('--irrep_avg',       default=True, action='store_false',
                         help=                'average irreps to suppress physical S-D mixing? [%(default)s]')
     parser.add_argument('--Psq_max',         default=3, type=int,
@@ -64,7 +69,12 @@ def main():
     # fit data
     for n in range(1,args.ere_order+1):
         qsq_fit.fit_ere(n)
-        qsq_fit.report_results(n)
+        qsq_fit.report_ere(n)
+
+    for n in range(1,args.rel_order+1):
+        qsq_fit.fit_rel_qcotd(n)
+        qsq_fit.report_rel_qcotd(n)
+    
 
     # plot data
     qsq_fit.plot_qcotd()
@@ -88,6 +98,7 @@ class qsqFit:
 
         # save fit results
         self.ere_results = {}
+        self.rel_qcotd_results = {}
 
         # are we fitting the deuteron or di-neutron channel?
         if 'singlet' in args.fit_result:
@@ -99,6 +110,8 @@ class qsqFit:
         
         # for this project, L=48 for all data
         self.L = 48
+        # the pion mass is 
+        self.mpi = 0.310810
 
         # what is the set of irreps 
         if self.channel == 'deuteron':
@@ -237,7 +250,11 @@ class qsqFit:
         # create qcotd
         self.qcotd     = {}
         self.qcotd_raw = {}
-        self.Nbs = self.data['mN'].shape[0] - 1 #remove boot0 to determine Nbs
+        if self.args.Nbs:
+            self.Nbs = self.args.Nbs
+        else:
+            self.Nbs = self.data['mN'].shape[0] - 1 #remove boot0 to determine Nbs
+
         for irrep_grp in self.irrep_grps:
             self.qcotd[irrep_grp] = {}
             EN1_w  = 0
@@ -354,7 +371,7 @@ class qsqFit:
             p = [0.2, 5, -5, 5]
         # prepare the data in mN**2 units
         self.y0 = {k:self.data_fit[k]['qsq'][0]/self.data['mN'][0]**2 for k in self.data_fit}
-        y_bs    = {k:(self.data_fit[k]['qsq'][1:] - self.data_fit[k]['qsq'][1:].mean())/self.data['mN'][1:]**2 
+        y_bs    = {k:(self.data_fit[k]['qsq'][1:self.Nbs] - self.data_fit[k]['qsq'][1:self.Nbs].mean())/self.data['mN'][1:self.Nbs]**2 
                    + self.y0[k] for k in self.data_fit}
         self.y_gv = gv.dataset.avg_data(y_bs, bstrap=True)
         y_np   = np.array([self.y0[k] for k in self.y0])
@@ -377,10 +394,9 @@ class qsqFit:
 
         self.ere_results[n] = results
 
-    def report_results(self, n):
+    def report_ere(self, n):
         if self.args.vs_mpi:
-            mpi = 0.310810
-            rescale = self.data['mN'][0] / mpi
+            rescale = self.data['mN'][0] / self.mpi
         else:
             rescale = 1.
         results = self.ere_results[n]
@@ -397,6 +413,90 @@ class qsqFit:
         if len(p) >= 4:
             print(' q6 m**5 = %s' %(p[3] / rescale**5))
 
+    def rel_qcotd(self, x, *p):
+        ''' x     = qSq / mNSq
+            Ecm   = 2 * np.sqrt(1 + x)
+            qcotd = p[0] * Ecm + p[1] * (Ecm**2 - 4) + ...
+        '''
+        Ecm   = 2 * np.sqrt(1 + x)
+        qcotd = p[0] * Ecm
+        if len(p) >= 2:
+            qcotd += p[1] * Ecm * 4 * x**2
+        if len(p) >= 3:
+            qcotd += p[2] * Ecm * (4 * x**2)**2
+        if len(p) >= 4:
+            sys.exit('we only support up to 2nd order')
+
+        return qcotd
+
+    def get_rel_qcotd(self, x_dummy, *p):
+        results = []
+        for k in self.data_fit:
+            def residual_sq(x):
+                ecm_mn   = 2*np.sqrt(1 + x) # x = qSq / mNSq
+                qcotd_mn = self.data_fit[k]['boxQ'].getBoxMatrixFromEcm(ecm_mn).real
+                res      = self.rel_qcotd(x, *p) - qcotd_mn
+                return res**2
+            
+            results.append(least_squares(residual_sq, self.y0[k], method='lm', 
+                                        ftol=1.0e-12, gtol=1.0e-12, xtol=1.0e-12).x[0])
+        return np.array(results)
+
+    def fit_rel_qcotd(self,n):
+        ''' fit qcotdelta to relativistic forms
+            A * Ecm + B * Ecm * (Ecm**2 - 4) + C * Ecm * (Ecm**2 - 4)**2 ...
+            where
+            Ecm**2 = 4( MN**2 + qcm**2) / MN**2
+        '''
+        if n == 0:
+            p = [0.05]
+        elif n == 1:
+            p = [0.05, 1]
+        elif n == 2:
+            p = [0.05, 1, 1]
+        else:
+            sys.exit('add higher order (than n=1) fit params')
+        # prepare the data in mN**2 units
+        self.y0 = {k:self.data_fit[k]['qsq'][0]/self.data['mN'][0]**2 for k in self.data_fit}
+        y_bs    = {k:(self.data_fit[k]['qsq'][1:self.Nbs] - self.data_fit[k]['qsq'][1:self.Nbs].mean())/self.data['mN'][1:self.Nbs]**2 
+            + self.y0[k] for k in self.data_fit}
+        self.y_gv = gv.dataset.avg_data(y_bs, bstrap=True)
+        y_np   = np.array([self.y0[k] for k in self.y0])
+        dy_cov = np.array(gv.evalcov([self.y_gv[k] for k in self.y_gv]))
+        x_dummy = [n for n in range(len(self.y_gv))]
+        # fit the data
+        p_opt, p_cov = curve_fit(self.get_rel_qcotd, x_dummy, y_np, p0=p, sigma=dy_cov, 
+                                 absolute_sigma=True, method='lm')
+        p_fit = gv.gvar(p_opt, p_cov)
+
+        r         = self.get_qsq_ere(x_dummy, *p_opt) - y_np
+        chisq_min = np.dot(r, np.dot(np.linalg.inv(dy_cov), r))
+        dof       = len(y_np) - len(p)
+
+        results = dict()
+        results['chisq_dof'] = chisq_min/dof
+        results['dof']       = dof
+        results['Q']         = scsp.gammaincc(0.5*dof,0.5*chisq_min)
+        results['p_opt']     = p_fit
+
+        self.rel_qcotd_results[n] = results
+
+    def report_rel_qcotd(self, n):
+        if self.args.vs_mpi:
+            rescale = self.data['mN'][0] / self.mpi
+        else:
+            rescale = 1.
+        results = self.ere_results[n]
+        p = results['p_opt']
+        print('------------------------------------------------------------')
+        print('Rel. qcotd fit to O(q_cm**%d)' %(2*(len(p)-1)+1))
+        print('chisq / dof [dof] = %f [%d],  Q = %.2f' 
+              %(results['chisq_dof'], results['dof'], results['Q']))
+        print(' A      = %s' %(p[0] * rescale))
+        print(' B m**2 = %s' %(p[1] / rescale**2))
+        if len(p) >= 3:
+            print(' C m**3 = %s' %(p[2] / rescale**4))
+
 
     def plot_qcotd(self):
         ''' make plot of qcotd / M vs qcm**2 / M**2
@@ -404,12 +504,10 @@ class qsqFit:
             controlled by args.vs_mpi
         '''
 
-        mpi = gv.gvar('0.310810(95)')
         if self.args.vs_mpi:
-            self.rescale = (self.data['mN'][0]/mpi).mean
+            self.rescale = (self.data['mN'][0]/self.mpi)
         else:
             self.rescale = 1.
-
         plt.figure('qcotd',figsize=(7,4))
         ax = plt.axes([0.12,0.16,0.87,0.83])
 
@@ -418,10 +516,20 @@ class qsqFit:
         qsq      = np.arange(-0.26, 0.53, .001)
         x        = qsq * self.rescale**2
         for n in range(1,self.args.ere_order+1)[::-1]:
-            qcotd = self.ere(qsq, *self.ere_results[n]['p_opt']) * self.rescale
+            qcotd = self.rescale * self.ere(qsq, *self.ere_results[n]['p_opt'])
             y  = np.array([k.mean for k in qcotd])
             dy = np.array([k.sdev for k in qcotd])
             ax.fill_between(x, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10)
+
+        if self.args.plot_rel:
+            # plot Rel. qcotd
+            fit_clrs = {1:'yellow', 2:'magenta'}
+            for n in range(1,self.args.rel_order+1)[::-1]:
+                qcotd = self.rescale * self.rel_qcotd(qsq, *self.rel_qcotd_results[n]['p_opt'])
+                y  = np.array([k.mean for k in qcotd])
+                dy = np.array([k.sdev for k in qcotd])
+                ax.plot(x, y-dy, color=fit_clrs[n], linestyle='--')
+                ax.plot(x, y+dy, color=fit_clrs[n], linestyle='--')
 
         # plot the data
         #self.plot_data(ax, data='raw')
@@ -471,7 +579,10 @@ class qsqFit:
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_\pi$', fontsize=24)
         else:
-            ax.axis([-.026, 0.0525, -.15,0.6])
+            if self.channel == 'deuteron':
+                ax.axis([-.026, 0.0525, -.15,0.6])
+            elif self.channel == 'dineutron':
+                ax.axis([-.026, 0.0525, -.15,1.0])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=16)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_N$', fontsize=16)
         ax.axhline(color='k')
@@ -518,9 +629,9 @@ class qsqFit:
                 qsq_msq  = self.qcotd[state]['qsq'] / self.data['mN']**2
                 qcotd    = self.qcotd[state]['qcotd_cm']
             qsq_0    = qsq_msq[0]
-            qsq_bs   = qsq_msq[1:]
+            qsq_bs   = qsq_msq[1:self.Nbs]
             qcotd_0  = qcotd[0]
-            qcotd_bs = qcotd[1:]
+            qcotd_bs = qcotd[1:self.Nbs]
             # shift bs distribution to have boot0 mean
             dqsq     = qsq_bs - qsq_bs.mean()
             qsq_bs   = dqsq + qsq_0
