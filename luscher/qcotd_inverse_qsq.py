@@ -334,29 +334,15 @@ class qsqFit:
                 data_fit[state]['boxQ']  = self.qcotd[state]['boxQ']
         self.data_fit = data_fit
 
-    def ere(self, x, *p):
-        ''' qcotd = p[0] + p[1] * x + p[2] * x**2 + ...
-        '''
-        qcotd = 0.
-        for n in range(len(p)):
-            qcotd += p[n] * x**n
-        return qcotd
-
-    def get_qsq_ere(self, x_dummy, *p):
-        results = []
-        for k in self.data_fit:
-            def residual_sq(x):
-                ecm_mn   = 2*np.sqrt(1 + x) # x = qSq / mNSq
-                qcotd_mn = self.data_fit[k]['boxQ'].getBoxMatrixFromEcm(ecm_mn).real
-                res      = self.ere(x, *p) - qcotd_mn
-                return res**2
-            
-            results.append(least_squares(residual_sq, self.y0[k], method='lm', 
-                                        ftol=1.0e-12, gtol=1.0e-12, xtol=1.0e-12).x[0])
-        return np.array(results)
-
     def fit_ere(self,n):
-        ''' n: order in q**2 of expansion
+        ''' This function finds the values of the parameters of the ERE 
+            that minimize the correlated values of qcm**2 with respect to
+            the predicted values of qcm**2 using the Luscher quantization condition (QC)
+
+            It uses get_qsq_ere(), defined below, to find qcm**2 through the QC.
+        
+            It takes in the order, n, of the ERE to perform the fit
+            n: order in q**2 of expansion
             1: q**2
             2: q**4
             qcotd = -1/a + sum_i=1^n c_i (q**2)**n
@@ -374,14 +360,16 @@ class qsqFit:
         y_bs    = {k:(self.data_fit[k]['qsq'][1:self.Nbs] - self.data_fit[k]['qsq'][1:self.Nbs].mean())/self.data['mN'][1:self.Nbs]**2 
                    + self.y0[k] for k in self.data_fit}
         self.y_gv = gv.dataset.avg_data(y_bs, bstrap=True)
-        y_np   = np.array([self.y0[k] for k in self.y0])
-        dy_cov = np.array(gv.evalcov([self.y_gv[k] for k in self.y_gv]))
+        y_np    = np.array([self.y0[k] for k in self.y0])
+        dy_cov  = np.array(gv.evalcov([self.y_gv[k] for k in self.y_gv]))
         x_dummy = [n for n in range(len(self.y_gv))]
+
         # fit the data
         p_opt, p_cov = curve_fit(self.get_qsq_ere, x_dummy, y_np, p0=p, sigma=dy_cov, 
                                  absolute_sigma=True, method='lm')
         p_fit = gv.gvar(p_opt, p_cov)
 
+        # given fit, build chisq minimum
         r         = self.get_qsq_ere(x_dummy, *p_opt) - y_np
         chisq_min = np.dot(r, np.dot(np.linalg.inv(dy_cov), r))
         dof       = len(y_np) - len(p)
@@ -393,6 +381,39 @@ class qsqFit:
         results['p_opt']     = p_fit
 
         self.ere_results[n] = results
+
+    def ere(self, x, *p):
+        ''' x = qcm**2 / MN**2
+            qcotd = p[0] + p[1] * x + p[2] * x**2 + ...
+        '''
+        qcotd = 0.
+        for n in range(len(p)):
+            qcotd += p[n] * x**n
+        return qcotd
+
+    def get_qsq_ere(self, x_dummy, *p):
+        ''' This function is designed to return the values of x=qcm**2/M**2,
+            for a fixed set of parameters, p, that minimize the residual
+
+            r = ere(x, *p) - qcotd_mn
+
+            where qcotd_mn is the value of qcodt given the QC in MN units
+        '''
+        results = []
+        for k in self.data_fit:
+            def residual_sq(x):
+                ''' x = qSq / mNSq 
+                    ecm will be in units of MN
+                '''
+                ecm_mn   = 2*np.sqrt(1 + x)
+                qcotd_mn = self.data_fit[k]['boxQ'].getBoxMatrixFromEcm(ecm_mn).real
+                res      = self.ere(x, *p) - qcotd_mn
+                return res**2
+            
+            results.append(least_squares(residual_sq, self.y0[k], method='lm', 
+                                         ftol=1.0e-12, gtol=1.0e-12, xtol=1.0e-12).x[0])
+        return np.array(results)
+
 
     def report_ere(self, n):
         if self.args.vs_mpi:
@@ -413,40 +434,16 @@ class qsqFit:
         if len(p) >= 4:
             print(' q6 m**5 = %s' %(p[3] / rescale**5))
 
-    def rel_qcotd(self, x, *p):
-        ''' x     = qSq / mNSq
-            Ecm   = 2 * np.sqrt(1 + x)
-            qcotd = p[0] * Ecm + p[1] * (Ecm**2 - 4) + ...
-        '''
-        Ecm   = 2 * np.sqrt(1 + x)
-        qcotd = p[0] * Ecm
-        if len(p) >= 2:
-            qcotd += p[1] * Ecm * 4 * x**2
-        if len(p) >= 3:
-            qcotd += p[2] * Ecm * (4 * x**2)**2
-        if len(p) >= 4:
-            sys.exit('we only support up to 2nd order')
-
-        return qcotd
-
-    def get_rel_qcotd(self, x_dummy, *p):
-        results = []
-        for k in self.data_fit:
-            def residual_sq(x):
-                ecm_mn   = 2*np.sqrt(1 + x) # x = qSq / mNSq
-                qcotd_mn = self.data_fit[k]['boxQ'].getBoxMatrixFromEcm(ecm_mn).real
-                res      = self.rel_qcotd(x, *p) - qcotd_mn
-                return res**2
-            
-            results.append(least_squares(residual_sq, self.y0[k], method='lm', 
-                                        ftol=1.0e-12, gtol=1.0e-12, xtol=1.0e-12).x[0])
-        return np.array(results)
-
     def fit_rel_qcotd(self,n):
         ''' fit qcotdelta to relativistic forms
             A * Ecm + B * Ecm * (Ecm**2 - 4) + C * Ecm * (Ecm**2 - 4)**2 ...
             where
             Ecm**2 = 4( MN**2 + qcm**2) / MN**2
+
+            the code mimics the ERE fit above, and works to minimize values of
+            x = qcm**2 / MN**2
+
+            to optimize the parameters
         '''
         if n == 0:
             p = [0.05]
@@ -469,7 +466,7 @@ class qsqFit:
                                  absolute_sigma=True, method='lm')
         p_fit = gv.gvar(p_opt, p_cov)
 
-        r         = self.get_qsq_ere(x_dummy, *p_opt) - y_np
+        r         = self.get_rel_qcotd(x_dummy, *p_opt) - y_np
         chisq_min = np.dot(r, np.dot(np.linalg.inv(dy_cov), r))
         dof       = len(y_np) - len(p)
 
@@ -481,12 +478,42 @@ class qsqFit:
 
         self.rel_qcotd_results[n] = results
 
+
+    def rel_qcotd(self, x, *p):
+        ''' x     = qSq / mNSq
+            Ecm   = 2 * np.sqrt(1 + x)
+            qcotd = p[0] * Ecm + p[1] * Ecm * (Ecm**2 - 4) + p[2] * Ecm * (Ecm**2 - 4)**2 + ...
+        '''
+        Ecm   = 2 * np.sqrt(1 + x)
+        qcotd = p[0] * Ecm
+        if len(p) >= 2:
+            qcotd += p[1] * Ecm * 4 * x
+        if len(p) >= 3:
+            qcotd += p[2] * Ecm * (4 * x)**2
+        if len(p) >= 4:
+            sys.exit('we only support up to 2nd order')
+
+        return qcotd
+
+    def get_rel_qcotd(self, x_dummy, *p):
+        results = []
+        for k in self.data_fit:
+            def residual_sq(x):
+                ecm_mn   = 2*np.sqrt(1 + x) # x = qSq / mNSq
+                qcotd_mn = self.data_fit[k]['boxQ'].getBoxMatrixFromEcm(ecm_mn).real
+                res      = self.rel_qcotd(x, *p) - qcotd_mn
+                return res**2
+            
+            results.append(least_squares(residual_sq, self.y0[k], method='lm', 
+                                        ftol=1.0e-12, gtol=1.0e-12, xtol=1.0e-12).x[0])
+        return np.array(results)
+
     def report_rel_qcotd(self, n):
         if self.args.vs_mpi:
             rescale = self.data['mN'][0] / self.mpi
         else:
             rescale = 1.
-        results = self.ere_results[n]
+        results = self.rel_qcotd_results[n]
         p = results['p_opt']
         print('------------------------------------------------------------')
         print('Rel. qcotd fit to O(q_cm**%d)' %(2*(len(p)-1)+1))
