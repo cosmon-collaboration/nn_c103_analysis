@@ -34,6 +34,8 @@ def main():
                         help=       'values of t_min in NN fit [%(default)s]')
     parser.add_argument('--gs_cons',default=False, action='store_true',
                         help=       'use gs only conspiracy model? [%(default)s]')
+    parser.add_argument('--fig_type',type=str, default='pdf',
+                        help=       'what type of figure? [%(default)s]')
     parser.add_argument('--test',   default=False, action='store_true',
                         help=       'if test==True, only do T1g [%(default)s]')
     parser.add_argument('--debug',  default=False, action='store_true',
@@ -42,9 +44,9 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'g', 
-             '5-10':'r', '5-12':'magenta', '5-14':'yellow',
-             '6-10':'orange', '6-12':'firebrick','6-14':'b'}
+    color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'magenta', 
+             '5-10':'r', '5-11': 'magenta','5-12':'g', '5-14':'yellow',
+             '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick'}
     t_color = {'2':'gray', '3':'r', '4':'orange', '5':'yellow', '6':'g', '7':'b', '8':'magenta', '9':'k'}
 
     result_dir = args.optimal.split('/')[0]
@@ -207,9 +209,11 @@ def main():
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, gevp_results, gevp_lbls, tmin_results, tmin_lbls)
 
-        fig_name = '%s_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
-        plt.savefig('figures/'+fig_name,transparent=True)
-
+        fig_name = '%s_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.'+args.fig_type))
+        if args.fig_type == 'pdf':
+            plt.savefig('figures/'+fig_name,transparent=True)
+        elif args.fig_type == 'png':
+            plt.savefig('figures/'+fig_name)
         stop_time = time.perf_counter()
         print('\n%.0f seconds' %(stop_time - start_time))
 
@@ -293,7 +297,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
         ('1', 'A1',  0):(1.4131,1.4275), ('1', 'A1',  1):(1.4351,1.4495),
         ('1', 'A1',  2):(1.4351,1.4551),
         ('2', 'A1',  0):(1.4216,1.4370), ('2', 'A1',  1):(1.4271,1.4415),
-        ('2', 'A1',  2):(1.4271,1.4815), ('2', 'A1',  3):(1.4271,1.4815),
+        ('2', 'A1',  2):(1.4271,1.4815), ('2', 'A1',  3):(1.4401,1.4651),
         ('3', 'A1',  0):(1.4351,1.4495), ('3', 'A1',  1):(1.4391,1.4535),
         ('3', 'A1',  2):(1.4391,1.4735),
         ('4', 'A1',  0):(1.4251,1.4395), ('4', 'A1',  1):(1.4461,1.4605),
@@ -330,11 +334,11 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
         'N_n2_NN_conspire_e0':'o',
     }
     color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'magenta', 
-             '5-10':'r', '5-12':'g', '5-14':'yellow',
-             '6-10':'orange', '6-12':'b','6-14':'firebrick'}
+             '5-10':'r', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
+             '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick'}
     shift = { '3-6' :-0.2, '3-8' :-0.15, '4-8' :-0.1, '4-10':-0.05, 
-             '5-10':0.05, '5-12':0.1, '5-14':0,
-             '6-10':0.15, '6-12':0.2, '6-14':0.25}
+             '5-10':0.05, '5-11':0.075, '5-12':0.1, '5-14':0,
+             '6-10':0.15, '6-11':0.175, '6-12':0.2, '6-14':0.25}
 
     opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
     opt_gevp = arg.optimal.split('t0-td_')[1].split('_')[0]
