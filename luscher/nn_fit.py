@@ -268,6 +268,13 @@ class Fit:
         return n_irrep
 
     def get_ratio_combinations(self):
+        ''' This function compares the energy of all choices of two single nucleon
+            operators that overlap with the state, and finds the one with an energy
+            closest to the NN energy to decide what set of single nucleon operators
+            to pair with the NN correlator.
+            It uses the effective mass of the single nucleons at the autotime chosen
+            by the user to estimate the energy.
+        '''
         autotime = self.params["autotime"]
         data = self.data
         irrep = self.get_nn_operators()
