@@ -180,40 +180,38 @@ class Fit:
             mom2  = correlator.split("Psq")[1]
             tag   = (mom2, irrep)
             corr  = file[f"{correlator}/data"][()]
-            if self.make_Hermitian:
+            if self.make_Hermitian and len(corr.shape) == 4:
                 # restore Hermiticity of NN data
-                if len(corr.shape) == 4:
-                    corr_full = np.zeros_like(corr)
-                    for i in range(corr.shape[1]):
-                        for j in range(corr.shape[2]):
-                            re = corr[0,i,j,self.params['t0']].real
-                            im = corr[0,i,j,self.params['t0']].imag
-                            if re != 0 or im != 0:
-                                corr_full[:,i,j,:] = corr[:,i,j,:]
-                            else:
-                                corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
-                    corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
+                corr_full = np.zeros_like(corr)
+                for i in range(corr.shape[1]):
+                    for j in range(corr.shape[2]):
+                        re = corr[0,i,j,self.params['t0']].real
+                        im = corr[0,i,j,self.params['t0']].imag
+                        if re != 0 or im != 0:
+                            corr_full[:,i,j,:] = corr[:,i,j,:]
+                        else:
+                            corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
+                corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
 
-                    # normalize data
-                    # C_ij -> C_ij / sqrt(C_ii(t_norm) C_jj(t_norm))
-                    if 't_norm' in self.params:
-                        t_norm = self.params['t_norm']
-                    else:
-                        t_norm = self.params['t0']
-                    C_norm = np.diagonal(corr.mean(axis=0)[:,:,t_norm]).real
-                    corr_full = np.zeros_like(corr)
-                    for i in range(corr.shape[1]):
-                        for j in range(corr.shape[2]):
-                            corr_full[:,i,j,:] = corr[:,i,j,:] / np.sqrt(C_norm[i]*C_norm[j])
-                    corr = corr_full
+            # block data
+            if self.block != 1:
+                corr = block_data(corr, self.block)
 
+            # normalize data
+            # C_ij -> C_ij / sqrt(C_ii(t_norm) C_jj(t_norm))
+            if 't_norm' in self.params:
+                t_norm = self.params['t_norm']
+            else:
+                t_norm = self.params['t0']
+            if len(corr.shape) == 4:
+                C_norm = np.diagonal(corr.mean(axis=0)[:,:,t_norm]).real
+                corr_full = np.zeros_like(corr)
+                for i in range(corr.shape[1]):
+                    for j in range(corr.shape[2]):
+                        corr_full[:,i,j,:] = corr[:,i,j,:] / np.sqrt(C_norm[i]*C_norm[j])
+                corr = corr_full
 
             data[tag] = corr
-        if self.block != 1:
-            new_data = dict()
-            for k in data:
-                new_data[k] = block_data(data[k], self.block)
-            data = new_data
 
         return data
 
@@ -296,6 +294,7 @@ class Fit:
             meff = meff[x.index(autotime)].mean
             idx = np.abs(nonint_lvls[(tag[0], tag[1])]["meff"] - meff).argmin()
             ratio_denom[tag] = nonint_lvls[(tag[0], tag[1])]["irrep"][idx]
+        
         return ratio_denom
 
     def make_bootstrap_list(self):
@@ -368,6 +367,8 @@ class Fit:
             nucleon = self.nucleon_data()
             singlet = self.singlet_data()
 
+            # add single hadron data to allsing specified by shape
+            # BB data will have shape = (Ncfg, Nt, Nop, Nop)
             allsing = {
                 key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
@@ -375,7 +376,7 @@ class Fit:
             drot = get_gevp_rotation(singlet, verbose=verbose)
             for key in drot:
                 eigVecs = np.fliplr(drot[key])
-                # construct G(t)
+                # construct G(t) = Ct0**(-1/2) C(t) Ct0**(-1/2)
                 Ct0 = singlet[key].mean(axis=0)[:,:,self.params["t0"]]
                 Ct0InvSqrt = inv(sqrtm(Ct0))
                 Gt = opt_einsum.contract('ik,cklt,lj->cijt', Ct0InvSqrt, singlet[key], Ct0InvSqrt)
@@ -383,6 +384,8 @@ class Fit:
                 rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', Gt, np.conj(eigVecs), eigVecs)
                 # take the diagonal elements only
                 rotated_singlet = np.diagonal(rotated_singlet, axis1=1, axis2=2)
+
+                # add diagonal G(t) data to allsing
                 for operator in range(np.shape(rotated_singlet)[-1]):
                     opkey = (key[0], key[1], operator)
                     allsing[opkey] = rotated_singlet[:, :, operator].real
@@ -411,7 +414,7 @@ class Fit:
             print("Read data from gvar dump")
             gvdata = gv.load(datapath)
             self.h5_bs = False
-            if self.params['svd_study']:
+            if self.params['svd_study'] or self.params['do_gevp']:
                 nucleon, allsing = do_gevp_rotation(verbose=False)
         else:
             print("Constructing data from HDF5")
