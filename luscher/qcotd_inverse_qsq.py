@@ -159,7 +159,7 @@ class qsqFit:
                 ("1", "A1",  0),
                 ("1", "A1",  1),
                 ("2", "A1",  0),
-                ("2", "A1",  3),
+                #("2", "A1",  3),
                 ("3", "A1",  0),
                 ("4", "A1",  0),
                 ("4", "A1",  1),
@@ -184,7 +184,10 @@ class qsqFit:
         fit_results = gv.load(self.args.fit_result)
         # load the nucleon mass
         if self.channel == 'deuteron':
-            mN = np.array(fit_results[((('0', 'T1g', 0), 'N', '0'), 'e0')])
+            try:
+                mN = np.array(fit_results[((('0', 'T1g', 0), 'N', '0'), 'e0')])
+            except:
+                mN = np.array(fit_results[((('1', 'A2', 0), 'N', '0'), 'e0')])
         elif self.channel == 'dineutron':
             mN = np.array(fit_results[((('0', 'A1g', 0), 'N', '0'), 'e0')])
         
@@ -602,7 +605,7 @@ class qsqFit:
             if self.channel == 'deuteron':
                 ax.axis([-.12, 0.26, -.4,1.2])
             elif self.channel == 'dineutron':
-                ax.axis([-.12, 0.26, -.4,2.0])
+                ax.axis([-.12, 0.26, -.4,1.2])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_\pi$', fontsize=24)
         else:
@@ -617,6 +620,8 @@ class qsqFit:
 
         # save the figure
         fig_base = self.args.fit_result.split('/')[-1]
+        if not os.path.exists('figures'):
+            os.makedirs('figures')
         if self.args.fig_type == 'pdf':
             plt.savefig(f'figures/qcotd_{fig_base}.pdf', transparent=True)
         else:
