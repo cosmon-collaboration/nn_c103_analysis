@@ -65,6 +65,9 @@ class Fit:
         else:
             self.t_norm = self.params['t0']
 
+        self.d_sets   = self.params["masterkey"]
+        self.save_fit = self.params["save"]
+
         self.plot = Plot(self.params)
         self.func = Functions(self.params)
         self.data, self.irrep_dim = self.gevp_correlators()
@@ -121,6 +124,53 @@ class Fit:
         self.filename = f"{filename}.pickle"
         if self.params['bootstrap']:
             self.boot0_file = self.filename.replace('_bsPrior-'+bs_prior,"")
+
+    def get_all_levels(self):
+        d_sets = list(self.d_sets)
+        new_dsets = []
+        irreps = []
+        for subset in d_sets:
+            nd = (subset[0][0], subset[0][1])
+            if nd not in irreps:
+                irreps.append(nd)
+        for irrep in irreps:
+            for level in range(self.irrep_dim[irrep]):
+                new_dsets.append([(irrep[0],irrep[1],level)])
+
+        self.irreps   = irreps
+        self.d_sets   = new_dsets
+        self.save_fit = False
+
+    def restore_masterkey(self):
+        self.d_sets   = self.params["masterkey"]
+        self.save_fit = self.params["save"]
+
+    def compute_Zjn(self):
+        ZjnSq_irrep = dict()
+        for irrep in self.irreps:
+            # compute sqrt(Ct0) * eVecs
+            CV = opt_einsum.contract('jk,kn->jn', sqrtm(fit.Ct0[irrep]), fit.eVecs[irrep])
+            ZjnSq = dict()
+            for op_j in range(self.irrep_dim[irrep]):
+                ZjSq = []
+                for level in range(self.irrep_dim[irrep]):
+                    n1,n2  = self.ratio_denom[(irrep[0], irrep[1], level)]
+                    Z0_key = (((irrep[0], irrep[1], level), 'R', (n1,n2)), 'z0')
+                    Z0     = self.posterior[Z0_key].mean
+                    Zjn     = CV[op_j,level] * Z0
+                    ZjSq.append(abs(Zjn)**2)
+                ZjnSq[op_j] = np.array(ZjSq)
+            ZjnSq_irrep[irrep] = ZjnSq
+        self.ZjnSq = ZjnSq_irrep
+
+    def report_ZjnSq(self):
+        nn_ops = self.get_nn_operators()
+        for irrep in self.ZjnSq:
+            print('\n',irrep)
+            for level in range(self.irrep_dim[irrep]):
+                opt = fit.ZjnSq[irrep][level].argmax()
+                print(level, nn_ops[irrep][opt], '  (optimal_op = %d)'%opt)
+
 
     def nucleon_data(self):
         """ Reads nucleon data from h5.
@@ -334,7 +384,8 @@ class Fit:
 
             t0 = self.params["t0"]
             td = self.params["td"]
-            drot = dict()
+            eVecs_irrep = dict()
+            Ct0_irrep   = dict()
             for key in data:
                 if len(np.shape(data[key])) == 4:
                     Ct  = np.average(data[key], axis=0)
@@ -343,7 +394,8 @@ class Fit:
                         Ctd = Ct[:,:, td]
                         Gt  = inv(sqrtm(Ct0)) @ Ctd @ inv(sqrtm(Ct0))
                         eval, evec = eigh(Gt)
-                        drot[key]  = evec
+                        eVecs_irrep[key] = np.fliplr(evec)
+                        Ct0_irrep[key]  = Ct0
                         if verbose:
                             C_shape = Ct0.shape
                             print(f"\n{key} {C_shape}, Success, condition numbers:")
@@ -361,7 +413,9 @@ class Fit:
                         print(f"{key} {td} Eigenvalue spectrum and vector:")
                         print(val2)
                         print(vec2[0])
-            return drot
+            
+            self.eVecs = eVecs_irrep
+            self.Ct0   = Ct0_irrep
         
         def do_gevp_rotation(verbose=True):
             nucleon = self.nucleon_data()
@@ -373,12 +427,12 @@ class Fit:
                 key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
 
-            drot = get_gevp_rotation(singlet, verbose=verbose)
-            for key in drot:
-                eigVecs = np.fliplr(drot[key])
+            get_gevp_rotation(singlet, verbose=verbose)
+            for key in self.eVecs:
+                eigVecs = self.eVecs[key]
                 # construct G(t) = Ct0**(-1/2) C(t) Ct0**(-1/2)
-                Ct0 = singlet[key].mean(axis=0)[:,:,self.params["t0"]]
-                Ct0InvSqrt = inv(sqrtm(Ct0))
+                #Ct0 = singlet[key].mean(axis=0)[:,:,self.params["t0"]]
+                Ct0InvSqrt = inv(sqrtm(self.Ct0[key]))
                 Gt = opt_einsum.contract('ik,cklt,lj->cijt', Ct0InvSqrt, singlet[key], Ct0InvSqrt)
                 # rotate G(t)
                 rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', Gt, np.conj(eigVecs), eigVecs)
@@ -642,7 +696,7 @@ class Fit:
             y0[key_ratio] = numerator / denominator
             y0[key_nucl0] = self.data[k0][x[key_nucl0]]
             y0[key_nucl1] = self.data[k1][x[key_nucl1]]
-            #import IPython; IPython.embed()
+            
             if svdcut:
                 if 'svdcut' not in dir(self) or ('svdcut' in dir(self) and key_ratio not in self.svdcut):
                     ysvd[key_ratio] = self.bsdata[key][x[key_ratio]]
@@ -697,7 +751,7 @@ class Fit:
         """
         Reconstruct ground state energy if ratio fit is used
         """
-        for subset in self.params["masterkey"]:
+        for subset in self.d_sets:
             for key in subset:
                 dset = self.ratio_denom[key]
                 offset = posterior[((key, "N", dset[0]), "e0")] + posterior[((key, "N", dset[1]), "e0")]
@@ -717,7 +771,7 @@ class Fit:
             # only add self.posterior if not already defined
             if not 'posterior' in dir(self):
                 self.posterior = b0
-            for subset in self.params["masterkey"]:
+            for subset in self.d_sets:
                 p0[subset[0]] = dict()
                 for k in b0:
                     if subset[0] == k[0][0]:
@@ -728,7 +782,7 @@ class Fit:
 
         for nbs in tqdm.tqdm(range(bi,bf,1)):
             posterior = gv.BufferDict()
-            masterkey = tqdm.tqdm(self.params["masterkey"])
+            masterkey = tqdm.tqdm(self.d_sets)
             for subset in masterkey:
                 if nbs > 0:
                     ''' all gvar's created in this switch are destroyed at restore_gvar
@@ -835,14 +889,14 @@ class Fit:
                     gv.restore_gvar()
 
             posterior = self.reconstruct_gs(posterior)
-            posterior = {"masterkey": self.params["masterkey"], **posterior}
+            posterior = {"masterkey": self.d_sets, **posterior}
             if nbs == 0:
                 self.posterior = posterior
 
         self.bsresult = bsresult
 
     def save(self):
-        if not self.params["save"]:
+        if not self.save_fit:
             return
 
         if not os.path.exists("./result"):
@@ -1123,9 +1177,17 @@ if __name__ == "__main__":
     fit = Fit()
     bs_p = parameters.params()
     if not bs_p['bootstrap']:
-        print('bs fits: boot0')
-        fit.fit(n_start=0,ndraws=0)
-        fit.save()
+        if bs_p['get_Zj']:
+            fit.get_all_levels()
+            fit.fit(n_start=0,ndraws=0)
+            fit.compute_Zjn()
+            fit.report_ZjnSq()
+            import IPython; IPython.embed()
+        if False:
+            print('bs fits: boot0')
+            fit.fit(n_start=0,ndraws=0)
+            fit.save()
+            
     else:
         bs_starts = bs_p['nbs_sub']* np.arange(bs_p['nbs']/bs_p['nbs_sub'],dtype=int)
         bs_finished = fit.get_bs_pickle_Nbs()
