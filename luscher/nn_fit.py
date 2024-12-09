@@ -65,13 +65,22 @@ class Fit:
         else:
             self.t_norm = self.params['t0']
 
+        ''' We solve either with 'gevp' or 'evp'
+            evp:  Fisrt make G(t) = C(t0)**(-1/2) * C(t) * C(t0)**(-1/2)
+                  then solve eigenvalue problem
+                  eig = scipy.linalg.eigh(Gt)
+            gevp: Solve the GEVP problem with 
+                  eig = scipy.linalg.eigh(Ctd, Ct0)
+        '''
+        self.gevp = self.params['gevp']
+
         self.d_sets   = self.params["masterkey"]
         self.save_fit = self.params["save"]
 
         self.plot = Plot(self.params)
         self.func = Functions(self.params)
         self.data, self.irrep_dim = self.gevp_correlators()
-        self.ratio_denom = self.get_ratio_combinations()
+        self.ratio_denom = self.get_ratio_combinations_Eff()
 
         self.ratio = self.params['ratio']
 
@@ -148,8 +157,22 @@ class Fit:
     def compute_Zjn(self):
         ZjnSq_irrep = dict()
         for irrep in self.irreps:
-            # compute sqrt(Ct0) * eVecs
-            CV = opt_einsum.contract('jk,kn->jn', sqrtm(fit.Ct0[irrep]), fit.eVecs[irrep])
+            ''' The overlap factors of the original operators can be determined by
+                Z_j^n = (C*V)_jn * A_n
+                where A_n are the ground state factors for the n'th principle correlator
+                D_n(t) = A_N**2 exp(-E0 t) * (1 + e.s.)
+                The C*V factor is different for the EVP and GEVP methods
+                EVP: eigh( Ct0m12 * Ctd * Ct0m12)
+                    CV = sqrt(Ct0) * eVecs
+                GEVP: eigh( Ctd, Ct0)
+                    NOTE: for GEVP, the eVecs are not normalized but are solutions of
+                          Ctd * eVec = eVal * Ct0 * eVec
+                    CV = Ct0 * eVecs
+            '''
+            if self.gevp == 'evp':
+                CV = opt_einsum.contract('jk,kn->jn', sqrtm(self.Ct0[irrep]), self.eVecs[irrep])
+            elif self.gevp == 'gevp':
+                CV = opt_einsum.contract('jk,kn->jn', self.Ct0[irrep], self.eVecs[irrep])
             ZjnSq = dict()
             for op_j in range(self.irrep_dim[irrep]):
                 ZjSq = []
@@ -157,9 +180,9 @@ class Fit:
                     n1,n2  = self.ratio_denom[(irrep[0], irrep[1], level)]
                     Z0_key = (((irrep[0], irrep[1], level), 'R', (n1,n2)), 'z0')
                     Z0     = self.posterior[Z0_key].mean
-                    Zjn     = CV[op_j,level] * Z0
+                    Zjn    = CV[op_j,level] * Z0
                     ZjSq.append(abs(Zjn)**2)
-                ZjnSq[op_j] = np.array(ZjSq)
+                ZjnSq[op_j] = np.array(ZjSq) / np.array(ZjSq).sum()
             ZjnSq_irrep[irrep] = ZjnSq
         self.ZjnSq = ZjnSq_irrep
 
@@ -167,10 +190,30 @@ class Fit:
         nn_ops = self.get_nn_operators()
         for irrep in self.ZjnSq:
             print('\n',irrep)
-            for level in range(self.irrep_dim[irrep]):
-                opt = fit.ZjnSq[irrep][level].argmax()
-                print(level, nn_ops[irrep][opt], '  (optimal_op = %d)'%opt)
+            print('%4s  %35s  %s' %('op_j', 'op_ID', 'level - max(Zjn)'))
 
+            for op_j in range(self.irrep_dim[irrep]):
+                opt_id = self.ZjnSq[irrep][op_j].argmax()
+                opt_op = self.nn_ops[irrep][opt_id]
+                op_lbl = self.nn_ops[irrep][op_j]
+
+                lbl = nn_ops[irrep][op_lbl]['label']
+                print('%4d  %35s  %d' %(op_j, lbl, opt_id))
+                plt.figure(lbl)
+                for level in range(self.irrep_dim[irrep]):
+                    plt.bar(level, self.ZjnSq[irrep][op_j][level])
+                plt.ylabel(r'$|Z_{%d}^{(n)}|^2$' %op_j, fontsize=20)
+                plt.xlabel(r'$n^{th}$-level', fontsize=20)
+                plt.title(lbl,fontsize=20)
+                plt.ylim(0,1)
+                plt.savefig('figures/T_1g_Z_%dn.pdf' %op_j, transparent=True)
+            for level in range(self.irrep_dim[irrep]):
+                n1, n2 = self.ratio_denom[(irrep[0], irrep[1], level)]
+                E1     = self.posterior[(((irrep[0], irrep[1], level), 'N', n1), 'e0')]
+                E2     = self.posterior[(((irrep[0], irrep[1], level), 'N', n2), 'e0')]
+                dE     = self.posterior[(((irrep[0], irrep[1], level), 'R', (n1, n2)), 'e0')]
+                Z0     = self.posterior[(((irrep[0], irrep[1], level), 'R', (n1, n2)), 'z0')]
+                print(irrep, '%2d' %level, E1+E2+dE, E1, E2, dE,Z0)
 
     def nucleon_data(self):
         """ Reads nucleon data from h5.
@@ -215,7 +258,7 @@ class Fit:
                 self.plot.simple_plot(data, mom2)
         return data
 
-    def singlet_data(self):
+    def nn_data(self):
         if 'make_Hermitian' in self.params:
             self.make_Hermitian = self.params['make_Hermitian']
         else:
@@ -226,8 +269,8 @@ class Fit:
         file = h5.File(fpath, "r")
         correlators = file.keys()
         for correlator in correlators:
-            irrep = correlator.split("_")[0]
-            mom2  = correlator.split("Psq")[1]
+            psq,irrep = correlator.split("_")
+            mom2  = psq.split("PSQ")[1]
             tag   = (mom2, irrep)
             corr  = file[f"{correlator}/data"][()]
             if self.make_Hermitian and len(corr.shape) == 4:
@@ -253,14 +296,15 @@ class Fit:
                 t_norm = self.params['t_norm']
             else:
                 t_norm = self.params['t0']
-            if len(corr.shape) == 4:
+            #'''
+            if len(corr.shape) == 4 and t_norm != 'None':
                 C_norm = np.diagonal(corr.mean(axis=0)[:,:,t_norm]).real
                 corr_full = np.zeros_like(corr)
                 for i in range(corr.shape[1]):
                     for j in range(corr.shape[2]):
                         corr_full[:,i,j,:] = corr[:,i,j,:] / np.sqrt(C_norm[i]*C_norm[j])
                 corr = corr_full
-
+            #'''
             data[tag] = corr
 
         return data
@@ -281,41 +325,71 @@ class Fit:
                 avglist[tag] = [correlator]
         return dcorr, avglist
 
+    def n_operators(self,operators):
+        n_ops = {}
+        for k in operators:
+            iso,b1,b2 = k.split()[0].split('_')
+            if 'CG_' in k.split()[2]:
+                CG    = k.split()[2].split('_')[1]
+                shift = 1
+            else:
+                CG    = '0'
+                shift = 0
+            psq1   = int(k.split()[2+shift].split('PSQ=')[1])
+            psq2   = int(k.split()[5+shift].split('PSQ=')[1])
+            irrep1 = k.split()[3+shift]
+            irrep2 = k.split()[6+shift]
+            op_key = {}
+            op_key['label'] = r'%s-%s(%d) %s-%s(%d): CG %s' %(b1,irrep1,psq1,b2,irrep2,psq2,CG)
+            op_key['B1'] = {'state':b1, 'PSQ':psq1, 'irrep':irrep1}
+            op_key['B2'] = {'state':b2, 'PSQ':psq2, 'irrep':irrep2}
+            n_ops[k] = op_key
+
+        return n_ops
+
     def get_nn_operators(self):
-        import re
-
         fpath = self.params["fpath"]["nn"]
-
-        if fpath in ["./data/singlet_S0.hdf5"]:
-            file = h5.File(fpath, "r")
-            _, avglist = self.get_equivalent_momenta(file)
+        with h5.File(fpath, 'r') as f5:
+            nn_ops  = dict()
             n_irrep = dict()
-            for tag in avglist:
-                oplist = list(file[f"/{avglist[tag][0]}"].attrs["opList"])
-                momlist = []
-                for idx, op in enumerate(oplist):
-                    mom = re.findall(r"P=\((.*?)\)", op)
-                    mom2 = [sum([int(i) ** 2 for i in m.split(",")]) for m in mom]
-                    irrep = [i.split(" ")[1] for i in re.findall(r"\[(.*?)\]", op)]
-                    if mom2[0] == 5:
-                        mom2[0] = f"5{irrep[0]}"
-                    if mom2[1] == 5:
-                        mom2[1] = f"5{irrep[1]}"
-                    momlist.append(mom2)
-                n_irrep[tag] = momlist
-        elif fpath in ["./data/singlet_S0_avg_mom.hdf5", "./data/triplet_S0_avg_mom.hdf5"]:
-            file = h5.File(fpath, "r")
-            n_irrep = dict()
-            correlators = file.keys()
+            correlators = f5.keys()
             for correlator in correlators:
-                irrep = correlator.split("_")[0]
-                mom2 = correlator.split("Psq")[1]
-                tag = (mom2, irrep)
-                n_irrep[tag] = [[i.decode('utf-8') for i in c] for c in
-                                file[f"{correlator}/" + self.params["irreps"]][()]]
+                psq,irrep    = correlator.split('_')
+                mom2         = psq.split('PSQ')[1]
+                tag          = (mom2, irrep)
+                nn_ops[tag]  = f5[correlator].attrs['op_list']
+                n_irrep[tag] = self.n_operators(nn_ops[tag])
+        self.nn_ops = nn_ops
+
         return n_irrep
 
-    def get_ratio_combinations(self):
+    def get_ratio_combinations_Zjn(self):
+        ''' Use fitted overlap factors to decide optimal reference N N states
+        '''
+        nn_ops = self.get_nn_operators()
+        ratio_denom = {}
+        for irrep in self.ZjnSq:
+            n_op_j = {k:[] for k in range(self.irrep_dim[irrep])}
+            for op_j in range(self.irrep_dim[irrep]):
+                opt_id = self.ZjnSq[irrep][op_j].argmax()
+                opp    = self.nn_ops[irrep][op_j]
+                B1     = nn_ops[irrep][opp]['B1']
+                B2     = nn_ops[irrep][opp]['B2']
+                e1     = '%d' %B1['PSQ']
+                e2     = '%d' %B2['PSQ']
+                if B1['PSQ'] > 4:
+                    e1 += B1['irrep']
+                if B2['PSQ'] > 4:
+                    e2 += B2['irrep']
+                tag = [e1,e2]
+                if tag not in n_op_j[opt_id]:
+                    n_op_j[opt_id].append(tag)
+            for k in n_op_j:
+                if len(n_op_j[k]) > 0:
+                    ratio_denom[(irrep[0], irrep[1], k)] = n_op_j[k][0]
+        return ratio_denom
+
+    def get_ratio_combinations_Eff(self):
         ''' This function compares the energy of all choices of two single nucleon
             operators that overlap with the state, and finds the one with an energy
             closest to the NN energy to decide what set of single nucleon operators
@@ -324,18 +398,28 @@ class Fit:
             by the user to estimate the energy.
         '''
         autotime = self.params["autotime"]
-        data = self.data
+        data  = self.data
         irrep = self.get_nn_operators()
         nonint_lvls = dict()
         for tag in irrep:
+            tag_lst = []
             meff_list = []
             for element in irrep[tag]:
-                x, meff1 = self.func.meff(data[element[0]])
+                B1 = irrep[tag][element]['B1']
+                B2 = irrep[tag][element]['B2']
+                e1 = '%d' %B1['PSQ']
+                e2 = '%d' %B2['PSQ']
+                if B1['PSQ'] > 4:
+                    e1 += B1['irrep']
+                if B2['PSQ'] > 4:
+                    e2 += B2['irrep']
+                x, meff1 = self.func.meff(data[e1])
                 meff1 = meff1[x.index(autotime)].mean
-                x, meff2 = self.func.meff(data[element[1]])
+                x, meff2 = self.func.meff(data[e2])
                 meff2 = meff2[x.index(autotime)].mean
                 meff_list.append(meff1 + meff2)
-            nonint_lvls[tag] = {"meff": np.array(meff_list), "irrep": irrep[tag]}
+                tag_lst.append([e1,e2])
+            nonint_lvls[tag] = {"meff": np.array(meff_list), "irrep": tag_lst}
         ratio_denom = dict()
         for tag in data:
             if tag in ["0", "1", "2", "3", "4", "5F1", "5F2"]:
@@ -392,17 +476,25 @@ class Fit:
                     try:
                         Ct0 = Ct[:,:, t0]
                         Ctd = Ct[:,:, td]
-                        Gt  = inv(sqrtm(Ct0)) @ Ctd @ inv(sqrtm(Ct0))
-                        eval, evec = eigh(Gt)
+                        if self.gevp == 'evp':
+                            Gt  = inv(sqrtm(Ct0)) @ Ctd @ inv(sqrtm(Ct0))
+                            eval, evec = eigh(Gt)
+                        elif self.gevp == 'gevp':
+                            eval, evec = eigh(Ctd, Ct0)
                         eVecs_irrep[key] = np.fliplr(evec)
+                        #eVecs_irrep[key] = evec
                         Ct0_irrep[key]  = Ct0
                         if verbose:
                             C_shape = Ct0.shape
                             print(f"\n{key} {C_shape}, Success, condition numbers:")
                             print("  cond(Ct0) = %.3f" %cond(Ct0))
-                            print("  cond(Gt)  = %.3f" %cond(Gt))
+                            if self.gevp == 'evp':
+                                print("  cond(Gt)  = %.3f" %cond(Gt))
+                            elif self.gevp == 'gevp':
+                                print("  cond(Ctd)  = %.3f" %cond(Ctd))
 
-                    except:
+                    except Exception as e:
+                        print(e)
                         print(f"{key} Fail, condition numbers:")
                         print(cond(Ct[:, :, td]), cond(Ct[:, :, t0]))
                         val1, vec1 = eigh(Ct[:, :, td])
@@ -419,7 +511,7 @@ class Fit:
         
         def do_gevp_rotation(verbose=True):
             nucleon = self.nucleon_data()
-            singlet = self.singlet_data()
+            singlet = self.nn_data()
 
             # add single hadron data to allsing specified by shape
             # BB data will have shape = (Ncfg, Nt, Nop, Nop)
@@ -430,19 +522,20 @@ class Fit:
             get_gevp_rotation(singlet, verbose=verbose)
             for key in self.eVecs:
                 eigVecs = self.eVecs[key]
-                # construct G(t) = Ct0**(-1/2) C(t) Ct0**(-1/2)
-                #Ct0 = singlet[key].mean(axis=0)[:,:,self.params["t0"]]
-                Ct0InvSqrt = inv(sqrtm(self.Ct0[key]))
-                Gt = opt_einsum.contract('ik,cklt,lj->cijt', Ct0InvSqrt, singlet[key], Ct0InvSqrt)
-                # rotate G(t)
-                rotated_singlet = opt_einsum.contract('cijt,in,jm->cnmt', Gt, np.conj(eigVecs), eigVecs)
+                Ct = singlet[key]
+                if self.gevp == 'evp':
+                    # construct G(t) = Ct0**(-1/2) C(t) Ct0**(-1/2)
+                    Ct0InvSqrt = inv(sqrtm(self.Ct0[key]))
+                    Gt = opt_einsum.contract('ik,cklt,lj->cijt', Ct0InvSqrt, Ct, Ct0InvSqrt)
+                    # rotate G(t)
+                    rotated_singlet = opt_einsum.contract('in,cijt,jm->cnmt', np.conj(eigVecs), Gt, eigVecs)
+                elif self.gevp == 'gevp':
+                    # GEVP instead of EVP
+                    rotated_singlet = opt_einsum.contract('in,cijt,jm->cnmt', np.conj(eigVecs), Ct, eigVecs)
                 # take the diagonal elements only
-                rotated_singlet = np.diagonal(rotated_singlet, axis1=1, axis2=2)
-
-                # add diagonal G(t) data to allsing
-                for operator in range(np.shape(rotated_singlet)[-1]):
+                for operator in range(np.shape(rotated_singlet)[1]):
                     opkey = (key[0], key[1], operator)
-                    allsing[opkey] = rotated_singlet[:, :, operator].real
+                    allsing[opkey] = rotated_singlet[:, operator, operator, :].real
 
             if self.params["bootstrap"]:
                 # if we have blocked - nucleon has the correct number of "configs"
@@ -459,11 +552,16 @@ class Fit:
 
         t0 = self.params["t0"]
         td = self.params["td"]
-        nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
-        if self.block != 1:
-            datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{t0}-{td}_block{self.block}.pickle"
+        if 'singlet' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'singlet'
+        elif 'triplet' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'triplet'
         else:
-            datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{t0}-{td}.pickle"
+            sys.exit('unkown nn data:', self.params["fpath"]["nn"].split('/')[-1])
+        if self.block != 1:
+            datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}_block{self.block}.pickle"
+        else:
+            datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}.pickle"
         if path.exists(datapath) and self.params["bootstrap"] is False:
             print("Read data from gvar dump")
             gvdata = gv.load(datapath)
@@ -796,13 +894,21 @@ class Fit:
                     prior = gv.BufferDict()
                     prior = self.set_priors(prior, data=(x, y0), nbs=nbs, type="auto")
                 else:
-                    # make priors with ratio
+                    # make Energy priors with ratio
                     x, y0, ybs = self.format_data(subset, nbs, ratio=True)
                     prior = gv.BufferDict()
                     prior = self.set_priors(prior, data=(x, y0), nbs=nbs, type="auto")
 
                     # remake data without ratio
                     x, y0, ybs = self.format_data(subset, nbs, ratio=False, svdcut=self.params['svd_study'])
+                    # we need to make ground state overlap factor priors with non-ratio data
+                    prior_z = gv.BufferDict()
+                    prior_z = self.set_priors(prior_z, data=(x, y0), nbs=nbs, type="auto")
+                    for k in prior_z:
+                        if k[-1] == 'z0':
+                            # the single nucleon overlaps will be determined the same in both cases
+                            prior[k] = prior_z[k]
+
 
                 # SVD cut?
                 if self.params['svd_study']:
@@ -832,6 +938,7 @@ class Fit:
                     except Exception as e:
                         print(e)
                         print('trying new BS prior_mean')
+                        # I need to fix priors based upon ratio or not
                         prior = self.set_priors(prior, data=(x, y0), nbs=nbs, type="auto", seed='2')
                         result = lsqfit.nonlinear_fit(
                             data=(x, ybs), prior=prior, p0=p0_bs, fcn=self.func, 
@@ -1176,17 +1283,31 @@ class Functions:
 if __name__ == "__main__":
     fit = Fit()
     bs_p = parameters.params()
-    if not bs_p['bootstrap']:
-        if bs_p['get_Zj']:
+    if bs_p['get_Zj']:
+        if os.path.exists(bs_p['Zjn_values']):
+            ratio_denom = fit.read_Zjn()
+        else:
             fit.get_all_levels()
             fit.fit(n_start=0,ndraws=0)
             fit.compute_Zjn()
-            fit.report_ZjnSq()
-            import IPython; IPython.embed()
-        if False:
-            print('bs fits: boot0')
-            fit.fit(n_start=0,ndraws=0)
-            fit.save()
+            fit.ratio_denom_Eff = dict(fit.ratio_denom)
+            ratio_denom = fit.get_ratio_combinations_Zjn()
+            # change back to requested fit info
+            fit.restore_masterkey()
+        # change NN ref states to match those from Zjn values
+        for k in ratio_denom:
+            if ratio_denom[k] != fit.ratio_denom[k]:
+                fit.ratio_denom[k] = ratio_denom[k]
+        
+        #plt.ion()
+        #fit.report_ZjnSq()
+        #plt.ioff()
+        #plt.show()
+    import IPython; IPython.embed()
+    if not bs_p['bootstrap']:
+        print('bs fits: boot0')
+        fit.fit(n_start=0,ndraws=0)
+        fit.save()
             
     else:
         bs_starts = bs_p['nbs_sub']* np.arange(bs_p['nbs']/bs_p['nbs_sub'],dtype=int)
