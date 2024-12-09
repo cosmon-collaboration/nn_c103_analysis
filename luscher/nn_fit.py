@@ -186,6 +186,23 @@ class Fit:
             ZjnSq_irrep[irrep] = ZjnSq
         self.ZjnSq = ZjnSq_irrep
 
+        if self.params['Zjn_values']:
+            with h5.File(self.params['Zjn_values'],'w') as f5:
+                for irrep in ZjnSq_irrep:
+                    key = f"{irrep[0]}_{irrep[1]}"
+                    for level in ZjnSq_irrep[irrep]:
+                        f5.create_dataset(f"{key}/{level}",data=ZjnSq_irrep[irrep][level])
+
+    def read_Zjn(self):
+        ZjnSq_irrep = dict()
+        with h5.File(self.params['Zjn_values'],'r') as f5:
+            for irrep in f5.keys():
+                key = tuple(irrep.split('_'))
+                ZjnSq_irrep[key] = dict()
+                for level in f5[irrep].keys():
+                    ZjnSq_irrep[key][int(level)] = f5[f"{irrep}/{level}"][()]
+        self.ZjnSq = ZjnSq_irrep
+
     def report_ZjnSq(self):
         nn_ops = self.get_nn_operators()
         for irrep in self.ZjnSq:
@@ -197,23 +214,30 @@ class Fit:
                 opt_op = self.nn_ops[irrep][opt_id]
                 op_lbl = self.nn_ops[irrep][op_j]
 
-                lbl = nn_ops[irrep][op_lbl]['label']
-                print('%4d  %35s  %d' %(op_j, lbl, opt_id))
-                plt.figure(lbl)
+                op_lbl = nn_ops[irrep][op_lbl]['label']
+                lbl    = f"{irrep[0]}_{irrep[1]}_O{op_j}"
+                print('%4d  %35s  %d' %(op_j, op_lbl, opt_id))
+                plt.figure(lbl, figsize=(7,5.5))
+                ax = plt.axes([0.12,0.12,0.87,0.87])
                 for level in range(self.irrep_dim[irrep]):
-                    plt.bar(level, self.ZjnSq[irrep][op_j][level])
-                plt.ylabel(r'$|Z_{%d}^{(n)}|^2$' %op_j, fontsize=20)
-                plt.xlabel(r'$n^{th}$-level', fontsize=20)
-                plt.title(lbl,fontsize=20)
-                plt.ylim(0,1)
-                plt.savefig('figures/T_1g_Z_%dn.pdf' %op_j, transparent=True)
+                    ax.bar(level, self.ZjnSq[irrep][op_j][level])
+                ax.set_ylabel(r'$|Z_{j=%d}^{(n)}|^2$' %op_j, fontsize=20)
+                ax.set_xlabel(r'$n^{th}$-level', fontsize=20)
+                ax.text(0.5, 0.9, r'%s(%s): $O_{%d}$' %(irrep[1],irrep[0],op_j),
+                        verticalalignment='bottom', horizontalalignment='center',
+                        transform=ax.transAxes,
+                        bbox={'boxstyle':'round', 'facecolor':'None'},
+                        fontsize=20)
+                ax.set_ylim([0,1])
+                plt.savefig(f"figures/{irrep[0]}_{irrep[1]}_Z_{op_j}n.pdf", transparent=True)
             for level in range(self.irrep_dim[irrep]):
-                n1, n2 = self.ratio_denom[(irrep[0], irrep[1], level)]
-                E1     = self.posterior[(((irrep[0], irrep[1], level), 'N', n1), 'e0')]
-                E2     = self.posterior[(((irrep[0], irrep[1], level), 'N', n2), 'e0')]
-                dE     = self.posterior[(((irrep[0], irrep[1], level), 'R', (n1, n2)), 'e0')]
-                Z0     = self.posterior[(((irrep[0], irrep[1], level), 'R', (n1, n2)), 'z0')]
-                print(irrep, '%2d' %level, E1+E2+dE, E1, E2, dE,Z0)
+                if any([(irrep[0], irrep[1], level) in k for k in self.d_sets]):
+                    n1, n2 = self.ratio_denom[(irrep[0], irrep[1], level)]
+                    E1     = self.posterior[(((irrep[0], irrep[1], level), 'N', n1), 'e0')]
+                    E2     = self.posterior[(((irrep[0], irrep[1], level), 'N', n2), 'e0')]
+                    dE     = self.posterior[(((irrep[0], irrep[1], level), 'R', (n1, n2)), 'e0')]
+                    Z0     = self.posterior[(((irrep[0], irrep[1], level), 'R', (n1, n2)), 'z0')]
+                    print(irrep, '%2d' %level, E1+E2+dE, E1, E2, dE,Z0)
 
     def nucleon_data(self):
         """ Reads nucleon data from h5.
@@ -366,6 +390,7 @@ class Fit:
     def get_ratio_combinations_Zjn(self):
         ''' Use fitted overlap factors to decide optimal reference N N states
         '''
+        print('getting NN reference states by Z_jn overlaps')
         nn_ops = self.get_nn_operators()
         ratio_denom = {}
         for irrep in self.ZjnSq:
@@ -397,6 +422,7 @@ class Fit:
             It uses the effective mass of the single nucleons at the autotime chosen
             by the user to estimate the energy.
         '''
+        print('getting NN reference states by Eff Mass')
         autotime = self.params["autotime"]
         data  = self.data
         irrep = self.get_nn_operators()
@@ -1285,30 +1311,32 @@ if __name__ == "__main__":
     bs_p = parameters.params()
     if bs_p['get_Zj']:
         if os.path.exists(bs_p['Zjn_values']):
-            ratio_denom = fit.read_Zjn()
+            fit.read_Zjn()
+            ratio_denom = fit.get_ratio_combinations_Zjn()
         else:
             fit.get_all_levels()
             fit.fit(n_start=0,ndraws=0)
             fit.compute_Zjn()
             fit.ratio_denom_Eff = dict(fit.ratio_denom)
             ratio_denom = fit.get_ratio_combinations_Zjn()
+            # create Z_jn plots
+            if fit.params['show_Zjn']:
+                plt.ion()
+            fit.report_ZjnSq()
+            if fit.params['show_Zjn']:
+                plt.ioff()
+                plt.show()
             # change back to requested fit info
             fit.restore_masterkey()
         # change NN ref states to match those from Zjn values
         for k in ratio_denom:
             if ratio_denom[k] != fit.ratio_denom[k]:
                 fit.ratio_denom[k] = ratio_denom[k]
-        
-        #plt.ion()
-        #fit.report_ZjnSq()
-        #plt.ioff()
-        #plt.show()
-    import IPython; IPython.embed()
+    
     if not bs_p['bootstrap']:
         print('bs fits: boot0')
         fit.fit(n_start=0,ndraws=0)
         fit.save()
-            
     else:
         bs_starts = bs_p['nbs_sub']* np.arange(bs_p['nbs']/bs_p['nbs_sub'],dtype=int)
         bs_finished = fit.get_bs_pickle_Nbs()
