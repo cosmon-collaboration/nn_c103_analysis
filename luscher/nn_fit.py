@@ -79,6 +79,22 @@ class Fit:
 
         self.plot = Plot(self.params)
         self.func = Functions(self.params)
+
+        # are we using restricted set of configs?
+        if 'cfgs' in self.params:
+            if len(self.params['cfgs']) > 1:
+                ci = int(self.params['cfgs'][0])
+                cf = int(self.params['cfgs'][1])
+            else:
+                ci = 0
+                cf = int(self.params['cfgs'][0])
+            if len(self.params['cfgs']) > 2:
+                dc = int(self.params['cfgs'][2])
+            else:
+                dc = 1
+            self.cfgs = range(ci,cf,dc)
+            
+
         self.data, self.irrep_dim = self.gevp_correlators()
         self.ratio_denom = self.get_ratio_combinations_Eff()
 
@@ -99,7 +115,12 @@ class Fit:
             except:
                 self.r_n_inel = self.params['r_n_inel']
 
-        nn = self.params["fpath"]["nn"].split('/')[-1].split('_')[0]
+        if 'singlet' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'singlet'
+        elif 'triplet' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'triplet'
+        else:
+            sys.exit('unkown nn data:', self.params["fpath"]["nn"].split('/')[-1])
         filename = f"NN_{nn}_tnorm{self.t_norm}_t0-td_{self.params['t0']}-{self.params['td']}"
         filename = f"{filename}_N_n{self.nstates}"
         filename = f"{filename}_t_{self.params['trange']['N'][0]}-{self.params['trange']['N'][1]}"
@@ -114,9 +135,15 @@ class Fit:
         filename = f"{filename}_t_{self.params['trange']['R'][0]}-{self.params['trange']['R'][1]}"
         filename = f"{filename}_ratio_{self.params['ratio']}"
 
+        # are we using restricted set of configs?
+        if 'cfgs' in self.params:
+            cfgs = f"cfgs{self.cfgs[0]}-{self.cfgs[-1]}x{self.cfgs[1]-self.cfgs[0]}"
+            filename = f"{filename}_{cfgs}"
+
         # did we block the data?
         if self.block != 1:
             filename = f"{filename}_block{self.block}"
+
         # bs prior gs or all
         if self.params['bootstrap']:
             bs_prior = self.params['bs_prior']
@@ -251,7 +278,10 @@ class Fit:
         avglist = dict()
         dcorr = dict()
         for correlator in correlators:
-            dcorr[correlator] = file[f"{correlator}/data"][()].real
+            if 'cfgs' in dir(self):
+                dcorr[correlator] = file[f"{correlator}/data"][()][self.cfgs].real
+            else:
+                dcorr[correlator] = file[f"{correlator}/data"][()].real
             irrep = correlator.split("_")[1]
             mom = correlator.split("_")[0][1:].replace("m", "")
             mom2 = f"{sum([int(i) ** 2 for i in mom])}"
@@ -296,7 +326,10 @@ class Fit:
             psq,irrep = correlator.split("_")
             mom2  = psq.split("PSQ")[1]
             tag   = (mom2, irrep)
-            corr  = file[f"{correlator}/data"][()]
+            if 'cfgs' in dir(self):
+                corr = file[f"{correlator}/data"][()][self.cfgs].real
+            else:
+                corr = file[f"{correlator}/data"][()]
             if self.make_Hermitian and len(corr.shape) == 4:
                 # restore Hermiticity of NN data
                 corr_full = np.zeros_like(corr)
@@ -584,10 +617,13 @@ class Fit:
             nn = 'triplet'
         else:
             sys.exit('unkown nn data:', self.params["fpath"]["nn"].split('/')[-1])
+        datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}"
+        if 'cfgs' in dir(self):
+            cfgs = f"cfgs{self.cfgs[0]}-{self.cfgs[-1]}x{self.cfgs[1]-self.cfgs[0]}"
+            datapath = f"{datapath}_{cfgs}"
         if self.block != 1:
-            datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}_block{self.block}.pickle"
-        else:
-            datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}.pickle"
+            datapath = f"{datapath}_block{self.block}"
+        datapath = f"{datapath}.pickle"
         if path.exists(datapath) and self.params["bootstrap"] is False:
             print("Read data from gvar dump")
             gvdata = gv.load(datapath)
