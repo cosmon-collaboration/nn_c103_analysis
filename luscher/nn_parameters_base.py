@@ -21,8 +21,14 @@ def params():
     p["t0"] = 5
     p["td"] = 10
     p['t_norm'] = 3
+    p['gevp']   = 'evp' # evp or gevp
+    p['get_Zj'] = True
+    p['Zjn_values'] = 'result/isosinglet_Zjn_tNorm_evp.h5'
+    p['show_Zjn']   = False
+    p['do_gevp']    = False #set to True if you want to do gevp if it was already done and saved
 
     p["block"] = 2
+    #p['cfgs']  = [0,802[,1]] # use this to cut configs if desired 
 
     p['svd_study'] = False
     p['svdcut']    = 1e-8
@@ -35,6 +41,7 @@ def params():
     p['bs0_width'] = 5
     p['bs_prior']  = 'all' # 'gs' or 'all': 
                           # randomize prior mean for gs or all priors
+    #p['old_bs']    = True # set to True to use BS list from 2009.11825
 
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
     p["sig_e0"]     = 1 # multiplication factor for meff[autotime] for prior width for deltaE_gs
@@ -65,7 +72,7 @@ def params():
             [('3', 'A2', 0)], [('3', 'A2', 1)], [('3', 'E', 0)]
             ]
 
-        #p["masterkey"] = [[("0", "T1g", 0)]]
+        #p["masterkey"] = [[("0", "T1g", 0)]] # modify to select single or other channels
 
     elif 'triplet' in p["fpath"]["nn"]:
         p["masterkey"] = []
