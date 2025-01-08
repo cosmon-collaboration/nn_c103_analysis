@@ -148,6 +148,10 @@ class Fit:
         if self.params['bootstrap']:
             bs_prior = self.params['bs_prior']
             filename = f"{filename}_bsPrior-{bs_prior}"
+            if 'old_bs' in self.params:
+                self.old_bs = self.params['old_bs']
+            else:
+                self.old_bs = False
         # SVD study?
         if self.params['svd_study']:
             filename = f"{filename}_svdcut"
@@ -323,11 +327,15 @@ class Fit:
         file = h5.File(fpath, "r")
         correlators = file.keys()
         for correlator in correlators:
-            psq,irrep = correlator.split("_")
-            mom2  = psq.split("PSQ")[1]
+            try:# data packed via Drew
+                psq,irrep = correlator.split("_")
+                mom2 = psq.split("PSQ")[1]
+            except:# old way where Andre/Jason took Drew's data and repacked it
+                irrep,psq = correlator.split("_")
+                mom2 = psq.split("Psq")[1]
             tag   = (mom2, irrep)
             if 'cfgs' in dir(self):
-                corr = file[f"{correlator}/data"][()][self.cfgs].real
+                corr = file[f"{correlator}/data"][()][self.cfgs]
             else:
                 corr = file[f"{correlator}/data"][()]
             if self.make_Hermitian and len(corr.shape) == 4:
@@ -411,8 +419,12 @@ class Fit:
             n_irrep = dict()
             correlators = f5.keys()
             for correlator in correlators:
-                psq,irrep    = correlator.split('_')
-                mom2         = psq.split('PSQ')[1]
+                try:
+                    psq,irrep    = correlator.split('_')
+                    mom2         = psq.split('PSQ')[1]
+                except:
+                    irrep,psq = correlator.split("_")
+                    mom2 = psq.split("Psq")[1]
                 tag          = (mom2, irrep)
                 nn_ops[tag]  = f5[correlator].attrs['op_list']
                 n_irrep[tag] = self.n_operators(nn_ops[tag])
@@ -599,7 +611,11 @@ class Fit:
             if self.params["bootstrap"]:
                 # if we have blocked - nucleon has the correct number of "configs"
                 ncfg = nucleon[next(iter(nucleon))].shape[0]
-                self.draws = bs_utils.make_bs_list(ncfg, self.params['Nbs_max'], seed=self.params['bs_seed'])
+                if self.old_bs:
+                    with h5.File('data/bslist_802.h5','r') as tmp5:
+                        self.draws = tmp5['bslist_802'][()]
+                else:
+                    self.draws = bs_utils.make_bs_list(ncfg, self.params['Nbs_max'], seed=self.params['bs_seed'])
                 self.h5_bs = True
             else:
                 self.h5_bs = False                
@@ -1368,7 +1384,7 @@ if __name__ == "__main__":
         for k in ratio_denom:
             if ratio_denom[k] != fit.ratio_denom[k]:
                 fit.ratio_denom[k] = ratio_denom[k]
-    
+
     if not bs_p['bootstrap']:
         print('bs fits: boot0')
         fit.fit(n_start=0,ndraws=0)
@@ -1383,3 +1399,4 @@ if __name__ == "__main__":
                 print('bs fits:',bs_start+1,'->',bs_start+bs_p['nbs_sub'])
                 fit.fit(n_start=bs_start,ndraws=bs_p['nbs_sub'])
                 fit.save()
+    
