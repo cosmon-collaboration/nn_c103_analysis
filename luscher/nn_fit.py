@@ -94,12 +94,6 @@ class Fit:
                 dc = 1
             self.cfgs = range(ci,cf,dc)
             
-
-        self.data, self.irrep_dim = self.gevp_correlators()
-        self.ratio_denom = self.get_ratio_combinations_Eff()
-
-        self.ratio = self.params['ratio']
-
         self.version = self.params['version']
         if self.version not in ['agnostic', 'conspire']:
             sys.exit('version must be in [ agnostic, conspire]')
@@ -164,6 +158,12 @@ class Fit:
         self.filename = f"{filename}.pickle"
         if self.params['bootstrap']:
             self.boot0_file = self.filename.replace('_bsPrior-'+bs_prior,"")
+
+        self.data, self.irrep_dim = self.gevp_correlators()
+        self.ratio_denom = self.get_ratio_combinations_Eff()
+
+        self.ratio = self.params['ratio']
+
 
     def get_all_levels(self):
         d_sets = list(self.d_sets)
@@ -1389,6 +1389,7 @@ if __name__ == "__main__":
         print('bs fits: boot0')
         fit.fit(n_start=0,ndraws=0)
         fit.save()
+        #import IPython; IPython.embed()
     else:
         bs_starts = bs_p['nbs_sub']* np.arange(bs_p['nbs']/bs_p['nbs_sub'],dtype=int)
         bs_finished = fit.get_bs_pickle_Nbs()
