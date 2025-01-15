@@ -23,7 +23,8 @@ def params():
     p['t_norm'] = 3
     p['gevp']   = 'evp' # evp or gevp
     p['get_Zj'] = True
-    p['Zjn_values'] = 'result/isosinglet_Zjn_tNorm_evp.h5'
+    p['Zjn_values'] = f"result/{p['fpath']['nn'].split('/')[-1].split('_')[0]}"
+    p['Zjn_values'] = f"{p['Zjn_values']}_Zjn_tNorm{p['t_norm']}_{p['gevp']}.h5"
     p['show_Zjn']   = False
     p['do_gevp']    = False #set to True if you want to do gevp if it was already done and saved
 

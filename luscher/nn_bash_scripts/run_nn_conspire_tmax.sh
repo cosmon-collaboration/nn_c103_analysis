@@ -11,7 +11,7 @@ for gevp_t in "5-10"; do
     t0=${gevp_t%-*}
     td=${gevp_t#*-}
     gevp="${t0}-${td}"
-    for n_N in 3; do
+    for n_N in 3 4; do
         for t in 3 4 5 6 7; do
             for tf_NN in 10 11 12 13 14 15; do
                 for t0_N in 3 4 5; do

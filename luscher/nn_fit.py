@@ -161,7 +161,6 @@ class Fit:
 
         self.data, self.irrep_dim = self.gevp_correlators()
         self.ratio_denom = self.get_ratio_combinations_Eff()
-
         self.ratio = self.params['ratio']
 
 
@@ -226,6 +225,8 @@ class Fit:
 
     def read_Zjn(self):
         ZjnSq_irrep = dict()
+        print('reading Zjn values')
+        print(f"    {self.params['Zjn_values']}")
         with h5.File(self.params['Zjn_values'],'r') as f5:
             for irrep in f5.keys():
                 key = tuple(irrep.split('_'))
@@ -642,9 +643,10 @@ class Fit:
         datapath = f"{datapath}.pickle"
         if path.exists(datapath) and self.params["bootstrap"] is False:
             print("Read data from gvar dump")
+            print(f"    {datapath}")
             gvdata = gv.load(datapath)
             self.h5_bs = False
-            if self.params['svd_study'] or self.params['do_gevp']:
+            if self.params['svd_study'] or self.params['do_gevp'] or self.params['get_Zj']:
                 nucleon, allsing = do_gevp_rotation(verbose=False)
         else:
             print("Constructing data from HDF5")
@@ -1359,6 +1361,7 @@ class Functions:
 
 
 if __name__ == "__main__":
+    #import IPython; IPython.embed() # insert this where you want to interact with fit in memory
     fit = Fit()
     bs_p = parameters.params()
     if bs_p['get_Zj']:
@@ -1389,7 +1392,7 @@ if __name__ == "__main__":
         print('bs fits: boot0')
         fit.fit(n_start=0,ndraws=0)
         fit.save()
-        #import IPython; IPython.embed()
+
     else:
         bs_starts = bs_p['nbs_sub']* np.arange(bs_p['nbs']/bs_p['nbs_sub'],dtype=int)
         bs_finished = fit.get_bs_pickle_Nbs()
