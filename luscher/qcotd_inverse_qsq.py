@@ -52,6 +52,10 @@ def main():
                         help=                'plot HAL potential results? [%(default)s]')
     parser.add_argument('--vs_mpi',          default=True,  action='store_false',
                         help=                'scale qcotd and qsq by mpi? [%(default)s]')
+    parser.add_argument('--ylim',            type=float, nargs=2,
+                        help=                'change default ylim for qcotd plot')
+    parser.add_argument('--xlim',            type=float, nargs=2,
+                        help=                'change default xlim for qcotd plot')
     parser.add_argument('--h5_results',      default=False, action='store_true',
                         help=                'create h5 file with spectrum results? [%(default)s]')
     parser.add_argument('--fig_type',        default='pdf', help='what fig type? [%(default)s]')
@@ -602,19 +606,17 @@ class qsqFit:
         #ax.legend(loc=2, ncol=5, columnspacing=0, handletextpad=0.1)
         ax.legend(loc=2, columnspacing=0, handletextpad=0.1)
         if self.args.vs_mpi:
-            if self.channel == 'deuteron':
-                ax.axis([-.12, 0.26, -.4,1.2])
-            elif self.channel == 'dineutron':
-                ax.axis([-.12, 0.26, -.4,1.2])
+            ax.axis([-.12, 0.26, -.4,1.2])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_\pi$', fontsize=24)
         else:
-            if self.channel == 'deuteron':
-                ax.axis([-.026, 0.0525, -.15,0.6])
-            elif self.channel == 'dineutron':
-                ax.axis([-.026, 0.0525, -.15,1.0])
+            ax.axis([-.026, 0.0525, -.15,0.6])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=16)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_N$', fontsize=16)
+        if self.args.ylim:
+            ax.set_ylim(self.args.ylim)
+        if self.args.xlim:
+            ax.set_ylim(self.args.xlim)
         ax.axhline(color='k')
         ax.axvline(color='k')
 
