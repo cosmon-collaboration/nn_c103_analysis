@@ -56,6 +56,8 @@ def main():
                         help=                'change default ylim for qcotd plot')
     parser.add_argument('--xlim',            type=float, nargs=2,
                         help=                'change default xlim for qcotd plot')
+    parser.add_argument('--Dxlim',           type=float, nargs=2,
+                        help=                'change default xlim for delta plot')
     parser.add_argument('--h5_results',      default=False, action='store_true',
                         help=                'create h5 file with spectrum results? [%(default)s]')
     parser.add_argument('--fig_type',        default='pdf', help='what fig type? [%(default)s]')
@@ -626,12 +628,12 @@ class qsqFit:
             axD.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
         else:
             ax.axis([-.026, 0.0525, -.15,0.6])
-            ax.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=16)
-            ax.set_ylabel(r'$q {\rm cot} \delta / m_N$', fontsize=16)
+            ax.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=24)
+            ax.set_ylabel(r'$q {\rm cot} \delta / m_N$', fontsize=24)
         if self.args.ylim:
             ax.set_ylim(self.args.ylim)
         if self.args.xlim:
-            ax.set_ylim(self.args.xlim)
+            ax.set_xlim(self.args.xlim)
         ax.axhline(color='k')
         ax.axvline(color='k')
 
@@ -640,6 +642,9 @@ class qsqFit:
         elif self.channel == 'dineutron':
             axD.set_ylabel(r'$\delta^\circ(^1 {\rm S}_0)$', fontsize=24)
         axD.axis([0,0.26, 0, 92])
+        if self.args.Dxlim:
+            axD.set_xlim(self.args.Dxlim)
+
         axD.axhline(color='k')
         axD.axvline(color='k')
 
