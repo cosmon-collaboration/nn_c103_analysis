@@ -544,16 +544,30 @@ class qsqFit:
             self.rescale = 1.
         plt.figure('qcotd',figsize=(7,4))
         ax = plt.axes([0.12,0.16,0.87,0.83])
+        plt.figure('delta',figsize=(7,4))
+        axD = plt.axes([0.12,0.16,0.87,0.83])
 
         # plot fit results
         fit_clrs = {1:'r', 2:'g', 3:'b'}
         qsq      = np.arange(-0.26, 0.53, .001)
         x        = qsq * self.rescale**2
+        # phase shift
+        qsqD = np.arange(0.0001, 0.53, .001)
+        xD   = qsqD * self.rescale**2
+
         for n in range(1,self.args.ere_order+1)[::-1]:
             qcotd = self.rescale * self.ere(qsq, *self.ere_results[n]['p_opt'])
-            y  = np.array([k.mean for k in qcotd])
-            dy = np.array([k.sdev for k in qcotd])
+            y     = np.array([k.mean for k in qcotd])
+            dy    = np.array([k.sdev for k in qcotd])
             ax.fill_between(x, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10)
+
+            # phase shift
+            qcotdD = self.ere(qsqD, *self.ere_results[n]['p_opt'])
+            cotd   = qcotdD * self.data['mN'][0]
+            delta  = (np.pi / 2 - np.arctan(cotd)) * 180 / np.pi
+            y      = np.array([k.mean for k in delta])
+            dy     = np.array([k.sdev for k in delta])
+            axD.fill_between(xD, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10)
 
         if self.args.plot_rel:
             # plot Rel. qcotd
@@ -609,6 +623,7 @@ class qsqFit:
             ax.axis([-.12, 0.26, -.4,1.2])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_\pi$', fontsize=24)
+            axD.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
         else:
             ax.axis([-.026, 0.0525, -.15,0.6])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=16)
@@ -620,14 +635,33 @@ class qsqFit:
         ax.axhline(color='k')
         ax.axvline(color='k')
 
+        if self.channel == 'deuteron':
+            axD.set_ylabel(r'$\delta^\circ(^3 {\rm S}_1)$', fontsize=24)
+        elif self.channel == 'dineutron':
+            axD.set_ylabel(r'$\delta^\circ(^1 {\rm S}_0)$', fontsize=24)
+        axD.axis([0,0.26, 0, 92])
+        axD.axhline(color='k')
+        axD.axvline(color='k')
+
+
         # save the figure
         fig_base = self.args.fit_result.split('/')[-1]
         if not os.path.exists('figures'):
             os.makedirs('figures')
+        # switch to correct plot to save
+        plt.figure('qcotd',figsize=(7,4))
         if self.args.fig_type == 'pdf':
             plt.savefig(f'figures/qcotd_{fig_base}.pdf', transparent=True)
         else:
             plt.savefig(f'figures/qcotd_{fig_base}.{self.args.fig_type}')
+
+        # now switch to phase shift plot
+        plt.figure('delta',figsize=(7,4))
+        if self.args.fig_type == 'pdf':
+            plt.savefig(f'figures/delta_{fig_base}.pdf', transparent=True)
+        else:
+            plt.savefig(f'figures/delta_{fig_base}.{self.args.fig_type}')
+
 
     def plot_data(self, ax, data='raw'):
         if self.channel == 'deuteron':
