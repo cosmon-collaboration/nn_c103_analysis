@@ -28,8 +28,10 @@ def main():
     parser.add_argument('--ratio',  default=False, action='store_true',
                         help=       'fit from RATIO correlator? [%(default)s]')
     parser.add_argument('--gevp',   nargs='+', type=str, 
-                        default=    ['5-10','5-12', '5-14', '6-10', '6-12', '6-14'],
+                        default=    ['4-8', '4-10', '5-10','5-12', '6-10', '6-12'],
                         help=       'list of GEVP times in t0-td format %(default)s')
+    parser.add_argument('--evp',    default=True, action='store_false',
+                        help=       'load evp (vs gevp) data? [%(default)s]')
     parser.add_argument('--tmin',   nargs='+', type=int, default=range(2,10),
                         help=       'values of t_min in NN fit [%(default)s]')
     parser.add_argument('--gs_cons',default=False, action='store_true',
@@ -141,8 +143,11 @@ def main():
         for k in post_optimal:
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
-
-    nn_data = gv.load('data/gevp_'+nn_iso+'_'+tnorm+'_'+gevp_plot+block+'.pickle')
+    if args.evp:
+        d_file = f"data/gevp_{nn_iso}_{tnorm}_evp_{gevp_plot}{block}.pickle"
+    else:
+        d_file = f"data/gevp_{nn_iso}_{tnorm}_gevp_{gevp_plot}{block}.pickle"
+    nn_data = gv.load(d_file)
 
     plt.ion()
     gevp_results = {}
