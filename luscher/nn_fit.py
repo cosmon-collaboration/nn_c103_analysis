@@ -108,7 +108,6 @@ class Fit:
                 self.r_n_inel = self.params['fit_choices'][key[0]]['r_n_inel']
             except:
                 self.r_n_inel = self.params['r_n_inel']
-
         if 'singlet' in self.params["fpath"]["nn"].split('/')[-1]:
             nn = 'singlet'
         elif 'triplet' in self.params["fpath"]["nn"].split('/')[-1]:
@@ -178,6 +177,8 @@ class Fit:
 
         self.irreps   = irreps
         self.d_sets   = new_dsets
+        print("irreps",self.irreps)
+        print("d_sets",self.d_sets)
         self.save_fit = False
 
     def restore_masterkey(self):
@@ -261,6 +262,13 @@ class Fit:
                         bbox={'boxstyle':'round', 'facecolor':'None'},
                         fontsize=20)
                 ax.set_ylim([0,1])
+                necessary_file_structure = './figures'
+                # Check if the directory exists
+                if not os.path.exists(necessary_file_structure ):
+                    # Create the directory if it doesn't exist
+                    os.makedirs(necessary_file_structure)
+                    #print(f"Directory '{figures_path}' created.")
+
                 plt.savefig(f"figures/{irrep[0]}_{irrep[1]}_Z_{op_j}n.pdf", transparent=True)
             for level in range(self.irrep_dim[irrep]):
                 if any([(irrep[0], irrep[1], level) in k for k in self.d_sets]):
@@ -1101,7 +1109,7 @@ class Fit:
         else:
             if os.path.exists(f"./result/{self.filename}"):
                 os.remove(f"./result/{self.filename}")
-            print('saving result')
+            print(f'saving result: /result/{self.filename}')
             gv.dump(self.posterior, f"./result/{self.filename}")
 
 
@@ -1366,6 +1374,7 @@ if __name__ == "__main__":
     bs_p = parameters.params()
     if bs_p['get_Zj']:
         if os.path.exists(bs_p['Zjn_values']):
+            #fit.get_all_levels()
             fit.read_Zjn()
             ratio_denom = fit.get_ratio_combinations_Zjn()
         else:

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os, sys, time
+import subprocess #jo import 
 import gvar as gv
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,6 +13,23 @@ import summary_plot
 
 def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
+
+def modify_param_file(file_path, changes):
+    # Read the file and store all lines
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    # Modify the lines according to the changes dictionary
+    for idx, line in enumerate(lines):
+        for param, value in changes.items():
+            if param in line:
+                lines[idx] = f'p["{param}"] = {repr(value)}\n'
+                print(f"Updated {param} to {repr(value)}.")
+
+    # Write the modified lines back to the file
+    with open(file_path, 'w') as file:
+        file.writelines(lines)
+    print(f"File {file_path} has been updated.")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -60,6 +78,7 @@ def main():
 
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
+
     nn_file  = 'NN_{nn_iso}_{t_norm}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
     nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+block
     if 'bsPrior' in args.optimal:
@@ -81,10 +100,12 @@ def main():
     # add main conspiracy model
     n_N = int(args.optimal.split('N_n')[1].split('_')[0])
     models['N_n%d_NN_conspire_e0' %n_N] = {'N_inel':n_N, 'nn_model':'conspire', 'nn_el':0}
-    for n in args.n_N:
+    for n in args.n_N: #default=[2,3] for args.n_N
         for nn in args.n_NN:
             models['N_n%d_NN_agnostic_n%d_e0' %(n,nn)] = {'N_inel':n, 'nn_model':'agnostic_n'+str(nn), 'nn_el':0}
     
+    print("Models:",models)
+
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
@@ -367,7 +388,10 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
     t_plot = []
     mfc_plot = []
     n_models = 0
+    #print(models)
+    #print(models)
     for model in models:
+        print("Model:",model)
         # don't track correlated gvars between all gv.load calls
         gv.switch_gvar()
 
@@ -446,6 +470,12 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 r_blk['_'.join([str(k) for k in state])]['E2'].append(e2_opt)
         else:
             print('missing', fit_file)
+            #print(f"{fit_file} does not exist. Creating it...")
+            #result/NN_singlet_tnorm3_t0-td_5-10_N_n3_t_3-20_NN_conspire_e0_t_2-15_ratio_False_block2.pickle
+
+            
+
+
 
         # delete gvars from memory
         gv.restore_gvar()

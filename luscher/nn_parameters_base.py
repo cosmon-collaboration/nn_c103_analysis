@@ -12,7 +12,7 @@ def params():
     p["verbose"] = False
     p["latex"]   = True
 
-    p["fpath"] = {"nucleon": "./data/nucleon_S0.hdf5", "nn": "./data/triplet_S0_avg_mom.hdf5"}
+    p["fpath"] = {"nucleon": "./data/cls21_c103_r005-8_nucleon_S0.hdf5", "nn": "./data/cls21_c103_r005-8_singlet_S0.hdf5"}
 
     p["save"] = True
 
@@ -21,7 +21,7 @@ def params():
     p["t0"] = 5
     p["td"] = 10
     p['t_norm'] = 3
-    p['gevp']   = 'evp' # evp or gevp
+    p['gevp']   = 'gevp' # evp or gevp
     p['get_Zj'] = True
     p['Zjn_values'] = f"result/{p['fpath']['nn'].split('/')[-1].split('_')[0]}"
     p['Zjn_values'] = f"{p['Zjn_values']}_Zjn_tNorm{p['t_norm']}_{p['gevp']}.h5"
@@ -56,7 +56,7 @@ def params():
     p["gs_conspire"] = False # only add deltaE for ground state?
     p["nstates"]     = 3
     p["r_n_inel"]    = 2
-    p["r_n_el"]      = 0
+    p["r_n_el"]      = 2
     p["trange"]      = {"N": [3, 20], "R": [3, 15]}
 
     p["ampi"] = 0.310810
