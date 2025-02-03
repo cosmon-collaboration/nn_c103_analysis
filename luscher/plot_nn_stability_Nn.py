@@ -45,7 +45,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { 'N_n2_NN_conspire_e0':'r', 'N_n3_NN_conspire_e0':'g', 'N_n4_NN_conspire_e0':'b'}
+    color = { 2:'r', 3:'g', 4:'b'}
 
     result_dir = args.optimal.split('/')[0]
     if 'block' in args.optimal:
@@ -80,31 +80,7 @@ def main():
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    if nn_iso == 'singlet':
-        if args.test:
-            states = [('0', 'T1g', 0)]
-        else:
-            states = [
-                ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
-                ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
-                ('2', 'B1', 0),  ('2', 'B2', 0),  #('2', 'B2', 3), 
-                ('1', 'E', 0),
-                ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
-            ]
-    elif nn_iso == 'triplet':
-        if args.test:
-            states = [('0', 'A1g', 0)]
-        else:
-            states = [
-                ("0", "A1g", 0), ("0", "A1g", 1),
-                ("1", "A1", 0),  ("1", "A1", 1),
-                ("1", "A1", 2),
-                ("2", "A1", 0),  ("2", "A1", 1),
-                ("2", "A1", 2),  ("2", "A1", 3),
-                ("3", "A1", 0),  ("3", "A1", 1),
-                ("3", "A1", 2),
-                ("4", "A1", 0),  ("4", "A1", 1),
-            ]
+    states = summary_plot.get_states(nn_iso, args.test)
 
     print('\nloading optimal fit:',args.optimal)
     post_optimal  = gv.load(args.optimal)
@@ -133,7 +109,7 @@ def main():
     optimal_model = nn_model.format(**optimal_model)
 
     opt_tmin  = int(args.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
-    opt_clr   = color[optimal_model]
+    opt_clr   = color[N_inel]
 
     # get data keys
     fit_keys = {}
@@ -224,8 +200,9 @@ def main():
     elif nn_iso == 'triplet':
         mN = Nn_results['0_A1g_0']['E1'][0]
     # plot Nn
+    print(Nn_lbls)
     summary_plot.summary_ENN(Nn_results, mN, Nn_lbls, color, spin=nn_iso, 
-                             lbl0=r'$N_n=$', fig='nn_Nn_summary')
+                             lbl0=r'$N_n=$', fig=f"{nn_iso}_Nn_summary")
 
     plt.ioff()
     plt.show()
@@ -286,12 +263,12 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
 
 def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_Nn, l_Nn):
     marker = {
-        'N_n4_NN_conspire_e0':'s',
-        'N_n3_NN_conspire_e0':'*',
-        'N_n2_NN_conspire_e0':'o',
+        4:'s',
+        3:'*',
+        2:'o',
     }
-    color = { 'N_n2_NN_conspire_e0':'r', 'N_n3_NN_conspire_e0':'g', 'N_n4_NN_conspire_e0':'b'}
-    shift = { 'N_n2_NN_conspire_e0':-0.15, 'N_n3_NN_conspire_e0':0.0, 'N_n4_NN_conspire_e0':0.15}
+    color = { 2:'r',   3:'g', 4:'b'}
+    shift = { 2:-0.15, 3:0.0, 4:0.15}
 
     opt_tmin   = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
     opt_Nn     = int(arg.optimal.split('_N_n')[1].split('_')[0])
@@ -349,28 +326,28 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 e2_opt = data[(k_n2, "e0")]
                 e_nn.append(e[-1] + e1_opt + e2_opt)
 
-                mrkr = marker[fit_model]
-                clr  = color[model]
-                m_plot.append(marker[fit_model])
-                c_plot.append(color[model])
-                t_plot.append(t+shift[model])
+                mrkr = marker[n_inel]
+                clr  = color[n_inel]
+                m_plot.append(marker[n_inel])
+                c_plot.append(color[n_inel])
+                t_plot.append(t+shift[n_inel])
                 mfc='None'
                 if t == opt_tmin and fit_model == optModel and model==opt_Nn:
                     mfc='k'#clr
                 mfc_plot.append(mfc)
-                axnnR.errorbar(t+shift[model],
+                axnnR.errorbar(t+shift[n_inel],
                                 e[-1].mean, yerr=e[-1].sdev,
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
-                axnn.errorbar(t+shift[model],
+                axnn.errorbar(t+shift[n_inel],
                                 e_nn[-1].mean, yerr=e_nn[-1].sdev,
                                 marker=mrkr, color=clr, mfc=mfc,
                                 linestyle='None',label=lbl)
 
                 # populate results for comparison
-                if t == opt_tmin and fit_model == optModel:
-                    if model not in l_Nn:
-                        l_Nn.append(model)
+                if t == opt_tmin:
+                    if n_inel not in l_Nn:
+                        l_Nn.append(n_inel)
                     r_Nn['_'.join([str(k) for k in state])]['DE'].append(e[-1])
                     r_Nn['_'.join([str(k) for k in state])]['E1'].append(e1_opt)
                     r_Nn['_'.join([str(k) for k in state])]['E2'].append(e2_opt)

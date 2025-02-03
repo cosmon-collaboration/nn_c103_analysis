@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+import os, sys
 
 import gvar as gv
 
@@ -82,7 +82,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     ax_dE.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
     ax_dE.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
     ax_dE.set_ylabel(r'$\Delta E_{\rm lab} / m_N$', fontsize=16)
-    ax_dE.set_ylim(-0.009,0)
+    ax_dE.set_ylim(-0.0105,0.0005)
     plt.figure(fig+'_dElab')
     plt.savefig('figures/'+fig+'_dElab'+'.'+format, transparent=True)
     
@@ -127,3 +127,33 @@ nn_lim = {
     ('3', 'A1',  2):(1.4391,1.4735),
     ('4', 'A1',  0):(1.4251,1.4395), ('4', 'A1',  1):(1.4461,1.4605),
 }
+
+def get_states(spin='singlet', test=False):
+    if spin == 'singlet':
+        states = [
+                ('0', 'T1g', 0), ('0', 'T1g', 1), 
+                ('1', 'A2', 0),  ('1', 'E', 0),
+                ('1', 'A2', 1),  ('1', 'E', 1),
+                ('2', 'A2', 0),  ('2', 'B1', 0),  ('2', 'B2', 0),
+                ('3', 'A2', 0),  
+                ('3', 'E', 0),
+                ('4', 'A2', 0),  ('4', 'E', 0),
+                ('4', 'A2', 1),  ('4', 'E', 1)
+            ]
+    elif spin == 'triplet':
+        states = [
+                ("0", "A1g", 0), ("0", "A1g", 1),
+                ("1", "A1", 0),  ("1", "A1", 1),
+                ("1", "A1", 2),
+                ("2", "A1", 0),  ("2", "A1", 1),
+                ("2", "A1", 2),  ("2", "A1", 3),
+                ("3", "A1", 0),  ("3", "A1", 1),
+                ("3", "A1", 2),
+                ("4", "A1", 0),  ("4", "A1", 1),
+            ]
+    else:
+        sys.exit(f"unrecognized spin [singlet, triplet]: {spin}")
+    if test:
+        return [states[0]]
+    else:
+        return states

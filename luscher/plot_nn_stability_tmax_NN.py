@@ -78,30 +78,7 @@ def main():
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    if nn_iso == 'singlet':
-        if args.test:
-            states = [('0', 'T1g', 0)]
-        else:
-            states = [
-                ('0', 'T1g', 0), ('0', 'T1g', 1), ('1', 'A2', 0), ('1', 'A2', 1),
-                ('2', 'A2', 0),  ('3', 'A2', 0),  ('4', 'A2', 0), ('4', 'A2', 1),
-                ('2', 'B1', 0),  ('2', 'B2', 0),  ('2', 'B2', 3), ('1', 'E', 0),
-                ('1', 'E', 1),   ('3', 'E', 0),   ('4', 'E', 0),  ('4', 'E', 1)
-            ]
-    elif nn_iso == 'triplet':
-        if args.test:
-            states = [('0', 'A1g', 0)]
-        else:
-            states = [
-                ("0", "A1g", 0), ("0", "A1g", 1),
-                ("1", "A1", 0),  ("1", "A1", 1),
-                ("1", "A1", 2),
-                ("2", "A1", 0),  ("2", "A1", 1),
-                ("2", "A1", 2),  ("2", "A1", 3),
-                ("3", "A1", 0),  ("3", "A1", 1),
-                ("3", "A1", 2),
-                ("4", "A1", 0),  ("4", "A1", 1),
-            ]
+    states = summary_plot.get_states(nn_iso, args.test)
 
     print('\nloading optimal fit:',args.optimal)
     post_optimal  = gv.load(args.optimal)
@@ -217,7 +194,7 @@ def main():
 
     # plot t0_N
     summary_plot.summary_ENN(tf_results, mN, tf_lbls, color, 
-                             lbl0=r'$t_f^{NN}$=', spin=nn_iso, fig='tfNN_summary')
+                             lbl0=r'$t_f^{NN}$=', spin=nn_iso, fig=f"{nn_iso}_tfNN_summary")
 
     plt.ioff()
     plt.show()
