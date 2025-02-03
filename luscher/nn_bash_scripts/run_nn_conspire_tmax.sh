@@ -14,7 +14,7 @@ for gevp_t in "5-10"; do
     for n_N in 3 4; do
         for t in 3 4 5 6 7; do
             for tf_NN in 10 11 12 13 14 15; do
-                for t0_N in 3 4 5; do
+                for t0_N in 4; do
                     nucleon="n${n_N}_t_${t0_N}-20"
                     nn="conspire_e${e}_t_${t}-${tf_NN}_ratio_${ratio}"
                     result="result/NN_${nn_iso}_tnorm${tnorm}_t0-td_${gevp}_N_${nucleon}_NN_${nn}_block${block}.pickle"
@@ -25,6 +25,7 @@ for gevp_t in "5-10"; do
                         | sed "s/t0\"\] = 5/t0\"\] = ${t0}/" \
                         | sed "s/td\"\] = 10/td\"\] = ${td}/" \
                         | sed "s/t_norm\'\] = 3/t_norm\'\] = ${tnorm}/" \
+                        | sed "s/block\"\] = 2/block\"\] = $block/" \
                         | sed "s/nstates\"]     = 3/nstates\"]     = ${n_N}/" \
                         | sed "s/N\": \[3, 20\]/N\": \[${t0_N}, 20\]/" \
                         | sed "s/R\": \[3, 15\]/R\": \[$t, $tf_NN\]/" \

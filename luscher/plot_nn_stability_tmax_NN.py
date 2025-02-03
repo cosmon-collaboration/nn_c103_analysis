@@ -3,11 +3,11 @@ import os, sys, time
 import gvar as gv
 import numpy as np
 import matplotlib.pyplot as plt
-# load nn_fit to get fit functions
-import nn_fit as fitter
 import argparse
 import itertools
 #
+# load nn_fit to get fit functions
+import nn_fit as fitter
 import summary_plot
 
 def flip(items, ncol):
@@ -31,6 +31,8 @@ def main():
                         help=       'list of t0_min times for single nucleon %(default)s')
     parser.add_argument('--tmin',   nargs='+', type=int, default=[3,4,5,6,7],
                         help=       'values of t_min in NN fit [%(default)s]')
+    parser.add_argument('--evp',    default=True, action='store_false',
+                        help=       'load evp (vs gevp) data? [%(default)s]')
     parser.add_argument('--gs_cons',default=False, action='store_true',
                         help=       'use gs only conspiracy model? [%(default)s]')
     parser.add_argument('--test',   default=False, action='store_true',
@@ -134,7 +136,11 @@ def main():
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
 
-    nn_data = gv.load('data/gevp_'+nn_iso+'_'+tnorm+'_'+gevp_plot+block+'.pickle')
+    if args.evp:
+        d_file = f"data/gevp_{nn_iso}_{tnorm}_evp_{gevp_plot}{block}.pickle"
+    else:
+        d_file = f"data/gevp_{nn_iso}_{tnorm}_gevp_{gevp_plot}{block}.pickle"
+    nn_data = gv.load(d_file)
 
     plt.ion()
     tf_results = {}
@@ -211,7 +217,7 @@ def main():
 
     # plot t0_N
     summary_plot.summary_ENN(tf_results, mN, tf_lbls, color, 
-                             lbl0=r'$t_f^{NN}$=', spin='triplet', fig='tfNN_summary')
+                             lbl0=r'$t_f^{NN}$=', spin=nn_iso, fig='tfNN_summary')
 
     plt.ioff()
     plt.show()
@@ -243,46 +249,8 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     handles, labels = axnnR.get_legend_handles_labels()
     axnn.legend(flip(handles, len(arg.tf_NN)), flip(labels, len(arg.tf_NN)), loc=1, ncol=len(arg.tf_NN), fontsize=10, columnspacing=0,handletextpad=0.1)
 
-    nnr_lim = {
-        # isosinglet
-        ('0', 'T1g', 0):(-0.0021,0.0005), ('0', 'T1g', 1):(-0.0051,0.0005),
-        ('1', 'A2', 0) :(-0.0046,0.0005), ('1', 'A2', 1) :(-0.0041,0.0005),
-        ('2', 'A2', 0) :(-0.0066,0.0005), ('3', 'A2', 0) :(-0.0081,0.0005),
-        ('4', 'A2', 0) :(-0.0021,0.0005), ('4', 'A2', 1) :(-0.0041,0.0005),
-        ('2', 'B1', 0) :(-0.0061,0.0005), ('2', 'B2', 0) :(-0.0061,0.0005),
-        ('2', 'B2', 3) :(-0.0056,0.0005), ('1', 'E', 0)  :(-0.0031,0.0005),
-        ('1', 'E', 1)  :(-0.0061,0.0005), ('3', 'E', 0)  :(-0.0081,0.0005),
-        ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005),
-        # isotriplet
-        ('0', 'A1g', 0):(-0.0021,0.0005), ('0', 'A1g', 1):(-0.0051,0.0005),
-        ('1', 'A1',  0):(-0.0021,0.0005), ('1', 'A1',  1):(-0.0051,0.0005),
-        ('1', 'A1',  2):(-0.0021,0.0005),
-        ('2', 'A1',  0):(-0.0046,0.0005), ('2', 'A1',  1):(-0.001,0.0005),
-        ('2', 'A1',  2):(-0.0046,0.0005), ('2', 'A1',  3):(-0.001,0.0005),
-        ('3', 'A1',  0):(-0.0046,0.0005), ('3', 'A1',  1):(-0.0051,0.0005),
-        ('3', 'A1',  2):(-0.0046,0.0005),
-        ('4', 'A1',  0):(-0.0021,0.0005), ('4', 'A1',  1):(-0.0051,0.0005),
-    }
-    nn_lim = {
-        # isosinglet
-        ('0', 'T1g', 0):(1.4016,1.4170), ('0', 'T1g', 1):(1.4216,1.4360),
-        ('1', 'A2', 0) :(1.4111,1.4255), ('1', 'A2', 1) :(1.4351,1.4495),
-        ('2', 'A2', 0) :(1.4216,1.4370), ('3', 'A2', 0) :(1.4316,1.4470),
-        ('4', 'A2', 0) :(1.4261,1.4395), ('4', 'A2', 1) :(1.4461,1.4605),
-        ('2', 'B1', 0) :(1.4216,1.4370), ('2', 'B2', 0) :(1.4201,1.4345),
-        ('2', 'B2', 3) :(1.4451,1.4595), ('1', 'E', 0)  :(1.4126,1.4270),
-        ('1', 'E', 1)  :(1.4326,1.4470), ('3', 'E', 0)  :(1.4301,1.4445),
-        ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595),
-        # isotriplet
-        ('0', 'A1g', 0):(1.4016,1.4170), ('0', 'A1g', 1):(1.4216,1.4360),
-        ('1', 'A1',  0):(1.4131,1.4275), ('1', 'A1',  1):(1.4351,1.4495),
-        ('1', 'A1',  2):(1.4351,1.4551),
-        ('2', 'A1',  0):(1.4216,1.4370), ('2', 'A1',  1):(1.4271,1.4415),
-        ('2', 'A1',  2):(1.4271,1.4815), ('2', 'A1',  3):(1.4271,1.4815),
-        ('3', 'A1',  0):(1.4351,1.4495), ('3', 'A1',  1):(1.4391,1.4535),
-        ('3', 'A1',  2):(1.4391,1.4735),
-        ('4', 'A1',  0):(1.4251,1.4395), ('4', 'A1',  1):(1.4461,1.4605),
-    }
+    nnr_lim = summary_plot.nnr_lim
+    nn_lim  = summary_plot.nn_lim
 
     axnnR.set_ylim(nnr_lim[state])
     axnn.set_ylim(nn_lim[state])
@@ -340,7 +308,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
             nn_el     = models[model]['nn_el']
             if 'agnostic' in fit_model:
                 nn    = int(fit_model.split('agnostic_n')[1].split('_')[0])
-            nnDict.update({'N_t':'%d-20' %3, 'N_inel':n_inel, 'nn_el':nn_el, 't0':t0, 'tf':t,
+            nnDict.update({'N_inel':n_inel, 'nn_el':nn_el, 't0':t0, 'tf':t,
                            'nn_model':models[model]['nn_model']})
 
             if t0 == arg.tmin[0]:
