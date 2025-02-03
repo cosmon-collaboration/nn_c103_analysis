@@ -75,6 +75,7 @@ class Fit:
         self.gevp = self.params['gevp']
 
         self.d_sets   = self.params["masterkey"]
+        print('d_sets',self.d_sets)
         self.save_fit = self.params["save"]
 
         self.plot = Plot(self.params)
@@ -179,6 +180,7 @@ class Fit:
         self.irreps   = irreps
         self.d_sets   = new_dsets
         self.save_fit = False
+        print("all levels",self.d_sets)
 
     def restore_masterkey(self):
         self.d_sets   = self.params["masterkey"]
@@ -1003,10 +1005,14 @@ class Fit:
                     svdcut=None
 
                 if nbs == 0:
+                    #print('x',x)
+                    #print('y0',y0)
+                    #import IPython; IPython.embed()
                     result = lsqfit.nonlinear_fit(
                         data=(x, y0), prior=prior, fcn=self.func, 
                         maxit=100000, fitter=self.params['fitter'], svdcut=svdcut
                     )
+                    #import IPython; IPython.embed()
                     p0[subset[0]] = {k:v.mean for k,v in result.p.items()}
                 else:
                     p0_bs = {k:p0[subset[0]][k] for k in prior}
