@@ -42,6 +42,8 @@ def main():
                         help=                'plot Rel. qcotd fits? [%(default)s]')
     parser.add_argument('--irrep_avg',       default=True, action='store_false',
                         help=                'average irreps to suppress physical S-D mixing? [%(default)s]')
+    parser.add_argument('--plot_raw',        default=True, action='store_false',
+                        help=                'plot raw data not used in fit?  [%(default)s]')
     parser.add_argument('--Psq_max',         default=3, type=int,
                         help=                'max value of Psq to use [%(default)s]')
     parser.add_argument('--continuum_disp',  default=True, action='store_false',
@@ -132,7 +134,7 @@ class qsqFit:
                 ('2', 'A2', 0),
                 ('2', 'B1', 0),
                 ('2', 'B2', 0),
-                ('2', 'B2', 3),
+                #('2', 'B2', 3), # don't include since we don't also have matching A2 and B1
                 ('3', 'A2', 0),
                 ('3', 'E', 0),
                 ('4', 'A2', 0),
@@ -150,7 +152,7 @@ class qsqFit:
                 ('4', 'A2E' , 0):   [(1/3, ('4', 'A2', 0)), (2/3, ('4', 'E', 0))],
                 ('4', 'A2E' , 1):   [(1/3, ('4', 'A2', 1)), (2/3, ('4', 'E', 1))],
                 ('2', 'A2B1B2', 0): [(1/3, ('2', 'A2', 0)), (1/3, ('2', 'B1', 0)), (1/3, ('2', 'B2', 0))],
-                ('2', 'B2'  , 3):   [(1,   ('2', 'B2', 3))],
+                #('2', 'B2'  , 3):   [(1,   ('2', 'B2', 3))],
             }
             ''' if we are not doing irrep averaging, then make irrep_grps
                 with a single element of weight 1 for each state
@@ -554,7 +556,7 @@ class qsqFit:
         qsq      = np.arange(-0.26, 0.53, .001)
         x        = qsq * self.rescale**2
         # phase shift
-        qsqD = np.arange(0.0001, 0.53, .001)
+        qsqD = np.arange(0.0001, 0.53, .0001)
         xD   = qsqD * self.rescale**2
 
         for n in range(1,self.args.ere_order+1)[::-1]:
@@ -565,7 +567,7 @@ class qsqFit:
 
             # phase shift
             qcotdD = self.ere(qsqD, *self.ere_results[n]['p_opt'])
-            cotd   = qcotdD * self.data['mN'][0]
+            cotd   = qcotdD * self.data['mN'][0] / np.sqrt(qsqD)
             delta  = (np.pi / 2 - np.arctan(cotd)) * 180 / np.pi
             y      = np.array([k.mean for k in delta])
             dy     = np.array([k.sdev for k in delta])
@@ -582,7 +584,8 @@ class qsqFit:
                 ax.plot(x, y+dy, color=fit_clrs[n], linestyle='--')
 
         # plot the data
-        #self.plot_data(ax, data='raw')
+        if self.args.plot_raw:
+            self.plot_data(ax, data='raw')
         # plot the processed data
         self.plot_data(ax, data='processed')
 
@@ -591,9 +594,13 @@ class qsqFit:
             # plot HAL QCD results
             '''
             if self.channel == 'deuteron':
-                hal_in = open('data/pcotd_t13.txt').readlines()
+                hal_in = open('data/qcotd_np.txt').readlines()
             elif self.channel == 'dineutron':
-                hal_in = open('data/pcotd_nn_t13.txt').readlines()
+                hal_in = open('data/qcotd_nn.txt').readlines()
+            qsq_hal   = np.array([float(q) for q in hal_in[0].split()])
+            qcotd_max = np.array([float(q) for q in hal_in[1].split()])
+            qcotd_min = np.array([float(q) for q in hal_in[2].split()])
+            '''
             qsq_hal = []
             hal_results = []
             for i in range(24):
@@ -612,9 +619,9 @@ class qsqFit:
             hal_mean = np.array([k.mean for k in hal_results.mean(axis=0)])
             hal_var  = np.array([k.mean for k in (hal_results**2 - hal_mean**2).mean(axis=0)])
             dhal_tot = np.sqrt(dhal**2 + hal_var)
-
+            '''
             #import IPython; IPython.embed()
-            ax.fill_between(qsq_hal, hal_mean-dhal_tot, hal_mean+dhal_tot, color='k', 
+            ax.fill_between(qsq_hal, qcotd_min, qcotd_max, color='k', 
                             alpha=0.3, label='HAL QCD Potential')
             #ax.fill_between(qsq_hal, hal_mean-dhal, hal_mean+dhal, color='k', alpha=0.3)
 

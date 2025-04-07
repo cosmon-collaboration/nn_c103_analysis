@@ -191,7 +191,7 @@ def main():
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, gevp_results, gevp_lbls, tmin_results, tmin_lbls)
 
-        fig_name = '%s_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.'+args.fig_type))
+        fig_name = '%s_gevp_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.'+args.fig_type))
         if args.fig_type == 'pdf':
             plt.savefig('figures/'+fig_name,transparent=True)
         elif args.fig_type == 'png':

@@ -221,19 +221,29 @@ class Fit:
                 for irrep in ZjnSq_irrep:
                     key = f"{irrep[0]}_{irrep[1]}"
                     for level in ZjnSq_irrep[irrep]:
-                        f5.create_dataset(f"{key}/{level}",data=ZjnSq_irrep[irrep][level])
+                        f5.create_dataset(f"{key}/Zjn/{level}",data=ZjnSq_irrep[irrep][level])
 
     def read_Zjn(self):
         ZjnSq_irrep = dict()
+        E_sort      = dict()
         print('reading Zjn values')
         print(f"    {self.params['Zjn_values']}")
         with h5.File(self.params['Zjn_values'],'r') as f5:
-            for irrep in f5.keys():
-                key = tuple(irrep.split('_'))
+            #for irrep in f5.keys():
+                #key = tuple(irrep.split('_'))
+            for key in self.irreps:
+                irrep = key[0]+'_'+key[1]
                 ZjnSq_irrep[key] = dict()
-                for level in f5[irrep].keys():
-                    ZjnSq_irrep[key][int(level)] = f5[f"{irrep}/{level}"][()]
+                try:
+                    for level in f5[f"{irrep}/Zjn"].keys():
+                        ZjnSq_irrep[key][int(level)] = f5[f"{irrep}/Zjn/{level}"][()]
+                except:
+                    print()
+                    print(f"your {self.params['Zjn_values']} is missing irreps")
+                    sys.exit(f"remake {self.params['Zjn_values']} with all irreps")
+                E_sort[irrep] = f5[f"{irrep}/E_sort"][()]
         self.ZjnSq = ZjnSq_irrep
+        self.E_sort = E_sort
 
     def report_ZjnSq(self):
         nn_ops = self.get_nn_operators()
@@ -262,6 +272,8 @@ class Fit:
                         fontsize=20)
                 ax.set_ylim([0,1])
                 plt.savefig(f"figures/{irrep[0]}_{irrep[1]}_Z_{op_j}n.pdf", transparent=True)
+            # order levels
+            E_tot = []
             for level in range(self.irrep_dim[irrep]):
                 if any([(irrep[0], irrep[1], level) in k for k in self.d_sets]):
                     n1, n2 = self.ratio_denom[(irrep[0], irrep[1], level)]
@@ -270,6 +282,13 @@ class Fit:
                     dE     = self.posterior[(((irrep[0], irrep[1], level), 'R', (n1, n2)), 'e0')]
                     Z0     = self.posterior[(((irrep[0], irrep[1], level), 'R', (n1, n2)), 'z0')]
                     print(irrep, '%2d' %level, E1+E2+dE, E1, E2, dE,Z0)
+                    E_tot.append((E1+E2+dE).mean)
+            E_tot = np.array(E_tot)
+            i_sort = np.argsort(E_tot)
+            print(i_sort)
+            with h5.File(self.params['Zjn_values'],'a') as f5:
+                key = f"{irrep[0]}_{irrep[1]}"
+                f5.create_dataset(f"{key}/E_sort",data=i_sort)
 
     def nucleon_data(self):
         """ Reads nucleon data from h5.
@@ -1366,6 +1385,9 @@ if __name__ == "__main__":
     bs_p = parameters.params()
     if bs_p['get_Zj']:
         if os.path.exists(bs_p['Zjn_values']):
+            # these two lines are just to generate self.irreps
+            fit.get_all_levels()
+            fit.restore_masterkey()
             fit.read_Zjn()
             ratio_denom = fit.get_ratio_combinations_Zjn()
         else:

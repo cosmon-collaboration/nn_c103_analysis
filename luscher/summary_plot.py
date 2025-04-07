@@ -73,7 +73,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     ax.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
     ax.set_ylabel(r'$E_{\rm cm} / m_N$', fontsize=16)
     ax.axhline(2, linestyle='--', color='k')
-    ax.set_ylim(1.995,2.0551)
+    ax.set_ylim(1.995,2.0601)
     plt.figure(fig)
     if not os.path.exists('figures'):
         os.makedirs('figures')
@@ -82,7 +82,10 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     ax_dE.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
     ax_dE.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
     ax_dE.set_ylabel(r'$\Delta E_{\rm lab} / m_N$', fontsize=16)
-    ax_dE.set_ylim(-0.0105,0.0005)
+    if spin == 'singlet':
+        ax_dE.set_ylim(-0.0105,0.0005)
+    elif spin == 'triplet':
+        ax_dE.set_ylim(-0.0061,0.0005)
     plt.figure(fig+'_dElab')
     plt.savefig('figures/'+fig+'_dElab'+'.'+format, transparent=True)
     
@@ -98,14 +101,14 @@ nnr_lim = {
     ('1', 'E', 1)  :(-0.0061,0.0005), ('3', 'E', 0)  :(-0.0081,0.0005),
     ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005),
     # isotriplet
-    ('0', 'A1g', 0):(-0.0021,0.0005), ('0', 'A1g', 1):(-0.0051,0.0005),
-    ('1', 'A1',  0):(-0.0021,0.0005), ('1', 'A1',  1):(-0.0051,0.0005),
+    ('0', 'A1g', 0):(-0.0021,0.0005), ('0', 'A1g', 1):(-0.0036,0.0005),
+    ('1', 'A1',  0):(-0.0031,0.0005), ('1', 'A1',  1):(-0.0036,0.0005),
     ('1', 'A1',  2):(-0.0021,0.0005),
     ('2', 'A1',  0):(-0.0046,0.0005), ('2', 'A1',  1):(-0.001,0.0005),
-    ('2', 'A1',  2):(-0.0046,0.0005), ('2', 'A1',  3):(-0.001,0.0005),
+    ('2', 'A1',  2):(-0.0046,0.0005), ('2', 'A1',  3):(-0.002,0.00025),
     ('3', 'A1',  0):(-0.0046,0.0005), ('3', 'A1',  1):(-0.0051,0.0005),
     ('3', 'A1',  2):(-0.0046,0.0005),
-    ('4', 'A1',  0):(-0.0021,0.0005), ('4', 'A1',  1):(-0.0051,0.0005),
+    ('4', 'A1',  0):(-0.0021,0.0005), ('4', 'A1',  1):(-0.0036,0.0005),
 }
 nn_lim = {
     # isosinglet
@@ -141,14 +144,12 @@ def get_states(spin='singlet', test=False):
                 ('4', 'A2', 1),  ('4', 'E', 1)
             ]
     elif spin == 'triplet':
+        # (1,A1,2), (2,A1,1), (2, A1, 2), (3,A1,1), (3, A1, 2), 
         states = [
                 ("0", "A1g", 0), ("0", "A1g", 1),
                 ("1", "A1", 0),  ("1", "A1", 1),
-                ("1", "A1", 2),
-                ("2", "A1", 0),  ("2", "A1", 1),
-                ("2", "A1", 2),  ("2", "A1", 3),
-                ("3", "A1", 0),  ("3", "A1", 1),
-                ("3", "A1", 2),
+                ("2", "A1", 0),  #("2", "A1", 3),
+                ("3", "A1", 0),  
                 ("4", "A1", 0),  ("4", "A1", 1),
             ]
     else:
