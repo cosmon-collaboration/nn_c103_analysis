@@ -52,6 +52,8 @@ def main():
     parser.add_argument('--Nbs',             type=int, help='set number of bs samples to Nbs')
     parser.add_argument('--plot_hal',        default=False, action='store_true', 
                         help=                'plot HAL potential results? [%(default)s]')
+    parser.add_argument('--plot_phys',       default=True, action='store_const',
+                        help=                'plot physical phase shift? [%(default)s]')
     parser.add_argument('--vs_mpi',          default=True,  action='store_false',
                         help=                'scale qcotd and qsq by mpi? [%(default)s]')
     parser.add_argument('--ylim',            type=float, nargs=2,
@@ -571,7 +573,7 @@ class qsqFit:
             delta  = (np.pi / 2 - np.arctan(cotd)) * 180 / np.pi
             y      = np.array([k.mean for k in delta])
             dy     = np.array([k.sdev for k in delta])
-            axD.fill_between(xD, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10)
+            axD.fill_between(xD, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10,label=r'ERE: $\mathrm{O}(q_{\rm cm}^%d)$' %(n*2))
 
         if self.args.plot_rel:
             # plot Rel. qcotd
@@ -627,15 +629,24 @@ class qsqFit:
 
         # set the axes and legend labels
         #ax.legend(loc=2, ncol=5, columnspacing=0, handletextpad=0.1)
-        ax.legend(loc=2, columnspacing=0, handletextpad=0.1)
         if self.args.vs_mpi:
             ax.axis([-.12, 0.26, -.4,1.2])
+            if self.channel == 'deuteron':
+                axD.axis([0,0.26, 0, 182])
+            else:
+                axD.axis([0,0.26, 0, 82])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
+            axD.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_\pi$', fontsize=24)
             axD.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
         else:
             ax.axis([-.026, 0.0525, -.15,0.6])
+            if self.channel == 'deuteron':
+                axD.axis([0,0.0525, 0, 182])
+            else:
+                axD.axis([0,0.0525, 0, 82])
             ax.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=24)
+            axD.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=24)
             ax.set_ylabel(r'$q {\rm cot} \delta / m_N$', fontsize=24)
         if self.args.ylim:
             ax.set_ylim(self.args.ylim)
@@ -646,15 +657,36 @@ class qsqFit:
 
         if self.channel == 'deuteron':
             axD.set_ylabel(r'$\delta^\circ(^3 {\rm S}_1)$', fontsize=24)
+            if self.args.plot_phys:
+                delta_in = open('data/nn_online_spin-singlet.txt').readlines()
         elif self.channel == 'dineutron':
             axD.set_ylabel(r'$\delta^\circ(^1 {\rm S}_0)$', fontsize=24)
-        axD.axis([0,0.26, 0, 92])
+            if self.args.plot_phys:
+                delta_in = open('data/nn_online_spin-triplet.txt').readlines()
         if self.args.Dxlim:
             axD.set_xlim(self.args.Dxlim)
 
+        if self.args.plot_phys:
+            tlab     = []
+            delta    = []
+            for l in delta_in:
+                t,d = l.split()
+                tlab.append(float(t))
+                delta.append(float(d))
+            tlab  = np.array(tlab)
+            delta = np.array(delta)
+            MN    = 939
+            qcm   = np.sqrt(tlab * MN / 2)
+            if self.args.vs_mpi:
+                norm = MN/135
+            else:
+                norm = 1
+            axD.plot(qcm**2 / MN**2 * norm, delta, color='k', linestyle='--',label='NN ONLINE - PWA')
         axD.axhline(color='k')
         axD.axvline(color='k')
 
+        ax.legend(loc=2, columnspacing=0, handletextpad=0.1)
+        axD.legend(loc=1, columnspacing=0, handletextpad=0.1, fontsize=18)
 
         # save the figure
         fig_base = self.args.fit_result.split('/')[-1]
