@@ -45,7 +45,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { 2:'r', 3:'g', 4:'b'}
+    color = { 2:'r', 3:'b', 4:'g'}
 
     result_dir = args.optimal.split('/')[0]
     if 'block' in args.optimal:
@@ -132,9 +132,9 @@ def main():
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
-        ax_nn  = plt.axes([0.15, 0.66, 0.84, 0.33])
-        ax_nnR = plt.axes([0.15, 0.33, 0.84, 0.33])
-        ax_Q   = plt.axes([0.15, 0.13, 0.84, 0.20])
+        ax_nn  = plt.axes([0.16, 0.66, 0.83, 0.33])
+        ax_nnR = plt.axes([0.16, 0.33, 0.83, 0.33])
+        ax_Q   = plt.axes([0.16, 0.13, 0.83, 0.20])
 
         # plot fit on data
         params_q = dict(optimal_p)
@@ -181,9 +181,13 @@ def main():
         ax_nnR.axhline(e0_opt.mean-e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
         ax_nnR.axhline(e0_opt.mean+e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
         
-
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, Nn_results, Nn_lbls)
+
+        # increase tick label size
+        ax_nn.tick_params(axis='both', labelsize=14)
+        ax_nnR.tick_params(axis='both', labelsize=14)
+        ax_Q.tick_params(axis='both', labelsize=14)
 
         fig_name = '%s_Nn_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.'+args.fig_type))
         if args.fig_type == 'pdf':
@@ -267,7 +271,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
         3:'*',
         2:'o',
     }
-    color = { 2:'r',   3:'g', 4:'b'}
+    color = { 2:'r',   3:'b', 4:'g'}
     shift = { 2:-0.15, 3:0.0, 4:0.15}
 
     opt_tmin   = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])

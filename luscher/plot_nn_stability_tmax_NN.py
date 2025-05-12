@@ -44,7 +44,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { 10:'orange', 11:'r', 12:'g', 13:'b', 14:'magenta', 15:'gray' }
+    color = { 10:'orange', 11:'r', 12:'g', 13:'gray', 14:'magenta', 15:'b' }
 
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0].split('.')[0]
@@ -128,9 +128,9 @@ def main():
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
-        ax_nn  = plt.axes([0.15, 0.66, 0.84, 0.33])
-        ax_nnR = plt.axes([0.15, 0.33, 0.84, 0.33])
-        ax_Q   = plt.axes([0.15, 0.13, 0.84, 0.20])
+        ax_nn  = plt.axes([0.16, 0.66, 0.83, 0.33])
+        ax_nnR = plt.axes([0.16, 0.33, 0.83, 0.33])
+        ax_Q   = plt.axes([0.16, 0.13, 0.83, 0.20])
 
         # plot fit on data
         params_q = dict(optimal_p)
@@ -179,6 +179,11 @@ def main():
 
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, tf_results, tf_lbls)
+
+        # increase tick label size
+        ax_nn.tick_params(axis='both', labelsize=14)
+        ax_nnR.tick_params(axis='both', labelsize=14)
+        ax_Q.tick_params(axis='both', labelsize=14)
 
         fig_name = '%s_tf_NN_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
         plt.savefig('figures/'+fig_name,transparent=True)
@@ -261,7 +266,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
         'N_n2_NN_conspire_e0':'o',
     }
     shift = { 10:-0.2, 11:-0.1, 12:0., 13:0.1, 14:0.2, 15:0.3 }
-    color = { 10:'orange', 11:'r', 12:'g', 13:'b', 14:'magenta', 15:'gray' }
+    color = { 10:'orange', 11:'r', 12:'g', 13:'gray', 14:'magenta', 15:'b' }
 
 
     opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])

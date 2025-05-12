@@ -46,10 +46,10 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'magenta', 
-             '5-10':'r', '5-11': 'magenta','5-12':'g', '5-14':'yellow',
-             '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick'}
-    t_color = {'2':'gray', '3':'r', '4':'orange', '5':'yellow', '6':'g', '7':'b', '8':'magenta', '9':'k'}
+    color = { '3-6' :'yellow', '3-8' :'r', '4-8' :'k', '4-10':'magenta', 
+             '5-10':'b', '5-11': 'magenta','5-12':'g', '5-14':'yellow',
+             '6-10':'orange', '6-11':'firebrick', '6-12':'r','6-14':'firebrick'}
+    t_color = {'2':'gray', '3':'r', '4':'b', '5':'yellow', '6':'g', '7':'orange', '8':'magenta', '9':'k'}
 
     result_dir = args.optimal.split('/')[0]
     if 'block' in args.optimal:
@@ -138,9 +138,9 @@ def main():
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
-        ax_nn  = plt.axes([0.15, 0.66, 0.84, 0.33])
-        ax_nnR = plt.axes([0.15, 0.33, 0.84, 0.33])
-        ax_Q   = plt.axes([0.15, 0.13, 0.84, 0.20])
+        ax_nn  = plt.axes([0.16, 0.66, 0.83, 0.33])
+        ax_nnR = plt.axes([0.16, 0.33, 0.83, 0.33])
+        ax_Q   = plt.axes([0.16, 0.13, 0.83, 0.20])
 
         # plot fit on data
         params_q = dict(optimal_p)
@@ -190,6 +190,11 @@ def main():
 
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, gevp_results, gevp_lbls, tmin_results, tmin_lbls)
+
+        # increase tick label size
+        ax_nn.tick_params(axis='both', labelsize=14)
+        ax_nnR.tick_params(axis='both', labelsize=14)
+        ax_Q.tick_params(axis='both', labelsize=14)
 
         fig_name = '%s_gevp_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.'+args.fig_type))
         if args.fig_type == 'pdf':
@@ -276,9 +281,9 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
         'N_n3_NN_conspire_e0':'*',
         'N_n2_NN_conspire_e0':'o',
     }
-    color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'magenta', 
-             '5-10':'r', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
-             '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick'}
+    color = { '3-6' :'yellow', '3-8' :'orange', '4-8' :'k', '4-10':'magenta', 
+             '5-10':'b', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
+             '6-10':'orange', '6-11':'firebrick', '6-12':'r','6-14':'firebrick'}
     shift = { '3-6' :-0.2, '3-8' :-0.15, '4-8' :-0.1, '4-10':-0.05, 
              '5-10':0.05, '5-11':0.075, '5-12':0.1, '5-14':0,
              '6-10':0.15, '6-11':0.175, '6-12':0.2, '6-14':0.25}

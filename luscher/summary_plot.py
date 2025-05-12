@@ -37,9 +37,9 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     #import IPython; IPython.embed()
     #plt.ion()
     plt.figure(fig, figsize=(6, 6/1.618))
-    ax = plt.axes([.135,.135,.85,.85])
+    ax = plt.axes([.14,.10,.85,.885])
     plt.figure(fig+'_dElab', figsize=(6, 6/1.618))
-    ax_dE = plt.axes([.135,.135,.85,.85])
+    ax_dE = plt.axes([.165,.10,.83,.885])
     for k in all_results:
         irrep = (k.split('_')[0], k.split('_')[1])
         DE_i = np.array(all_results[k]['DE'])
@@ -74,6 +74,12 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     ax.set_ylabel(r'$E_{\rm cm} / m_N$', fontsize=16)
     ax.axhline(2, linestyle='--', color='k')
     ax.set_ylim(1.995,2.0601)
+    ax.tick_params(axis='both', labelsize=14, direction='in')
+    # padd the right lim.  Each irrep is spaced at 10, so add 2 to the end
+    #xlim = ax.get_xlim()
+    #ax.set_xlim(xlim[0],xlim[1]+2)
+
+
     plt.figure(fig)
     if not os.path.exists('figures'):
         os.makedirs('figures')
@@ -86,6 +92,11 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
         ax_dE.set_ylim(-0.0105,0.0005)
     elif spin == 'triplet':
         ax_dE.set_ylim(-0.0061,0.0005)
+    ax_dE.tick_params(axis='both', labelsize=14, direction='in')
+    # padd the right lim.  Each irrep is spaced at 10, so add 5 to the end
+    #xlim = ax_dE.get_xlim()
+    #ax_dE.set_xlim(xlim[0],xlim[1]+2)
+
     plt.figure(fig+'_dElab')
     plt.savefig('figures/'+fig+'_dElab'+'.'+format, transparent=True)
     

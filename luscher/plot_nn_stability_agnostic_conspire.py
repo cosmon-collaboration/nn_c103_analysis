@@ -43,13 +43,13 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    color = {'N_n3_NN_conspire_e0':'orange',
+    color = {'N_n3_NN_conspire_e0':'b',
              'N_n2_NN_agnostic_n2_e0':'r',
              'N_n2_NN_agnostic_n3_e0':'g',
-             'N_n2_NN_agnostic_n4_e0':'b',
+             'N_n2_NN_agnostic_n4_e0':'orange',
              'N_n3_NN_agnostic_n2_e0':'r',
              'N_n3_NN_agnostic_n3_e0':'g',
-             'N_n3_NN_agnostic_n4_e0':'b',
+             'N_n3_NN_agnostic_n4_e0':'orange',
              'N_n3_NN_agnostic_n6_e0':'magenta',
     }
 
@@ -138,9 +138,9 @@ def main():
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
-        ax_nn  = plt.axes([0.15, 0.66, 0.84, 0.33])
-        ax_nnR = plt.axes([0.15, 0.33, 0.84, 0.33])
-        ax_Q   = plt.axes([0.15, 0.13, 0.84, 0.20])
+        ax_nn  = plt.axes([0.16, 0.66, 0.83, 0.33])
+        ax_nnR = plt.axes([0.16, 0.33, 0.83, 0.33])
+        ax_Q   = plt.axes([0.16, 0.13, 0.83, 0.20])
 
         # plot fit on data
         params_q = dict(optimal_p)
@@ -189,6 +189,11 @@ def main():
 
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, blk_results, blk_lbls)
+
+        # increase tick label size
+        ax_nn.tick_params(axis='both', labelsize=14)
+        ax_nnR.tick_params(axis='both', labelsize=14)
+        ax_Q.tick_params(axis='both', labelsize=14)
 
         fig_name = '%s_ConspiracyAgnostic_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
         plt.savefig('figures/'+fig_name,transparent=True)
@@ -289,13 +294,13 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
              'N_n3_NN_agnostic_n4_e0':0.2,
              'N_n3_NN_agnostic_n6_e0':0.25,
     }
-    color = {'N_n3_NN_conspire_e0':'orange',
+    color = {'N_n3_NN_conspire_e0':'b',
              'N_n2_NN_agnostic_n2_e0':'r',
              'N_n2_NN_agnostic_n3_e0':'g',
-             'N_n2_NN_agnostic_n4_e0':'b',
+             'N_n2_NN_agnostic_n4_e0':'orange',
              'N_n3_NN_agnostic_n2_e0':'r',
              'N_n3_NN_agnostic_n3_e0':'g',
-             'N_n3_NN_agnostic_n4_e0':'b',
+             'N_n3_NN_agnostic_n4_e0':'orange',
              'N_n3_NN_agnostic_n6_e0':'magenta',
     }
 

@@ -50,10 +50,13 @@ def main():
                         help=                'use continuum dispersion relation to construct E_NN = dE + E1 + E2? [%(default)s]')
     parser.add_argument('--L',               type=int, default=48, help='spatial box size [%(default)s]')
     parser.add_argument('--Nbs',             type=int, help='set number of bs samples to Nbs')
+    parser.add_argument('--plot_virtual',    default=True, action='store_false',
+                        help=                'plot solution of qcotd = sqrt(-q**2)? [%(default)s]')
     parser.add_argument('--plot_hal',        default=False, action='store_true', 
                         help=                'plot HAL potential results? [%(default)s]')
     parser.add_argument('--plot_phys',       default=True, action='store_const',
                         help=                'plot physical phase shift? [%(default)s]')
+    parser.add_argument('--qcotd_text',      type=str, help='optional text to add to qcotd plot')
     parser.add_argument('--vs_mpi',          default=True,  action='store_false',
                         help=                'scale qcotd and qsq by mpi? [%(default)s]')
     parser.add_argument('--ylim',            type=float, nargs=2,
@@ -549,9 +552,9 @@ class qsqFit:
         else:
             self.rescale = 1.
         plt.figure('qcotd',figsize=(7,4))
-        ax = plt.axes([0.12,0.16,0.87,0.83])
+        ax = plt.axes([0.12,0.17,0.87,0.81])
         plt.figure('delta',figsize=(7,4))
-        axD = plt.axes([0.12,0.16,0.87,0.83])
+        axD = plt.axes([0.12,0.17,0.87,0.81])
 
         # plot fit results
         fit_clrs = {1:'r', 2:'g', 3:'b'}
@@ -590,6 +593,12 @@ class qsqFit:
             self.plot_data(ax, data='raw')
         # plot the processed data
         self.plot_data(ax, data='processed')
+
+        # optional plot of qcotd = sqrt(q**2)
+        if self.args.plot_virtual:
+            x_v = np.arange(-.2,0,.0001)
+            y_v = np.sqrt(-x_v)
+            ax.plot(x_v,y_v, linestyle=':', color='k', alpha=.8)
 
         if self.args.plot_hal:
             '''
@@ -657,10 +666,16 @@ class qsqFit:
 
         if self.channel == 'deuteron':
             axD.set_ylabel(r'$\delta^\circ(^3 {\rm S}_1)$', fontsize=24)
+            axD.text(0.1, 0.85, r'deuteron channel', horizontalalignment='left',
+                     transform=axD.transAxes, fontsize=24, 
+                     bbox={'facecolor':'none','boxstyle':'round'})
             if self.args.plot_phys:
                 delta_in = open('data/nn_online_spin-singlet.txt').readlines()
         elif self.channel == 'dineutron':
             axD.set_ylabel(r'$\delta^\circ(^1 {\rm S}_0)$', fontsize=24)
+            axD.text(0.1, 0.85, r'di-neutron channel', horizontalalignment='left',
+                     transform=axD.transAxes, fontsize=24, 
+                     bbox={'facecolor':'none','boxstyle':'round'})
             if self.args.plot_phys:
                 delta_in = open('data/nn_online_spin-triplet.txt').readlines()
         if self.args.Dxlim:
@@ -686,12 +701,23 @@ class qsqFit:
         axD.axvline(color='k')
 
         ax.legend(loc=2, columnspacing=0, handletextpad=0.1)
+        ax.tick_params(axis='both', labelsize=14, direction='in')
         axD.legend(loc=1, columnspacing=0, handletextpad=0.1, fontsize=18)
+        axD.tick_params(axis='both', labelsize=14, direction='in')
+
+        # optional text for qcotd
+        if self.args.qcotd_text:
+            txt = self.args.qcotd_text.replace('_','\_')
+            ax.text(0.54, 0.85, r'%s' %(txt), horizontalalignment='center',
+                    transform=ax.transAxes, fontsize=24, 
+                    bbox={'facecolor':'none','boxstyle':'round'})
+
 
         # save the figure
         fig_base = self.args.fit_result.split('/')[-1]
         if not os.path.exists('figures'):
             os.makedirs('figures')
+
         # switch to correct plot to save
         plt.figure('qcotd',figsize=(7,4))
         if self.args.fig_type == 'pdf':
