@@ -1105,8 +1105,6 @@ class Fit:
         if not self.save_fit:
             return
 
-        if not os.path.exists("./result"):
-            os.makedirs("./result")
         if self.params['bootstrap']:
             if not os.path.exists(f"./result/{self.filename}_bs"):
                 gv.dump(self.bsresult, f"./result/{self.filename}_bs")
@@ -1381,6 +1379,9 @@ class Functions:
 
 if __name__ == "__main__":
     #import IPython; IPython.embed() # insert this where you want to interact with fit in memory
+    for d in ['result', 'figures']:
+        if not os.path.exists(d):
+            os.makedirs(d)
     fit = Fit()
     bs_p = parameters.params()
     if bs_p['get_Zj']:
