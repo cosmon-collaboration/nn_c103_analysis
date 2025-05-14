@@ -382,6 +382,11 @@ class Fit:
             else:
                 t_norm = self.params['t0']
             #'''
+            # if data.shape == (Ncfg, Nt)
+            if len(corr.shape) == 2:
+                tmp = np.zeros([corr.shape[0],1,1,corr.shape[1]], dtype=type(corr))
+                tmp[:,1,1,:] = corr
+                corr = tmp
             if len(corr.shape) == 4 and t_norm != 'None':
                 C_norm = np.diagonal(corr.mean(axis=0)[:,:,t_norm]).real
                 corr_full = np.zeros_like(corr)

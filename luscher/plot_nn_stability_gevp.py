@@ -38,6 +38,7 @@ def main():
                         help=       'use gs only conspiracy model? [%(default)s]')
     parser.add_argument('--fig_type',type=str, default='pdf',
                         help=       'what type of figure? [%(default)s]')
+    parser.add_argument('--f_range',default=None, help='file that lists plot ranges')
     parser.add_argument('--test',   default=False, action='store_true',
                         help=       'if test==True, only do T1g [%(default)s]')
     parser.add_argument('--debug',  default=False, action='store_true',
@@ -47,8 +48,9 @@ def main():
     print(args)
 
     color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'magenta', 
-             '5-10':'r', '5-11': 'magenta','5-12':'g', '5-14':'yellow',
-             '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick'}
+             '5-10':'r', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
+             '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick',
+             '3-7' :'firebrick', '4-7':'orange', '4-9':'r'}
     t_color = {'2':'gray', '3':'r', '4':'orange', '5':'yellow', '6':'g', '7':'b', '8':'magenta', '9':'k'}
 
     result_dir = args.optimal.split('/')[0]
@@ -60,7 +62,7 @@ def main():
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
     nn_file  = 'NN_{nn_iso}_{t_norm}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
-    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)+block
+    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-{tf}_ratio_'+str(args.ratio)+block
     if 'bsPrior' in args.optimal:
         bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
         nn_file += '_bsPrior-'+bsPrior
@@ -71,8 +73,9 @@ def main():
     nn_iso    = args.optimal.split('/')[-1].split('_')[1]
     tnorm     = args.optimal.split('/')[-1].split('_')[2]
     gevp_plot = args.optimal.split('t0-td_')[1].split('_')[0]
+    tf        = args.optimal.split('_t_')[2].split('-')[1].split('_')[0]
 
-    nn_dict = { 'N_t':N_t, 't_norm':tnorm, 'nn_iso':nn_iso, }
+    nn_dict = { 'N_t':N_t, 't_norm':tnorm, 'nn_iso':nn_iso, 'tf':tf}
 
     nn_model = 'N_n{N_inel}_NN_{nn_model}_e{nn_el}'
 
@@ -166,7 +169,7 @@ def main():
         y  = np.array([eff.mean for eff in eff_opt])
         dy = np.array([eff.sdev for eff in eff_opt])
         ax_nn.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
-        ax_nn.axvspan(15.5,20,color='k',alpha=.2)
+        ax_nn.axvspan(int(tf)+.5,20,color='k',alpha=.2)
         ax_nn.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
         # plot g.s. e0
         e_nn = e0_opt +e1_opt +e2_opt
@@ -181,15 +184,50 @@ def main():
         y  = np.array([eff.mean for eff in eff_opt])
         dy = np.array([eff.sdev for eff in eff_opt])
         ax_nnR.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
-        ax_nnR.axvspan(15.5,20,color='k',alpha=.2)
+        ax_nnR.axvspan(int(tf)+.5,20,color='k',alpha=.2)
         ax_nnR.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
         # plot g.s. e0
         ax_nnR.axhline(e0_opt.mean-e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
         ax_nnR.axhline(e0_opt.mean+e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
-        
+        # plot 0
+        ax_nnR.axhline(0, linestyle='--', color='k')
 
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, gevp_results, gevp_lbls, tmin_results, tmin_lbls)
+
+        if args.f_range:
+            import importlib
+            f_range = importlib.import_module(args.f_range.replace('/','.').split('.py')[0])
+            nnr_lim = f_range.nnr_lim
+            nn_lim  = f_range.nn_lim
+        else:
+            nnr_lim = summary_plot.nnr_lim
+            nn_lim  = summary_plot.nn_lim
+
+        handles, labels = ax_nn.get_legend_handles_labels()
+        ax_nn.legend(flip(handles, len(args.gevp)), flip(labels, len(args.gevp)), loc=1, ncol=len(args.gevp), fontsize=10, columnspacing=0,handletextpad=0.1)
+
+        ax_nnR.set_ylim(nnr_lim[q])
+        ax_nn.set_ylim(nn_lim[q])
+        ax_nnR.set_ylabel(r'$\Delta E_0^{\rm %s}$' %q_str, fontsize=20)
+        ax_nn.set_ylabel(r'$E_0^{\rm %s}$' %q_str, fontsize=20)
+        ax_Q.set_ylabel(r'$Q$', fontsize=20)
+        ax_Q.tick_params(bottom=True, top=True, direction='in')
+        ax_Q.set_xlabel(r'$t_{\rm min}$', fontsize=20)
+
+        ax_nn.set_xlim(1.5,int(tf)+2.5)
+        ax_nnR.set_xlim(1.5,int(tf)+2.5)
+        ax_Q.set_xlim(1.5, int(tf)+2.5)
+
+        q_up = 1.05
+        ax_Q.set_ylim(0,q_up)
+
+        ax_nn.tick_params(direction='inout')
+        ax_nn.set_xticklabels([])
+        ax_nnR.tick_params(direction='inout')
+        ax_nnR.set_xticklabels([])
+        ax_Q.tick_params(direction='inout')
+        ax_Q.set_yticks([0, .25, .5, .75])
 
         fig_name = '%s_gevp_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.'+args.fig_type))
         if args.fig_type == 'pdf':
@@ -217,7 +255,7 @@ def main():
 
 def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_gevp, l_gevp, r_tmin, l_tmin, ratio=True):
 
-    q_str = '\_'.join([str(k) for k in state])
+    #q_str = '\_'.join([str(k) for k in state])
 
     for t in arg.tmin:
         plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_gevp, l_gevp, r_tmin, l_tmin)
@@ -239,36 +277,6 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     dm = np.array([k.sdev for k in r_eff])
     axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
 
-    handles, labels = axnn.get_legend_handles_labels()
-    axnn.legend(flip(handles, len(arg.gevp)), flip(labels, len(arg.gevp)), loc=1, ncol=len(arg.gevp), fontsize=10, columnspacing=0,handletextpad=0.1)
-    #axnn.legend(loc=1, ncol=len(arg.gevp)+1, fontsize=10, columnspacing=0,handletextpad=0.1)
-
-    nnr_lim = summary_plot.nnr_lim
-    nn_lim  = summary_plot.nn_lim
-
-    axnnR.set_ylim(nnr_lim[state])
-    axnn.set_ylim(nn_lim[state])
-    axnnR.set_ylabel(r'$\Delta E_0^{\rm %s}$' %q_str, fontsize=20)
-    axnn.set_ylabel(r'$E_0^{\rm %s}$' %q_str, fontsize=20)
-    axQ.set_ylabel(r'$Q$', fontsize=20)
-    axQ.tick_params(bottom=True, top=True, direction='in')
-    axQ.set_xlabel(r'$t_{\rm min}$', fontsize=20)
-
-    axnn.set_xlim(1.5,17.5)
-    axnnR.set_xlim(1.5,17.5)
-    axQ.set_xlim(1.5, 17.5)
-
-    q_up = 1.05
-    axQ.set_ylim(0,q_up)
-
-    axnn.tick_params(direction='inout')
-    axnn.set_xticklabels([])
-    axnnR.tick_params(direction='inout')
-    axnnR.set_xticklabels([])
-    axQ.tick_params(direction='inout')
-    #axQ.set_xticklabels([])
-    axQ.set_yticks([0, .25, .5, .75])
-
 
 def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_gevp, l_gevp, r_tmin, l_tmin):
     marker = {
@@ -278,10 +286,12 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
     }
     color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'magenta', 
              '5-10':'r', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
-             '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick'}
+             '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick',
+             '3-7' :'firebrick', '4-7':'orange', '4-9':'r'}
     shift = { '3-6' :-0.2, '3-8' :-0.15, '4-8' :-0.1, '4-10':-0.05, 
              '5-10':0.05, '5-11':0.075, '5-12':0.1, '5-14':0,
-             '6-10':0.15, '6-11':0.175, '6-12':0.2, '6-14':0.25}
+             '6-10':0.15, '6-11':0.175, '6-12':0.2, '6-14':0.25,
+             '3-7' :0.05, '4-7':0.1, '4-9':0.15}
 
     opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
     opt_gevp = arg.optimal.split('t0-td_')[1].split('_')[0]
@@ -350,11 +360,11 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
                 mfc_plot.append(mfc)
                 axnnR.errorbar(t+shift[gevp],
                                 e[-1].mean, yerr=e[-1].sdev,
-                                marker=mrkr, color=clr, mfc=mfc,
+                                marker=mrkr, color=clr, mfc=mfc,alpha=.3,
                                 linestyle='None',label=lbl)
                 axnn.errorbar(t+shift[gevp],
                                 e_nn[-1].mean, yerr=e_nn[-1].sdev,
-                                marker=mrkr, color=clr, mfc=mfc,
+                                marker=mrkr, color=clr, mfc=mfc,alpha=.3,
                                 linestyle='None',label=lbl)
 
                 # populate results for comparison
