@@ -370,6 +370,12 @@ class Fit:
                         else:
                             corr_full[:,i,j,:] = np.conjugate(corr[:,j,i,:])
                 corr = 0.5*(corr_full + np.conjugate(np.einsum('cijt->cjit', corr_full)))
+            # if nn data in shape (Ncfg, Nt), we need to recast it to (Ncfg, 1,1, Nt)
+            # for this code to work properly
+            if len(corr.shape) == 2:
+                corr_full = np.zeros([corr.shape[0],1,1,corr.shape[1]], dtype=float)
+                corr_full[:,0,0,:] = corr.real
+                corr = corr_full
 
             # block data
             if self.block != 1:
@@ -389,7 +395,7 @@ class Fit:
                     for j in range(corr.shape[2]):
                         corr_full[:,i,j,:] = corr[:,i,j,:] / np.sqrt(C_norm[i]*C_norm[j])
                 corr = corr_full
-            #'''
+
             data[tag] = corr
 
         return data
@@ -604,10 +610,9 @@ class Fit:
             nucleon = self.nucleon_data()
             singlet = self.nn_data()
 
-            # add single hadron data to allsing specified by shape
             # BB data will have shape = (Ncfg, Nt, Nop, Nop)
             allsing = {
-                key: singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
+                (key[0],key[1],0): singlet[key] for key in singlet if len(np.shape(singlet[key])) == 2
             }
 
             get_gevp_rotation(singlet, verbose=verbose)
