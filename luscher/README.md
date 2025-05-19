@@ -2,8 +2,7 @@
 In the SU(3) symmetric limit, fitting the di-neutron (27) and the h-dibaryon (1) follows the same strategy as both are spin singlet correlators with degenerate single hadrons.  Therefore, we can use the NN code to fit the h-dibaryon data by "tricking" it into using the h-dibaryon correlators with names that match fitting the di-neutron fits from NN C103 analysis.
 
 ```
-git clone https://github.com/cosmon-collaboration/nn_c103_analysis
-git checkout h-dibaryon_continuum
+git clone -b h-dibaryon_continuum https://github.com/cosmon-collaboration/nn_c103_analysis
 ```
 
 ## MDWF on HISQ fits
