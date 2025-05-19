@@ -1,3 +1,34 @@
+# Analysis of h-dibaryon data in SU(3) symmetric limit
+In the SU(3) symmetric limit, fitting the di-neutron (27) and the h-dibaryon (1) follows the same strategy as both are spin singlet correlators with degenerate single hadrons.  Therefore, we can use the NN code to fit the h-dibaryon data by "tricking" it into using the h-dibaryon correlators with names that match fitting the di-neutron fits from NN C103 analysis.
+
+```
+git clone https://github.com/cosmon-collaboration/nn_c103_analysis
+git checkout h-dibaryon_continuum
+```
+
+## MDWF on HISQ fits
+The h-dibaryon and corresponding single baryon correlators can be found here [https://c51.lbl.gov/~walkloud/basc/](https://c51.lbl.gov/~walkloud/basc/)
+The single baryon correlators are in the `nucleon_aXXm400trMc.hdf5` files.  The h-dibaryon correlators are in the `triplet_aXXm400trMc.hdf5` files.  These were obtained from Drew from located at CMU cluster at 
+```
+/latticeQCD/raid3/ahanlon/data/dibaryon_continuum_study/correlators
+```
+From the data here, I performed an average over the source times and parities.  I also added node attributes describing the operators used in a format recognized by `nn_fit.py`.
+
+To perform the analysis, we need to create an `nn_parameters.py` file that points to the correct data files in a naming scheme recognized by `nn_fit.py` and we also need to pick values of GEVP times, blocking size, fit ranges etc.  These will change significantly from one lattice spacing to the next.  In order to facilitate sweeping over potential fit ranges, I created the `h-dibaryon_aXXm400trMc_base.py` file, which can have parameters modified for example by `nn_bash_scripts/run_aXXm400_gevp.sh`.  The values in this latter file must also be chosen with care for each different lattice spacing.  Once a good idea for values is known, a sweep of different choices, such as GEVP times, can be performed with
+```
+./nn_bash_scripts/run_aXXm400_gevp.sh
+```
+
+I need to make similar scripts for the other user choices as we did for NN C103.
+
+After a sweep of fits is run, one can use the plotting routines.  To simplify making good plots, I created an optional plotting param file.  For example:
+```
+./plot_nn_stability_gevp.py result/NN_triplet_tnorm3_t0-td_3-7_N_n2_t_4-15_NN_conspire_e0_t_4-10_ratio_False_block2.pickle --f_range figures/a15m400trMc_range.py
+```
+
+
+
+# Analysis of NN on C103
 We describe the features and usage of the software to analyze the NN correlators on the C103 ensemble.
 
 The numerical correlators can be found at
