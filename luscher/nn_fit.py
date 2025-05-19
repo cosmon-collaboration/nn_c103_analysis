@@ -76,6 +76,7 @@ class Fit:
 
         self.d_sets   = self.params["masterkey"]
         self.save_fit = self.params["save"]
+        self.result   = self.params['result']
 
         self.plot = Plot(self.params)
         self.func = Functions(self.params)
@@ -1110,28 +1111,28 @@ class Fit:
         if not self.save_fit:
             return
 
-        if not os.path.exists("./result"):
-            os.makedirs("./result")
+        if not os.path.exists(f"./{self.result}"):
+            os.makedirs(f"./{self.result}")
         if self.params['bootstrap']:
-            if not os.path.exists(f"./result/{self.filename}_bs"):
-                gv.dump(self.bsresult, f"./result/{self.filename}_bs")
+            if not os.path.exists(f"./{self.result}/{self.filename}_bs"):
+                gv.dump(self.bsresult, f"./{self.result}/{self.filename}_bs")
             else:
-                bsresult = gv.load(f"./result/{self.filename}_bs")
+                bsresult = gv.load(f"./{self.result}/{self.filename}_bs")
                 for k in bsresult:
                     self.bsresult[k] = bsresult[k] + self.bsresult[k]
-                gv.dump(self.bsresult, f"./result/{self.filename}_bs")
+                gv.dump(self.bsresult, f"./{self.result}/{self.filename}_bs")
 
             del self.bsresult
         else:
-            if os.path.exists(f"./result/{self.filename}"):
-                os.remove(f"./result/{self.filename}")
+            if os.path.exists(f"./{self.result}/{self.filename}"):
+                os.remove(f"./{self.result}/{self.filename}")
             print('saving result')
-            gv.dump(self.posterior, f"./result/{self.filename}")
+            gv.dump(self.posterior, f"./{self.result}/{self.filename}")
 
 
     def get_bs_pickle_Nbs(self):
-        if os.path.exists(f"./result/{self.filename}_bs"):
-            bsresult = gv.load(f"./result/{self.filename}_bs")
+        if os.path.exists(f"./{self.result}/{self.filename}_bs"):
+            bsresult = gv.load(f"./{self.result}/{self.filename}_bs")
             k = list(bsresult.keys())[0]
             Nbs=len(bsresult[k])-1 # first entry is boot0
         else:
@@ -1139,10 +1140,10 @@ class Fit:
         return Nbs
 
     def get_b0_posteriors(self):
-        if os.path.exists(f"./result/{self.boot0_file}"):
-            return gv.load(f"./result/{self.boot0_file}")
+        if os.path.exists(f"./{self.result}/{self.boot0_file}"):
+            return gv.load(f"./{self.result}/{self.boot0_file}")
         else:
-            print("can't get boot0, DOES NOT EXISTS: "+f"result/{self.boot0_file}")
+            print("can't get boot0, DOES NOT EXISTS: "+f"{self.result}/{self.boot0_file}")
             sys.exit('run again with p["bootstrap"] = False')
 
 

@@ -12,9 +12,11 @@ def params():
     p["verbose"] = False
     p["latex"]   = True
 
-    p["fpath"] = {"nucleon": "./data/nucleon_a15m400trMc.hdf5", "nn": "./data/triplet_a15m400trMc.hdf5"}
+    p["fpath"] = {"nucleon": "./data/nucleon_aXXm400trMc.hdf5", 
+                  "nn": "./data/triplet_aXXm400trMc.hdf5"}
 
-    p["save"] = True
+    p["save"]   = True
+    p["result"] = 'result_aXXm400trMc'
 
     p["fitter"] = 'scipy_least_squares'
 
@@ -23,7 +25,7 @@ def params():
     p['t_norm'] = 3
     p['gevp']   = 'evp' # evp or gevp
     p['get_Zj'] = True
-    p['Zjn_values'] = f"result/{p['fpath']['nn'].split('/')[-1].split('_')[0]}"
+    p['Zjn_values'] = f"result_aXXm400trMc/{p['fpath']['nn'].split('/')[-1].split('_')[0]}"
     p['Zjn_values'] = f"{p['Zjn_values']}_Zjn_tNorm{p['t_norm']}_{p['gevp']}.h5"
     p['show_Zjn']   = False
     p['do_gevp']    = False #set to True if you want to do gevp if it was already done and saved
@@ -36,7 +38,7 @@ def params():
 
     p["bootstrap"] = False
     p['Nbs_max']   = 5000
-    p['bs_seed']   = 'a15m400trMc_b%d' %p["block"]
+    p['bs_seed']   = 'aXXm400trMc_b%d' %p["block"]
     p["nbs"]       = 5000
     p["nbs_sub"]   = 100
     p['bs0_width'] = 5
