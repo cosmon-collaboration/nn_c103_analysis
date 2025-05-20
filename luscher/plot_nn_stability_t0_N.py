@@ -157,7 +157,7 @@ def main():
         y  = np.array([eff.mean for eff in eff_opt])
         dy = np.array([eff.sdev for eff in eff_opt])
         ax_nn.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
-        ax_nn.axvspan(15.5,20,color='k',alpha=.2)
+        ax_nn.axvspan(int(tf)+.5,int(tf)+2.5,color='k',alpha=.2)
         ax_nn.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
         # plot g.s. e0
         e_nn = e0_opt +e1_opt +e2_opt
@@ -172,7 +172,7 @@ def main():
         y  = np.array([eff.mean for eff in eff_opt])
         dy = np.array([eff.sdev for eff in eff_opt])
         ax_nnR.axvspan(0,opt_tmin-0.5,color='k',alpha=.2)
-        ax_nnR.axvspan(15.5,20,color='k',alpha=.2)
+        ax_nnR.axvspan(int(tf)+.5,int(tf)+2.5,color='k',alpha=.2)
         ax_nnR.fill_between(x_plot,y-dy, y+dy, color=opt_clr,alpha=.3)
         # plot g.s. e0
         ax_nnR.axhline(e0_opt.mean-e0_opt.sdev, linestyle='--',color=opt_clr, alpha=.3)
