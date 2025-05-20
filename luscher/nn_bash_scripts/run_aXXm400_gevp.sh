@@ -1,12 +1,29 @@
 #!/bin/bash
 
-ensemble='a15m400trMc'
-gevp="3-6 3-7 3-8 4-7 4-8 4-9"
-block=2
-tNN=`seq 2 8`
-tf=10
-t0N="2 3 4 5 6"
-tf_N=15
+#ensemble='a15m400trMc'
+ensemble='a12m400trMc'
+
+if [[ $ensemble == "a15m400trMc" ]]; then
+    gevp="3-6 3-7 3-8 4-7 4-8 4-9"
+    block=2
+    tNN=`seq 2 8`
+    tf=10
+    t0N="2 3 4 5 6"
+    tf_N=15
+    ref_time=7
+    mpi=0.31668
+    mN=0.8678
+elif [[ $ensemble == "a12m400trMc" ]]; then
+    gevp="4-7 4-8 4-9 4-10 5-9 5-10 5-11"
+    block=2
+    tNN=`seq 2 10`
+    tf=13
+    t0N="2 3 4 5 6"
+    tf_N=18
+    ref_time=10
+    mpi=0.25357
+    mN=0.7045
+fi
 
 ratio="False"
 nn_iso='triplet'
@@ -34,8 +51,12 @@ for gevp_t in $gevp; do
                 | sed "s/N\": \[3, 15\]/N\": \[${t0_N}, ${tf_N}\]/" \
                 | sed "s/R\": \[3, 12\]/R\": \[$t, $tf\]/" \
                 | sed "s/ratio\"]       = True/ratio\"]       = ${ratio}/" \
+                | sed "s/ref_time/${ref_time}/" \
+                | sed "s/a_mpi/${mpi}/" \
+                | sed "s/a_mn/${mN}/" \
                 > h-dibaryon_${ensemble}.py
                 if [[ ! -e $result ]]; then
+                    ln -sf h-dibaryon_${ensemble}.py nn_parameters.py
                     python nn_fit.py
                 else
                     echo "  already fit"

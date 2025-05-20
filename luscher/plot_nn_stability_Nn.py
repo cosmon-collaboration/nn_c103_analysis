@@ -49,6 +49,7 @@ def main():
     color = { 2:'r', 3:'g', 4:'b'}
 
     result_dir = args.optimal.split('/')[0]
+    ensemble   = result_dir.split('_')[1]
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0].split('.')[0]
     else:
@@ -120,9 +121,9 @@ def main():
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
     if args.evp:
-        d_file = f"data/gevp_{nn_iso}_{tnorm}_evp_{gevp_plot}{block}.pickle"
+        d_file = f"data/gevp_{ensemble}_{nn_iso}_{tnorm}_evp_{gevp_plot}{block}.pickle"
     else:
-        d_file = f"data/gevp_{nn_iso}_{tnorm}_gevp_{gevp_plot}{block}.pickle"
+        d_file = f"data/gevp_{ensemble}_{nn_iso}_{tnorm}_gevp_{gevp_plot}{block}.pickle"
     nn_data = gv.load(d_file)
 
     plt.ion()

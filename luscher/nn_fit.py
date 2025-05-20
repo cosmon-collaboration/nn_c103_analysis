@@ -77,6 +77,9 @@ class Fit:
         self.d_sets   = self.params["masterkey"]
         self.save_fit = self.params["save"]
         self.result   = self.params['result']
+        if not os.path.exists(self.result):
+            os.makedirs(self.result)
+        self.ens      = self.params['fpath']['nucleon'].split('_')[1].split('.')[0]
 
         self.plot = Plot(self.params)
         self.func = Functions(self.params)
@@ -659,7 +662,7 @@ class Fit:
             nn = 'triplet'
         else:
             sys.exit('unkown nn data:', self.params["fpath"]["nn"].split('/')[-1])
-        datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}"
+        datapath = f"./data/gevp_{self.ens}_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}"
         if 'cfgs' in dir(self):
             cfgs = f"cfgs{self.cfgs[0]}-{self.cfgs[-1]}x{self.cfgs[1]-self.cfgs[0]}"
             datapath = f"{datapath}_{cfgs}"

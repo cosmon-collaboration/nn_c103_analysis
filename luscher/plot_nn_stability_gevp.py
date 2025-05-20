@@ -48,12 +48,13 @@ def main():
     print(args)
 
     color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'magenta', 
-             '5-10':'r', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
+             '5-9':'b', '5-10':'r', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
              '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick',
              '3-7' :'firebrick', '4-7':'orange', '4-9':'r'}
     t_color = {'2':'gray', '3':'r', '4':'orange', '5':'yellow', '6':'g', '7':'b', '8':'magenta', '9':'k'}
 
     result_dir = args.optimal.split('/')[0]
+    ensemble   = result_dir.split('_')[1]
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0].split('.')[0]
     else:
@@ -124,9 +125,9 @@ def main():
             if k[1] == 'e0' and k[0][1] == 'R' and k[0][0] == q:
                 fit_keys[q] = k
     if args.evp:
-        d_file = f"data/gevp_{nn_iso}_{tnorm}_evp_{gevp_plot}{block}.pickle"
+        d_file = f"data/gevp_{ensemble}_{nn_iso}_{tnorm}_evp_{gevp_plot}{block}.pickle"
     else:
-        d_file = f"data/gevp_{nn_iso}_{tnorm}_gevp_{gevp_plot}{block}.pickle"
+        d_file = f"data/gevp_{ensemble}_{nn_iso}_{tnorm}_gevp_{gevp_plot}{block}.pickle"
     nn_data = gv.load(d_file)
 
     plt.ion()
@@ -289,11 +290,11 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
         'N_n2_NN_conspire_e0':'o',
     }
     color = { '3-6' :'yellow', '3-8' :'b', '4-8' :'k', '4-10':'magenta', 
-             '5-10':'r', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
+             '5-9':'b', '5-10':'r', '5-11': 'magenta', '5-12':'g', '5-14':'yellow',
              '6-10':'orange', '6-11':'firebrick', '6-12':'b','6-14':'firebrick',
              '3-7' :'firebrick', '4-7':'orange', '4-9':'r'}
     shift = { '3-6' :-0.2, '3-8' :-0.15, '4-8' :-0.1, '4-10':-0.05, 
-             '5-10':0.05, '5-11':0.075, '5-12':0.1, '5-14':0,
+             '5-9':-0.01, '5-10':0.05, '5-11':0.075, '5-12':0.1, '5-14':0,
              '6-10':0.15, '6-11':0.175, '6-12':0.2, '6-14':0.25,
              '3-7' :0.05, '4-7':0.1, '4-9':0.15}
 

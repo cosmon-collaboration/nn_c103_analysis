@@ -47,6 +47,8 @@ def main():
     color = { 1:'orange', 2:'r', 4:'g', 8:'b', 16:'magenta'}
 
     result_dir = args.optimal.split('/')[0]
+    ensemble   = result_dir.split('_')[1]
+
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0].split('.')[0]
     else:
@@ -120,9 +122,9 @@ def main():
                 fit_keys[q] = k
 
     if args.evp:
-        d_file = f"data/gevp_{nn_iso}_{tnorm}_evp_{gevp_plot}{block}.pickle"
+        d_file = f"data/gevp_{ensemble}_{nn_iso}_{tnorm}_evp_{gevp_plot}{block}.pickle"
     else:
-        d_file = f"data/gevp_{nn_iso}_{tnorm}_gevp_{gevp_plot}{block}.pickle"
+        d_file = f"data/gevp_{ensemble}_{nn_iso}_{tnorm}_gevp_{gevp_plot}{block}.pickle"
     nn_data = gv.load(d_file)
 
     plt.ion()
@@ -278,7 +280,6 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
 
     opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
     result_dir = arg.optimal.split('/')[0]
-
 
     e      = []
     e_nn   = []

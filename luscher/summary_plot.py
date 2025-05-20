@@ -74,7 +74,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     ax.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
     ax.set_ylabel(r'$E_{\rm cm} / m_N$', fontsize=16)
     ax.axhline(2, linestyle='--', color='k')
-    ax.set_ylim(1.965,2.231)
+    ax.set_ylim(1.945,2.251)
     plt.figure(fig)
     if not os.path.exists(fig_dir):
         os.makedirs(fig_dir)
@@ -87,7 +87,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     if spin == 'singlet':
         ax_dE.set_ylim(-0.0105,0.0011)
     elif spin == 'triplet':
-        ax_dE.set_ylim(-0.064,0.01)
+        ax_dE.set_ylim(-0.069,0.01)
     plt.figure(fig+'_dElab')
     plt.savefig(fig_dir+'/'+fig+'_dElab'+'.'+format, transparent=True)
     
