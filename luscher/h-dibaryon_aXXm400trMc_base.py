@@ -46,7 +46,7 @@ def params():
                           # randomize prior mean for gs or all priors
     #p['old_bs']    = True # set to True to use BS list from 2009.11825
 
-    p["autotime"]   = 7 # time used to estimate mean gs energy prior
+    p["autotime"]   = ref_time # time used to estimate mean gs energy prior
     p["sig_e0"]     = 1 # multiplication factor for meff[autotime] for prior width for deltaE_gs
     p["sig_enn"]    = 1 # multiplication factor for meff[autotime] for prior width for deltaE_nn
     p["positive_z"] = True
@@ -61,8 +61,8 @@ def params():
     p["r_n_el"]      = 0
     p["trange"]      = {"N": [3, 15], "R": [3, 12]}
 
-    p["ampi"] = 0.31668
-    p["amn"]  = 0.8678
+    p["ampi"] = a_mpi
+    p["amn"]  = a_mn
     p["dE_elastic"] = 2 * np.sqrt(p["amn"]**2 + 1 * (2 * np.pi / 48) ** 2) -2*p["amn"]
 
     if 'singlet' in p["fpath"]["nn"]:
