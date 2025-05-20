@@ -35,6 +35,7 @@ def main():
                         help=       'values of t_min in NN fit [%(default)s]')
     parser.add_argument('--gs_cons',default=False, action='store_true',
                         help=       'use gs only conspiracy model? [%(default)s]')
+    parser.add_argument('--f_range',default=None, help='file that lists plot ranges')
     parser.add_argument('--test',   default=False, action='store_true',
                         help=       'if test==True, only do T1g [%(default)s]')
     parser.add_argument('--debug',  default=False, action='store_true',
@@ -45,6 +46,7 @@ def main():
 
     color = { 1:'orange', 2:'r', 4:'g', 8:'b', 16:'magenta'}
 
+    result_dir = args.optimal.split('/')[0]
     if 'block' in args.optimal:
         block = '_block' + args.optimal.split('block')[1].split('_')[0].split('.')[0]
     else:
@@ -53,7 +55,7 @@ def main():
     N_t = args.optimal.split('_NN')[0].split('_')[-1]
 
     nn_file  = 'NN_{nn_iso}_{t_norm}_t0-td_{gevp}_N_n{N_inel}_t_{N_t}'
-    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-15_ratio_'+str(args.ratio)
+    nn_file += '_NN_{nn_model}_e{nn_el}_t_{t0}-{tf}_ratio_'+str(args.ratio)
     nn_file += '{BLOCK}'
     if 'bsPrior' in args.optimal:
         bsPrior = args.optimal.split('bsPrior-')[1].split('.')[0]
@@ -65,8 +67,9 @@ def main():
     nn_iso    = args.optimal.split('/')[-1].split('_')[1]
     tnorm     = args.optimal.split('/')[-1].split('_')[2]
     gevp_plot = args.optimal.split('t0-td_')[1].split('_')[0]
+    tf        = args.optimal.split('_t_')[2].split('-')[1].split('_')[0]
 
-    nn_dict = { 'N_t':N_t, 't_norm':tnorm, 'nn_iso':nn_iso, 'BLOCK':block}
+    nn_dict = { 'N_t':N_t, 't_norm':tnorm, 'nn_iso':nn_iso, 'tf':tf, 'BLOCK':block}
 
     nn_model = 'N_n{N_inel}_NN_{nn_model}_e{nn_el}'
 
@@ -74,8 +77,8 @@ def main():
     for n in args.n_N:
         models['N_n%d_NN_conspire_e0' %n] = {'N_inel':n, 'nn_model':'conspire', 'nn_el':0}
     
-    if not os.path.exists("figures"):
-        os.mkdir("figures")
+    if not os.path.exists(f"figures/{result_dir.split('_')[-1]}"):
+        os.mkdir(f"figures/{result_dir.split('_')[-1]}")
 
     states = summary_plot.get_states(nn_iso, args.test)
 
@@ -183,8 +186,41 @@ def main():
         # plot e0 from stability
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, blk_results, blk_lbls)
 
+        if args.f_range:
+            import importlib
+            f_range = importlib.import_module(args.f_range.replace('/','.').split('.py')[0])
+            nnr_lim = f_range.nnr_lim
+            nn_lim  = f_range.nn_lim
+        else:
+            nnr_lim = summary_plot.nnr_lim
+            nn_lim  = summary_plot.nn_lim
+
+        ax_nnR.set_ylim(nnr_lim[q])
+        ax_nn.set_ylim(nn_lim[q])
+        ax_nnR.set_ylabel(r'$\Delta E_0^{\rm %s}$' %q_str, fontsize=20)
+        ax_nn.set_ylabel(r'$E_0^{\rm %s}$' %q_str, fontsize=20)
+        ax_Q.set_ylabel(r'$Q$', fontsize=20)
+        ax_Q.tick_params(bottom=True, top=True, direction='in')
+        ax_Q.set_xlabel(r'$t_{\rm min}$', fontsize=20)
+
+        ax_nn.set_xlim(1.5,17.5)
+        ax_nnR.set_xlim(1.5,17.5)
+        ax_Q.set_xlim(1.5, 17.5)
+
+        q_up = 1.05
+        ax_Q.set_ylim(0,q_up)
+
+        ax_nn.tick_params(direction='inout')
+        ax_nn.set_xticklabels([])
+        ax_nnR.tick_params(direction='inout')
+        ax_nnR.set_xticklabels([])
+        ax_Q.tick_params(direction='inout')
+        ax_Q.set_yticks([0, .25, .5, .75])
+
         fig_name = '%s_Nb_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
-        plt.savefig('figures/'+fig_name,transparent=True)
+        if not os.path.exists('figures/'+result_dir.split('_')[-1]+'/'):
+            os.makedirs('figures/'+result_dir.split('_')[-1]+'/')
+        plt.savefig('figures/'+result_dir.split('_')[-1]+'/'+fig_name,transparent=True)
 
         stop_time = time.perf_counter()
         print('\n%.0f seconds' %(stop_time - start_time))
@@ -197,7 +233,8 @@ def main():
     
     # plot t0_N
     summary_plot.summary_ENN(blk_results, mN, blk_lbls, color, 
-                             lbl0=r'$N_{\rm block}$=', spin=nn_iso, fig=f"{nn_iso}_Nb_summary")
+                             lbl0=r'$N_{\rm block}$=', spin=nn_iso, fig=f"{nn_iso}_Nb_summary",
+                             fig_dir='figures/'+result_dir.split('_')[-1])
 
     plt.ioff()
     plt.show()
@@ -229,32 +266,6 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     handles, labels = axnnR.get_legend_handles_labels()
     axnn.legend(flip(handles, len(arg.Nb)), flip(labels, len(arg.Nb)), loc=1, ncol=len(arg.Nb), fontsize=10, columnspacing=0,handletextpad=0.1)
 
-    nnr_lim = summary_plot.nnr_lim
-    nn_lim  = summary_plot.nn_lim
-
-    axnnR.set_ylim(nnr_lim[state])
-    axnn.set_ylim(nn_lim[state])
-    axnnR.set_ylabel(r'$\Delta E_0^{\rm %s}$' %q_str, fontsize=20)
-    axnn.set_ylabel(r'$E_0^{\rm %s}$' %q_str, fontsize=20)
-    axQ.set_ylabel(r'$Q$', fontsize=20)
-    axQ.tick_params(bottom=True, top=True, direction='in')
-    axQ.set_xlabel(r'$t_{\rm min}$', fontsize=20)
-
-    axnn.set_xlim(1.5,17.5)
-    axnnR.set_xlim(1.5,17.5)
-    axQ.set_xlim(1.5, 17.5)
-
-    q_up = 1.05
-    axQ.set_ylim(0,q_up)
-
-    axnn.tick_params(direction='inout')
-    axnn.set_xticklabels([])
-    axnnR.tick_params(direction='inout')
-    axnnR.set_xticklabels([])
-    axQ.tick_params(direction='inout')
-    #axQ.set_xticklabels([])
-    axQ.set_yticks([0, .25, .5, .75])
-
 
 def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_blk, l_blk):
     marker = {
@@ -265,8 +276,9 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
     shift = { 1:-0.2, 2:-0.1, 4:0., 8:0.1, 16:0.2}
     color = { 1:'orange', 2:'r', 4:'g', 8:'b', 16:'magenta'}
 
-    if arg.optimal:
-        opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
+    opt_tmin = int(arg.optimal.split('_NN_')[1].split('-')[0].split('_')[-1])
+    result_dir = arg.optimal.split('/')[0]
+
 
     e      = []
     e_nn   = []
@@ -302,7 +314,7 @@ def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnMod
             else:
                 lbl = ''
 
-            fit_file = 'result/'+nnFile.format(**nnDict)
+            fit_file = result_dir+'/'+nnFile.format(**nnDict)
             if os.path.exists(fit_file):
                 if arg.debug:
                     print('\nDEBUG: fit file', fit_file)

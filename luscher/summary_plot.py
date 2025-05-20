@@ -5,7 +5,7 @@ import os, sys
 import gvar as gv
 
 def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fig='summary', 
-                format='pdf', f_range=None):
+                format='pdf', f_range=None, fig_dir='figures'):
     if spin == 'singlet':
         irreps = {('0', 'T1g'):0,
                 ('1', 'A2') :10, 
@@ -76,9 +76,9 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     ax.axhline(2, linestyle='--', color='k')
     ax.set_ylim(1.965,2.231)
     plt.figure(fig)
-    if not os.path.exists('figures'):
-        os.makedirs('figures')
-    plt.savefig('figures/'+fig+'.'+format, transparent=True)
+    if not os.path.exists(fig_dir):
+        os.makedirs(fig_dir)
+    plt.savefig(fig_dir+'/'+fig+'.'+format, transparent=True)
 
     ax_dE.axhline(0, linestyle='--', color='k')
     ax_dE.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
@@ -89,7 +89,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     elif spin == 'triplet':
         ax_dE.set_ylim(-0.064,0.01)
     plt.figure(fig+'_dElab')
-    plt.savefig('figures/'+fig+'_dElab'+'.'+format, transparent=True)
+    plt.savefig(fig_dir+'/'+fig+'_dElab'+'.'+format, transparent=True)
     
 
 nnr_lim = {

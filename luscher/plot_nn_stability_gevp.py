@@ -230,10 +230,12 @@ def main():
         ax_Q.set_yticks([0, .25, .5, .75])
 
         fig_name = '%s_gevp_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.'+args.fig_type))
+        if not os.path.exists('figures/'+result_dir.split('_')[-1]+'/'):
+            os.makedirs('figures/'+result_dir.split('_')[-1]+'/')
         if args.fig_type == 'pdf':
-            plt.savefig('figures/'+fig_name,transparent=True)
+            plt.savefig('figures/'+result_dir.split('_')[-1]+'/'+fig_name,transparent=True)
         elif args.fig_type == 'png':
-            plt.savefig('figures/'+fig_name)
+            plt.savefig('figures/'+result_dir.split('_')[-1]+'/'+fig_name)
         stop_time = time.perf_counter()
         print('\n%.0f seconds' %(stop_time - start_time))
 
@@ -245,10 +247,12 @@ def main():
         mN = gevp_results['0_A1g_0']['E1'][0]
     # plot GEVP
     summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, spin=nn_iso, 
-                             lbl0=r'GEVP: $t_0-t_d$=', fig=f"{nn_iso}_gevp_summary")
+                             lbl0=r'GEVP: $t_0-t_d$=', fig=f"{nn_iso}_gevp_summary",
+                             fig_dir='figures/'+result_dir.split('_')[-1])
     # plot tmin
     summary_plot.summary_ENN(tmin_results, mN, tmin_lbls, t_color, spin=nn_iso,
-                             lbl0=r'$t_{\rm min}^{NN}=$', fig=f"{nn_iso}_tmin_summary")
+                             lbl0=r'$t_{\rm min}^{NN}=$', fig=f"{nn_iso}_tmin_summary",
+                             fig_dir='figures/'+result_dir.split('_')[-1])
 
     plt.ioff()
     plt.show()
