@@ -203,9 +203,9 @@ def main():
         ax_Q.tick_params(bottom=True, top=True, direction='in')
         ax_Q.set_xlabel(r'$t_{\rm min}$', fontsize=20)
 
-        ax_nn.set_xlim(1.5,17.5)
-        ax_nnR.set_xlim(1.5,17.5)
-        ax_Q.set_xlim(1.5, 17.5)
+        ax_nn.set_xlim(1.5,int(tf)+2.5)
+        ax_nnR.set_xlim(1.5,int(tf)+2.5)
+        ax_Q.set_xlim(1.5, int(tf)+2.5)
 
         q_up = 1.05
         ax_Q.set_ylim(0,q_up)
@@ -257,11 +257,11 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
 
     m  = np.array([k.mean for k in nn_eff])
     dm = np.array([k.sdev for k in nn_eff])
-    axnn.errorbar(np.arange(2,2+len(nn_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
+    axnn.errorbar(np.arange(2,2+len(nn_eff),1),m,yerr=dm,color='k',marker='s',linestyle='None', label=r'eff mass')
 
     m  = np.array([k.mean for k in r_eff])
     dm = np.array([k.sdev for k in r_eff])
-    axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
+    axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',marker='s',linestyle='None', label=r'eff mass')
 
     handles, labels = axnnR.get_legend_handles_labels()
     axnn.legend(flip(handles, len(arg.Nb)), flip(labels, len(arg.Nb)), loc=1, ncol=len(arg.Nb), fontsize=10, columnspacing=0,handletextpad=0.1)

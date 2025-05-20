@@ -275,11 +275,11 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
 
     m  = np.array([k.mean for k in nn_eff])
     dm = np.array([k.sdev for k in nn_eff])
-    axnn.errorbar(np.arange(2,2+len(nn_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
+    axnn.errorbar(np.arange(2,2+len(nn_eff),1),m,yerr=dm,color='k',marker='s',linestyle='None', label=r'eff mass')
 
     m  = np.array([k.mean for k in r_eff])
     dm = np.array([k.sdev for k in r_eff])
-    axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
+    axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',marker='s',linestyle='None', label=r'eff mass')
 
 
 def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_gevp, l_gevp, r_tmin, l_tmin):
