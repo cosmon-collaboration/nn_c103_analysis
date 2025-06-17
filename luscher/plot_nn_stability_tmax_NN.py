@@ -236,7 +236,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
 
     axnnR.set_ylim(nnr_lim[state])
     axnn.set_ylim(nn_lim[state])
-    axnnR.set_ylabel(r'$\Delta E_0^{\rm %s}$' %q_str, fontsize=20)
+    axnnR.set_ylabel(r'$\delta E_{00}^{\rm %s}$' %q_str, fontsize=20)
     axnn.set_ylabel(r'$E_0^{\rm %s}$' %q_str, fontsize=20)
     axQ.set_ylabel(r'$Q$', fontsize=20)
     axQ.tick_params(bottom=True, top=True, direction='in')

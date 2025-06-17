@@ -87,7 +87,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
 
     ax_dE.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
     ax_dE.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
-    ax_dE.set_ylabel(r'$\Delta E_{\rm lab} / m_N$', fontsize=16)
+    ax_dE.set_ylabel(r'$\delta E_{00}^{\rm lab} / m_N$', fontsize=16)
     if spin == 'singlet':
         ax_dE.set_ylim(-0.0105,0.0005)
     elif spin == 'triplet':
