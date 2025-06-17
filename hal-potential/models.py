@@ -1,5 +1,6 @@
 """Help function for fitting HAL potential data."""
 import numpy as np
+from scipy.special import gamma as gammaf
 import scipy.constants as const
 from scipy.optimize import minimize
 from scipy.special import spherical_jn, spherical_yn, hermite
@@ -92,6 +93,9 @@ class Fit:
                 prior[f"gamma1_{i}"] = p[f"gamma1_{i}"]
             if self.model == "harmosc":
                 prior[f"b_{i}"] = p[f"b_{i}"]
+                prior[f"gamma1_0"] = p[f"gamma1_0"]
+            if self.model == "harmosc1D":
+                prior[f"b_{i}"] = p[f"b_{i}"]
                 prior[f"gamma1_{i}"] = p[f"gamma1_{i}"]
             if self.model == "herm_g2":
                 prior[f"b_{i}"] = p[f"b_{i}"]
@@ -117,6 +121,23 @@ class Fit:
         out = ((1-self.gaussian(x,c,1))**2)*(-np.exp(a) * np.exp(-np.exp(m) * x)/ x )
         return out
 
+    def lagL0(self,q,n):
+        q2 = q*q
+        q4 = q2*q2
+        if n == 1:
+            rslt = 1
+        elif n == 2:
+            rslt = (3.0/2.0) - q
+        elif n == 3:
+            rslt = (1.0/8.0)*(15.0 - 20*q + 4*q2)
+        elif n == 4:
+            rslt = (1/48.0)*(105.0 - 210.0*q + 84.0*q2 - 8*q2*q)
+        elif n == 5:
+            rslt = (1.0/384.0)*(945.0 - 2520.0*q + 1512.0*q2 - 288.0*q2*q + 16*q4)
+        else:
+            raise ValueError('n is too large')
+        return rslt
+    
     def herm_w(self, x, n):
         if n == 0:
             return 1
@@ -126,8 +147,11 @@ class Fit:
             return x**2 - 1
         else:
             return 0
-    
+
     def harmosc(self, x, gamma, b, n):
+        return b*(np.exp(gamma))**(-3/2) * np.sqrt(2*gammaf(n+2)/gammaf(n+2+1/2))*np.exp(-(x**2 / (2*np.exp(gamma)**2))) * self.lagL0(x**2/(np.exp(gamma)**2),n+1)
+
+    def harmosc1D(self, x, gamma, b, n):
         return b * np.exp(-(np.exp(gamma)**2) * x**2) * self.herm_w(np.exp(gamma)*x,n)
 
     """ Alternate fitting functions considered """
@@ -150,8 +174,11 @@ class Fit:
             out += np.sum([self.osc(x, p[f"gamma1_{i}"], p[f"gamma2_{i}"], p[f"ph_{i}"], p[f"b_{i}"]) for i in range(self.pow_c)], axis=0)
 
         elif self.model == "harmosc":
-            out +=  np.sum([self.harmosc(x, p[f"gamma1_{i}"], p[f"b_{i}"] ,i) for i in range(self.pow_c)], axis=0)
+            out +=  np.sum([self.harmosc(x, p[f"gamma1_0"], p[f"b_{i}"] ,i) for i in range(self.pow_c)], axis=0)
 
+        elif self.model == "harmosc1D":
+            out +=  np.sum([self.harmosc1D(x, p[f"gamma1_{i}"], p[f"b_{i}"] ,i) for i in range(self.pow_c)], axis=0)
+            
         elif self.model == "herm_g2":
             out +=  np.sum([self.herm_g2(x, p[f"gamma1_0"], p[f"gamma2_{i}"], p[f"b_{i}"],i) for i in range(self.pow_c)], axis=0)
         return out
