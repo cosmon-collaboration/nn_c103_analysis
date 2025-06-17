@@ -122,6 +122,12 @@ class Fit:
         return out
 
     def lagL0(self,q,n):
+        """
+            Compute Laguerre polynomal for nodal number n (up to n=5)
+            Normally we pass (n-1) to Laguerre polynomial becase
+            n starts with 1 in the HO formula, but that was 
+            incompatable with gvars.
+        """
         q2 = q*q
         q4 = q2*q2
         if n == 1:
@@ -148,12 +154,27 @@ class Fit:
         else:
             return 0
 
-    def harmosc(self, x, gamma, b, n):
-        return b*(np.exp(gamma))**(-3/2) * np.sqrt(2*gammaf(n+2)/gammaf(n+2+1/2))*np.exp(-(x**2 / (2*np.exp(gamma)**2))) * self.lagL0(x**2/(np.exp(gamma)**2),n+1)
+
+    def harmosc(self, x, gamma, b, nx):
+        """
+            Compute 3D Harmonic oscillator function
+            x (float)     : radial distance in fm
+            gamma (float) : HO length scale bb=np.exp(gamma) to prevent fitter from picking negative bb
+            b (float)     : coefficient for this basis function
+            nx (int)      : nodal number, in this case starting with 0, we will add 1 for HO formula
+        """
+        n = nx + 1  # to match HO formula, which starts with n=1
+        bls = np.exp(gamma) # harmonic oscillator length scale, eval once
+        r = x / bls # unitless radial position
+        r2 = r * r
+        pre = (bls**(-3/2)) * np.sqrt(2*gammaf(n)/gammaf(n+1/2)) # normalization
+        # note:   lagL0 takes the HO nodal number
+        return b * pre * np.exp(-0.5 * r2) * self.lagL0(r2, n)
 
     def harmosc1D(self, x, gamma, b, n):
         return b * np.exp(-(np.exp(gamma)**2) * x**2) * self.herm_w(np.exp(gamma)*x,n)
 
+        
     """ Alternate fitting functions considered """
     
     def herm_g2(self, x, gamma1, gamma2, b, n):
