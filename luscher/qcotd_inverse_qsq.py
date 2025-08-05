@@ -242,10 +242,15 @@ class qsqFit:
 
 
     def make_qcotd(self):
+        ''' write a help message
+        '''
         # BMat functions
         def calcFunc(self, JtimesTwo, Lp, SptimesTwo, chanp, L, 
                      StimesTwo, chan, Ecm_over_mref, pSqFuncList):
             return 0.
+        # list of particle channels, eg. KN, piSig for Lambda(1405)
+        # in this case, just NN
+        # DecayChannelInfo(label1, label2, 2*spin1, 2*spin2, IdenticalParticles?, SameInstrinsicParity?)
         chanList = [BMat.DecayChannelInfo('n','n',1,1,True,True),]
 
         if self.channel == 'deuteron':
@@ -259,8 +264,21 @@ class qsqFit:
                             and chan==0 and SptimesTwo==0 and StimesTwo==0)
             
         # define these in self to use in irrep_avg function
+        # ar = at rest (0,0,0)
+        # oa = on-axis eg (0,0,1)
+        # pd = planar diagonal eg (0,1,1)
+        # cd = cubic diagonal eg (1,1,1)
+        # to go above Psq >= 5, need upgraded THB
         self.momRay = {0 : 'ar', 1 : 'oa', 2 : 'pd', 3 : 'cd', 4 : 'oa' }
         
+        # calcFunc given quantum  number labels, return value of Kinv
+        # isZero returns False when you want Kinv
+        #                True otherwise
+        # BMat.KMatrix sets up Kinv given quantum numbers in isZero, with parameterization calcFunc
+        # This Kinv is really Ktilde as defined in Eq (8) of 2307.13471
+        # In the single channel approximation, Kinv = (k)^(2l+1) cot delta(k)
+        # NOTE, this Kinv can actually be K or Kinv, and a flag in BMat.BoxQuantization
+        #       specifies Kinv (True) or K (False)
         self.Kinv = BMat.KMatrix(calcFunc, isZero)
 
         # create qcotd
@@ -299,11 +317,19 @@ class qsqFit:
                 irrep = state[1]
                 boxQ  = BMat.BoxQuantization(self.momRay[Psq], Psq, 
                                             irrep, chanList, 
+                                            # list[maxAngularMomentum], Kinv, True=Kinv:False=K
                                             [0,], self.Kinv, True)
+                # setMassesOverRef(channel index, 1=units of particle1 mass, 1=units of particle2 mass )
+                # if M1_1 != M1_2, then use (0, 1, M1_2/M1_1)
+                # if you have a second channel, add setMassesOverRef(1, M2_1/M1_1, M2_2/M1_1)
+                # etc
                 boxQ.setMassesOverRef(0, 1, 1)
                 self.qcotd_raw[state]['qcotd_lab'] = np.zeros(self.Nbs +1)
                 self.qcotd_raw[state]['qcotd_cm']  = np.zeros(self.Nbs +1)
                 for bs in range(self.Nbs +1):
+                    # since we used M1=1 in setMassesOverRef(0, 1, 1)
+                    # we then set ref mass as M*L
+                    # and in this case, we take the bootstrap sample of M
                     boxQ.setRefMassL(self.data['mN'][bs]*self.args.L)
                     self.qcotd_raw[state]['qcotd_lab'][bs] = boxQ.getBoxMatrixFromElab(E_NN[bs] / self.data['mN'][bs]).real
                     self.qcotd_raw[state]['qcotd_cm'][bs]  = boxQ.getBoxMatrixFromEcm(E_cm[bs] / self.data['mN'][bs]).real
