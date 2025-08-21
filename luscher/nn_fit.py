@@ -654,8 +654,8 @@ class Fit:
         td = self.params["td"]
         if 'deuteron' in self.params["fpath"]["nn"].split('/')[-1]:
             nn = 'deuteron'
-        elif 'dinuetron' in self.params["fpath"]["nn"].split('/')[-1]:
-            nn = 'dinuetron'
+        elif 'dineutron' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'dineutron'
         else:
             sys.exit('unkown nn data:', self.params["fpath"]["nn"].split('/')[-1])
         datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}"

@@ -4,8 +4,8 @@ import os, sys
 
 import gvar as gv
 
-def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fig='summary', format='pdf'):
-    if spin == 'singlet':
+def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='deuteron', fig='summary', format='pdf'):
+    if spin == 'deuteron':
         irreps = {('0', 'T1g'):0,
                 ('1', 'A2') :10, 
                 ('1', 'E')  :20,
@@ -17,20 +17,20 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
                 ('4', 'A2') :80, 
                 ('4', 'E')  :90
                 }
-    elif spin == 'triplet':
+    elif spin == 'dineutron':
         irreps = {('0', 'A1g'):0,
                   ('1', 'A1') :10,
                   ('2', 'A1') :20,
                   ('3', 'A1') :30,
                   ('4', 'A1') :40
                   }
-    if spin == 'singlet':
+    if spin == 'deuteron':
         irrep_lbls = [
             r'$T_{1g}(0)$', r'$A_2(1)$', r'$E(1)$',
             r'$A_2(2)$', r'$B_1(2)$', r'$B_2(2)$',
             r'$A_2(3)$', r'$E(3)$', r'$A_2(4)$', r'$E(4)$'
         ]
-    elif spin == 'triplet':
+    elif spin == 'dineutron':
         irrep_lbls = [
             r'$A_{1g}(0)$', r'$A_1(1)$', r'$A_1(2)$', r'$A_1(3)$', r'$A_1(4)$'
         ]
@@ -88,9 +88,9 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     ax_dE.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
     ax_dE.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
     ax_dE.set_ylabel(r'$\delta E_{00}^{\rm lab} / m_N$', fontsize=16)
-    if spin == 'singlet':
+    if spin == 'deuteron':
         ax_dE.set_ylim(-0.0105,0.0005)
-    elif spin == 'triplet':
+    elif spin == 'dineutron':
         ax_dE.set_ylim(-0.0061,0.0005)
     ax_dE.tick_params(axis='both', labelsize=14, direction='in')
     # padd the right lim.  Each irrep is spaced at 10, so add 5 to the end
@@ -102,7 +102,7 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='singlet', fi
     
 
 nnr_lim = {
-    # isosinglet
+    # deuteron
     ('0', 'T1g', 0):(-0.0021,0.0005), ('0', 'T1g', 1):(-0.0051,0.0005),
     ('1', 'A2', 0) :(-0.0046,0.0005), ('1', 'A2', 1) :(-0.0041,0.0005),
     ('2', 'A2', 0) :(-0.0066,0.0005), ('3', 'A2', 0) :(-0.0081,0.0005),
@@ -111,7 +111,7 @@ nnr_lim = {
     ('2', 'B2', 3) :(-0.0056,0.0005), ('1', 'E', 0)  :(-0.0031,0.0005),
     ('1', 'E', 1)  :(-0.0061,0.0005), ('3', 'E', 0)  :(-0.0081,0.0005),
     ('4', 'E', 0)  :(-0.0021,0.0005), ('4', 'E', 1)  :(-0.0046,0.0005),
-    # isotriplet
+    # dineutron
     ('0', 'A1g', 0):(-0.0021,0.0005), ('0', 'A1g', 1):(-0.0036,0.0005),
     ('1', 'A1',  0):(-0.0031,0.0005), ('1', 'A1',  1):(-0.0036,0.0005),
     ('1', 'A1',  2):(-0.0021,0.0005),
@@ -122,7 +122,7 @@ nnr_lim = {
     ('4', 'A1',  0):(-0.0021,0.0005), ('4', 'A1',  1):(-0.0036,0.0005),
 }
 nn_lim = {
-    # isosinglet
+    # deuteron
     ('0', 'T1g', 0):(1.4016,1.4170), ('0', 'T1g', 1):(1.4216,1.4360),
     ('1', 'A2', 0) :(1.4111,1.4255), ('1', 'A2', 1) :(1.4351,1.4495),
     ('2', 'A2', 0) :(1.4216,1.4370), ('3', 'A2', 0) :(1.4316,1.4470),
@@ -131,7 +131,7 @@ nn_lim = {
     ('2', 'B2', 3) :(1.4451,1.4595), ('1', 'E', 0)  :(1.4126,1.4270),
     ('1', 'E', 1)  :(1.4326,1.4470), ('3', 'E', 0)  :(1.4301,1.4445),
     ('4', 'E', 0)  :(1.4251,1.4395), ('4', 'E', 1)  :(1.4451,1.4595),
-    # isotriplet
+    # dineutron
     ('0', 'A1g', 0):(1.4016,1.4170), ('0', 'A1g', 1):(1.4216,1.4360),
     ('1', 'A1',  0):(1.4131,1.4275), ('1', 'A1',  1):(1.4351,1.4495),
     ('1', 'A1',  2):(1.4351,1.4551),
@@ -142,8 +142,8 @@ nn_lim = {
     ('4', 'A1',  0):(1.4251,1.4395), ('4', 'A1',  1):(1.4461,1.4605),
 }
 
-def get_states(spin='singlet', test=False):
-    if spin == 'singlet':
+def get_states(spin='deuteron', test=False):
+    if spin == 'deuteron':
         states = [
                 ('0', 'T1g', 0), ('0', 'T1g', 1), 
                 ('1', 'A2', 0),  ('1', 'E', 0),
@@ -154,7 +154,7 @@ def get_states(spin='singlet', test=False):
                 ('4', 'A2', 0),  ('4', 'E', 0),
                 ('4', 'A2', 1),  ('4', 'E', 1)
             ]
-    elif spin == 'triplet':
+    elif spin == 'dineutron':
         # (1,A1,2), (2,A1,1), (2, A1, 2), (3,A1,1), (3, A1, 2), 
         states = [
                 ("0", "A1g", 0), ("0", "A1g", 1),
@@ -164,7 +164,7 @@ def get_states(spin='singlet', test=False):
                 ("4", "A1", 0),  ("4", "A1", 1),
             ]
     else:
-        sys.exit(f"unrecognized spin [singlet, triplet]: {spin}")
+        sys.exit(f"unrecognized spin [deuteron, dineutron]: {spin}")
     if test:
         return [states[0]]
     else:
