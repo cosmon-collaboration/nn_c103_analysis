@@ -49,7 +49,19 @@ which will generate stability plots for the single nucleon fits with the various
 ## Two Nucleon
 
 For the two-nucleon fits, we have two models to try, `conspire` and `agnostic`.
-The main code to run the fit is `nn_fit.py` and it expects an input file `nn_parameters.py`.  The version of `nn_parameters.py` in the repo is the chosen "final" fit.  The two-nucleon fit can be performed to the two-nucleon correlators, or to the ratio of the two-nucleon to single nucleon correlators, by changing the flag in the input file
+The main code to run the fit is `nn_fit.py` and it expects an input file `nn_parameters.py`.  The version of `nn_parameters.py` in the repo is the chosen "final" fit.  
+
+If the data files `cosmon_c103_r005-8_*` are placed in a `data` folder, and the fit is run
+```
+./nn_fit.py
+```
+it should run and produce results from the paper.  To get the bootstrap samples, the flag
+```
+p["bootstrap"] = False
+```
+should be changed to `True`.  Of note, one FIRST has to run the non-bootstrap fit before running the bootstrap fits.
+
+The two-nucleon fit can be performed to the two-nucleon correlators, or to the ratio of the two-nucleon to single nucleon correlators, by changing the flag in the input file
 ```
     p["ratio"]      = False # fit NN and N1 and N2 
     p["ratio"]      = True  # fit NN/N1/N2 and N1 and N2
@@ -64,5 +76,5 @@ The script `nn_bash_scripts/run_nn_agnostic_noRatio.sh` will loop over various c
 
 Given these values, the stability plots versus GEVP times is obtained with `plot_nn_stability_gevp.py`.  This script requires an `optimal` fit, chosen by the user, from the various results obtained.  For example:
 ```
-./plot_nn_stability_gevp.py result/NN_deuteron_t0-td_4-10_N_n3_t_3-20_NN_conspire_e0_t_3-15_ratio_False.pickle
+./plot_nn_stability_gevp.py result/NN_dineutron_tnorm3_t0-td_5-10_N_n3_t_4-20_NN_conspire_e0_t_4-15_ratio_False_block8.pickle
 ```
