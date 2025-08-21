@@ -109,10 +109,10 @@ class Fit:
             except:
                 self.r_n_inel = self.params['r_n_inel']
 
-        if 'singlet' in self.params["fpath"]["nn"].split('/')[-1]:
-            nn = 'singlet'
-        elif 'triplet' in self.params["fpath"]["nn"].split('/')[-1]:
-            nn = 'triplet'
+        if 'deuteron' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'deuteron'
+        elif 'dineutron' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'dineutron'
         else:
             sys.exit('unkown nn data:', self.params["fpath"]["nn"].split('/')[-1])
         filename = f"NN_{nn}_tnorm{self.t_norm}_t0-td_{self.params['t0']}-{self.params['td']}"
@@ -162,7 +162,7 @@ class Fit:
         self.data, self.irrep_dim = self.gevp_correlators()
         self.ratio_denom = self.get_ratio_combinations_Eff()
         self.ratio = self.params['ratio']
-
+        #import IPython; IPython.embed()
 
     def get_all_levels(self):
         d_sets = list(self.d_sets)
@@ -495,7 +495,6 @@ class Fit:
         '''
         print('getting NN reference states by Eff Mass')
         autotime = self.params["autotime"]
-        data  = self.data
         irrep = self.get_nn_operators()
         nonint_lvls = dict()
         for tag in irrep:
@@ -510,18 +509,19 @@ class Fit:
                     e1 += B1['irrep']
                 if B2['PSQ'] > 4:
                     e2 += B2['irrep']
-                x, meff1 = self.func.meff(data[e1])
+                x, meff1 = self.func.meff(self.data[e1])
                 meff1 = meff1[x.index(autotime)].mean
-                x, meff2 = self.func.meff(data[e2])
+                x, meff2 = self.func.meff(self.data[e2])
                 meff2 = meff2[x.index(autotime)].mean
                 meff_list.append(meff1 + meff2)
                 tag_lst.append([e1,e2])
             nonint_lvls[tag] = {"meff": np.array(meff_list), "irrep": tag_lst}
         ratio_denom = dict()
-        for tag in data:
+
+        for tag in self.data:
             if tag in ["0", "1", "2", "3", "4", "5F1", "5F2"]:
                 continue
-            x, meff = self.func.meff(data[tag])
+            x, meff = self.func.meff(self.data[tag])
             meff = meff[x.index(autotime)].mean
             idx = np.abs(nonint_lvls[(tag[0], tag[1])]["meff"] - meff).argmin()
             ratio_denom[tag] = nonint_lvls[(tag[0], tag[1])]["irrep"][idx]
@@ -652,10 +652,10 @@ class Fit:
 
         t0 = self.params["t0"]
         td = self.params["td"]
-        if 'singlet' in self.params["fpath"]["nn"].split('/')[-1]:
-            nn = 'singlet'
-        elif 'triplet' in self.params["fpath"]["nn"].split('/')[-1]:
-            nn = 'triplet'
+        if 'deuteron' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'deuteron'
+        elif 'dinuetron' in self.params["fpath"]["nn"].split('/')[-1]:
+            nn = 'dinuetron'
         else:
             sys.exit('unkown nn data:', self.params["fpath"]["nn"].split('/')[-1])
         datapath = f"./data/gevp_{nn}_tnorm{self.t_norm}_{self.gevp}_{t0}-{td}"
@@ -985,6 +985,10 @@ class Fit:
         for nbs in tqdm.tqdm(range(bi,bf,1)):
             posterior = gv.BufferDict()
             masterkey = tqdm.tqdm(self.d_sets)
+            #print('\nDEBUG\n')
+            #for subset in masterkey:
+            #    print(subset)
+            #debug = input('continue?')
             for subset in masterkey:
                 if nbs > 0:
                     ''' all gvar's created in this switch are destroyed at restore_gvar

@@ -20,10 +20,10 @@ for n_NN in 2 3 4; do
             if [[ ! -e $result ]]; then
                 cp nn_parameters_base.py                                       nn_parameters.py
                 sed -i '' "s/conspire/agnostic/"                               nn_parameters.py
-                sed -i '' "s/triplet_S0/${nn_iso}_S0/"                         nn_parameters.py
+                sed -i '' "s/_deuteron_/_${nn_iso}_/"                         nn_parameters.py
                 sed -i '' "s/t0\"\] = 5/t0\"\] = $t0/"                         nn_parameters.py 
                 sed -i '' "s/td\"\] = 10/td\"\] = $td/"                        nn_parameters.py
-                sed -i '' "s/ratio\"]       = True/ratio\"]       = ${ratio}/" nn_parameters.py
+                sed -i '' "s/ratio\"]       = False/ratio\"]       = ${ratio}/" nn_parameters.py
                 sed -i '' "s/block\"\] = 2/block\"\] = $block/"                nn_parameters.py
                 sed -i '' "s/nstates\"\]     = 3/nstates\"\]     = ${n_N}/"    nn_parameters.py 
                 sed -i '' "s/r_n_inel\"\]    = 2/r_n_inel\"\]   = ${n_NN}/"    nn_parameters.py 
@@ -49,10 +49,10 @@ for n_NN in 2 3 4 6; do
             if [[ ! -e $result ]]; then
                 cp nn_parameters_base.py                                       nn_parameters.py
                 sed -i '' "s/conspire/agnostic/"                               nn_parameters.py
-                sed -i '' "s/triplet_S0/${nn_iso}_S0/"                         nn_parameters.py
+                sed -i '' "s/_deuteron_/_${nn_iso}_/"                         nn_parameters.py
                 sed -i '' "s/t0\"\] = 5/t0\"\] = $t0/"                         nn_parameters.py 
                 sed -i '' "s/td\"\] = 10/td\"\] = $td/"                        nn_parameters.py
-                sed -i '' "s/ratio\"]       = True/ratio\"]       = ${ratio}/" nn_parameters.py
+                sed -i '' "s/ratio\"]       = False/ratio\"]       = ${ratio}/" nn_parameters.py
                 sed -i '' "s/block\"\] = 2/block\"\] = $block/"                nn_parameters.py
                 sed -i '' "s/nstates\"\]     = 3/nstates\"\]     = ${n_N}/"    nn_parameters.py 
                 sed -i '' "s/r_n_inel\"\]    = 2/r_n_inel\"\]   = ${n_NN}/"    nn_parameters.py 

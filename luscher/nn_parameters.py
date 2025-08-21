@@ -31,7 +31,7 @@ def params():
     p['show_Zjn']   = False
     p['do_gevp']    = False #set to True if you want to do gevp if it was already done and saved
 
-    p["block"] = 2
+    p["block"] = 8
     #p['cfgs']  = [0,802[,1]] # use this to cut configs if desired 
 
     p['svd_study'] = False
@@ -60,7 +60,7 @@ def params():
     p["nstates"]     = 3
     p["r_n_inel"]    = 2
     p["r_n_el"]      = 0
-    p["trange"]      = {"N": [3, 20], "R": [3, 15]}
+    p["trange"]      = {"N": [4, 20], "R": [4, 15]}
 
     p["ampi"] = 0.310810
     p["amn"]  = 0.70262
