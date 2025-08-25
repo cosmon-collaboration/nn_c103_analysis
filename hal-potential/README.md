@@ -16,7 +16,7 @@ We are trying 3 numerical paths all beginning with the correlator $R$ calculated
 
 1) We perform an $A_1$ projection and assume that $L=4$ and higher partial waves have small contributions.  The expression above is evaluated with numerical Laplacian and time-slice to time-slice deriviatives.  Some exploration of higher orders was attempted.  (Need to check for symmetric time derivative so that we aren't using a different time point for the derivative and the Laplacian).
 2) We add an L=0 projection by extration of the L=0 radial function followed by repopulating the Lattice.  Then we repeat the process in (1).
-3) We directly implement $V(r)$ on the radial function and associated $Y^L_m$.  This will have a much better Laplacian and will average the time derivative taken at different radial directions.
+3) We directly implement $V(r)$ on the radial function and associated $Y^L_m$.  This will have a much better Laplacian and will average the time derivative taken at different radial directions.  For the numerical time derivatives, we fit a quadratic polynomial to data at $t+\left(-2,-1,0,1,2\right)$ and read off the first and second derivatives from the same fit so they are consistent with each other.
 
 # Input Data  
 Input data is hosted at  [cosmon nn_c103_205.05547](https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547)  
