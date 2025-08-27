@@ -167,7 +167,6 @@ class Fit:
         self.ratio_denom = self.get_ratio_combinations_Eff()
         self.ratio = self.params['ratio']
 
-
     def get_all_levels(self):
         d_sets = list(self.d_sets)
         new_dsets = []
@@ -522,7 +521,7 @@ class Fit:
             nonint_lvls[tag] = {"meff": np.array(meff_list), "irrep": tag_lst}
         ratio_denom = dict()
         for tag in data:
-            if tag in ["0", "1", "2", "3", "4", "5F1", "5F2"]:
+            if tag in ["0", "1", "2", "3", "4", "5F1", "5F2", "5G1"]:
                 continue
             x, meff = self.func.meff(data[tag])
             meff = meff[x.index(autotime)].mean
