@@ -14,7 +14,7 @@ V\left(r\right) = \frac{\nabla^2 R}{M_N R} - \frac{\partial_t R}{R} + \frac{\par
 
 We are trying 2 numerical paths all beginning with the correlator $R$ calculated on the lattice.
 
-1) We perform an $A_1$ projection and assume that $L=4$ and higher partial waves have small contributions.  The differential equation is evaluated with numerical Laplacian and time-slice to time-slice deriviatives.  Some exploration of higher orders was attempted.  (Need to check for symmetric time derivative so that we aren't using a different time point for the derivative and the Laplacian).
+1) We perform an $A_1$ projection and assume that $L=4$ and higher partial waves have small contributions.  The expression above is evaluated with numerical Laplacian and time-slice to time-slice deriviatives.  Some exploration of higher orders was attempted.  (Need to check for symmetric time derivative so that we aren't using a different time point for the derivative and the Laplacian).
 2) We add an L=0 projection by extration of the L=0 radial function followed by repopulating the Lattice.  Then we repeat the process in (1).
 
 ## Improved Time Derivatives  
@@ -47,8 +47,6 @@ at each $\delta_t$ offset from $t$.
 We then solve for the coefficients and evaluate the derivatives of the polynomial at $\delta_t=0$, yielding  
 &nbsp;&nbsp;&nbsp;$\left. \partial_t R(t+\delta_t,r) \right|_{\delta_t = 0} = a_1$   
 &nbsp;&nbsp;&nbsp;$\left. \partial_t^2 R(t+\delta_t,r) \right|_{\delta_t = 0} = a_2/2$   
-
-
 
 
 # Input Data  
