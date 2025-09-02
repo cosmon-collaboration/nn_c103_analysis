@@ -19,34 +19,44 @@ We are trying 2 numerical paths all beginning with the correlator $R$ calculated
 
 ## Improved Time Derivatives  
 
-For the defined potential above we require both a first and second derivative.   We've decided to improve the second derivative with more points and we want it to be symmetric, so we chose five points at $\delta_t = \left[-2, -1, 0, 1, 2\right]$.   We fit a quartic polynomial to the correlator ratio at the 5 points, and then infer both first and second derivatives from the same polynomial for consistency.  Let  
+For the defined potential above we require both a first and second derivative.   We've decided to improve the second derivative with additional symmetric points, so we chose five points at $\delta_t = \left[-2, -1, 0, 1, 2\right]$.   We fit a quartic polynomial to the correlator ratio at the 5 points, and then infer both first and second derivatives from the same polynomial for consistency.  Let 
 ```math
 \begin{aligned}
-\mathbf{M} = \begin{pmatrix}
-1 & -2 & 4 & -8 & 16 \\
-1 & -1 & 1 & -1 & 1 \\
+&\mathbf{M} = \left( \begin{array}{rrrrr}
+ 1 & {-2} & 4 & -8 & 16 \\
+1 & {-1} &  1 & -1 & 1 \\
 1 & 0 & 0 & 0 & 0 \\
-1 & 1 & 1 & 1 & 1 \\
+ 1 & \space\space 1 & \space\space 1 & \space\space 1 & \space\space 1 \\
 1 & 2 & 4 & 8 & 16
-\end{pmatrix}  \\
-\mathbf{M}^{-1} = \left(1/24\right) \begin{pmatrix} 
+\end{array} \right)  \\
+&\mathbf{M}^{-1} =  \left( \begin{array}{rrrrr}
 0 & 0 & 24 & 0 & 0 \\
-2, -16, 0, 16, -2 \\
--1, 16, -30, 16, -1 \\
--2, 4, 0, -4, 2 \\
-1, -4, 6, -4, 1
-\end{pmatrix}
+2 & -16 & 0 & 16 & -2 \\
+-1 & 16 & -30 & 16 & -1 \\
+-2 &  4 & 0 & -4 & 2 \\
+1 & -4 & 6 & -4 & 1
+\end{array}\right)
 \end{aligned}
 ```
 where each row contains powers of one of the $\delta_t$ selections.   Then we can apply these rows to a vector of the polynomial coefficients, $\mathbf{a}$, to yield function values   
-&nbsp;&nbsp;&nbsp;$\mathbf{v}(t,r) = \left[R(t-2,r),R(t-1,r),R(t,r),R(t+1,r),R(t+2,r)\right]$   
-at each $\delta_t$ offset from $t$.  
-&nbsp;&nbsp;&nbsp; $\mathbf{M}\, \mathbf{a} = \mathbf{v}$.  
-&nbsp;&nbsp;&nbsp; $\mathbf{a} = \mathbf{M}^{-1} \mathbf{v}$.
-
-We then solve for the coefficients and evaluate the derivatives of the polynomial at $\delta_t=0$, yielding  
-&nbsp;&nbsp;&nbsp;$\left. \partial_t R(t+\delta_t,r) \right|_{\delta_t = 0} = a_1$   
-&nbsp;&nbsp;&nbsp;$\left. \partial_t^2 R(t+\delta_t,r) \right|_{\delta_t = 0} = a_2/2$   
+```math
+\mathbf{v}(t,r) = \left[R(t-2,r),R(t-1,r),R(t,r),R(t+1,r),R(t+2,r)\right]
+```   
+at each $\delta_t$ offset from $t$ the corresponding v is the result of applying a row of M to the polynomial coefficients $\mathbf{a}$.  
+```math
+\mathbf{v} = \mathbf{M} \mathbf{a}
+```
+We then solve for the coefficients in terms of the known $\mathbf{v}$ values.
+```math
+\mathbf{a} = \mathbf{M}^{-1} \mathbf{v}
+```
+and evaluate the derivatives of the polynomial at $\delta_t=0$, yielding  
+```math
+\begin{aligned}
+&\left. \partial_t R(t+\delta_t,r) \right|_{\delta_t = 0} = a_1  \\
+&\left. \partial_t^2 R(t+\delta_t,r) \right|_{\delta_t = 0} = a_2/2
+\end{aligned}
+```
 
 
 # Input Data  
