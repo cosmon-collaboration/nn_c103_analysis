@@ -29,7 +29,7 @@ For the defined potential above we require both a first and second derivative.  
  1 & \space\space 1 & \space\space 1 & \space\space 1 & \space\space 1 \\
 1 & 2 & 4 & 8 & 16
 \end{array} \right)  \\
-&\mathbf{M}^{-1} =  \left( \begin{array}{rrrrr}
+&\mathbf{M}^{-1} = \frac{1}{24} \left( \begin{array}{rrrrr}
 0 & 0 & 24 & 0 & 0 \\
 2 & -16 & 0 & 16 & -2 \\
 -1 & 16 & -30 & 16 & -1 \\
