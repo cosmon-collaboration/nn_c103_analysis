@@ -5,7 +5,7 @@
 3) Fit the effective range expansion to quadratic order (which defines the energy range for (2).
 4) Conclude from the scattering length that there is or isn't a bound state.  $E_B = 1/(m a^2)$
 
-THe smatrix subdirectory contains python code to compute the smatrix from a local potential.
+The smatrix subdirectory contains python code to compute the S-matrix from a local potential.
 
 # Fitting the HAL QCD Potential Data
 To fit our HAL QCD potential data, we discussed using 3 models
