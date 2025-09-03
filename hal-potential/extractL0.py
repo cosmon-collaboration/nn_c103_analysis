@@ -17,6 +17,7 @@
 #
 import copy
 import numpy as np
+import scipy
 from scipy.special import genlaguerre
 from scipy.special import gamma
 from scipy.special import sph_harm_y
@@ -24,7 +25,8 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.integrate import dblquad
 from scipy.integrate import lebedev_rule
 
-lebedev_order = 7
+# The order tells us that this rule can integrate Y^{order}_m(\hat{r}) exactly.
+lebedev_order = 9  # can remove L=4,6 at this order
 
 def integrand(phi, theta, r, L, m, origin, interp):
     """
@@ -57,7 +59,7 @@ def integrate_lebedevylm(yrule, rLmoi):
     :return:     The integral - sum of weight_i f(pt_i)
     '''
     r, L, m, origin, interp = rLmoi
-    pts, yweights = yrule
+    pts, yweights = yrule  # pts on unit sphere
     npts = len(yweights) # number of weights
     sum = np.complex128(0.0)
     for i in range(npts):
@@ -84,7 +86,7 @@ def lebedevylm_rule(order, L, m):
         cweights[i] = weights[i] * ylm  # combine weights and ylm to complex weight
     return [pts, cweights] # just make top level a list
 
-def extractLm(origin, data, samplespacing, L, m, maxr, integrator = "lebedev"):
+def extractLm(origin, data, samplespacing, L, m, maxr, integrator = "lebedev", lebOrder=lebedev_order):
     """
     Extract table of [r, f_{L,m}(r)] from the lattice data
     :param origin: The center in lattice units (float, can be between points)
@@ -98,9 +100,9 @@ def extractLm(origin, data, samplespacing, L, m, maxr, integrator = "lebedev"):
     if integrator == "lebedev" or integrator == "both":
         # A lebedev rule of an order L will integrate a Y_{L,m} or lower exactly
         # The number of points will be larger than the order.
-        yrule = lebedevylm_rule(lebedev_order, L, m)
+        yrule = lebedevylm_rule(lebOrder, L, m)
     else:
-        lrule = None
+        yrule = None
     n = data.shape[0]
     x = [float(i) for i in range(n)] # explicit list coordinate values along axis
     # build interpolator for data.   We will avoid edges.  Could add halos
@@ -216,7 +218,7 @@ def fix_origin(data, oldorigin):
     neworigin = np.array([szh,szh,szh])
     return neworigin, np.roll(data, shift=neworigin-oldorigin, axis=(0, 1, 2))
 
-def FilterL0(data, origin, spacing):
+def FilterL0(data, origin, spacing, lebOrder):
     """
     Given periodic data with an origin we filter to L0 content only.
     The filter is applied to data in a ball of radius Length/2 around the origin.
@@ -226,6 +228,7 @@ def FilterL0(data, origin, spacing):
     :param data:  3D array of periodic data
     :param origin: Location of the origin (stationary center of mass in our case)
     :param spacing: Spacing of spherical integrals, can be smaller than lattice step of 1
+    :param lebOrder:  Lebedev Order for spherical integrals
     :return:
     """
     # We have to move the origin to near the center so we can use RegularGridInterpolator
@@ -237,7 +240,7 @@ def FilterL0(data, origin, spacing):
     cdata = np.roll(data, shift=cshift, axis=(0, 1, 2))
     # origin is now at corigin (c for center)
     # extractLm(origin, data, samplespacing, L, m, maxr)
-    f0data = extractLm(corigin, cdata, spacing, 0, 0, radius)  # should be real
+    f0data = extractLm(corigin, cdata, spacing, 0, 0, radius, "lebedev", lebOrder)  # should be real
     # print(f"f0data = {f0data}")
     # f0data has the radial function sampled at i*0.5 points
     # We convert to an interpolator so we can overwrite cdata with the
@@ -246,15 +249,15 @@ def FilterL0(data, origin, spacing):
     f0dataonly = np.array([f0data[i][1] for i in range(len(f0data))])
     finterp = RegularGridInterpolator((rpts,), f0dataonly, method='quintic')
     y00 = sph_harm_y(0,0, 0.0, 0.0)
-    mynan = float('nan')
     for i in range(cdata.shape[0]):
         for j in range(cdata.shape[1]):
             for k in range(cdata.shape[2]):
                 rpos = np.array([i,j,k], dtype=np.float64) - corigin
                 r = np.linalg.norm(rpos) # distance from origin
                 # if r is inside valid range of finterp use it
-                # otherwise force a nan as it shouldn't be used that far out.
-                cdata[i,j,k] = finterp([r])[0] * y00 if r <= rpts[-1] else 0.0
+                # otherwise pick a non-zero value to avoid divide by 0.
+                v = finterp([r])[0] * y00 if r <= rpts[-1] else 1000.0
+                cdata[i,j,k] = v
     # roll origin back to original position
     return np.roll(cdata, origin - corigin, axis=(0, 1, 2))
 
@@ -280,6 +283,26 @@ def Laplacian27(data):
     for c in [(-1,-1,-1),(-1,-1,1),(-1,1,-1),(-1,1,1),(1,-1,-1),(1,-1,1),(1,1,-1),(1,1,1)]:
         t += (1.0/3.0) * np.roll(data, shift=c, axis=(0,1,2))
     return (3.0/13.0) * t
+
+def makeCentralPolyOp(hn, order):
+    '''
+    Fit a polynomial to evenly space samples around 0.
+    :param hn:   number of samples after and before 0.  hn=2 -> [-2, -1, 0, 1, 2]
+    :param order: max power of polynomial to be fit.
+    :param spacing:  space between samples
+    :return:  Matrix MM[order+1:2hn+1] such that MM.data[-hn:hn] gives polynomial coefficients [a_0, a_1, ..., a_{order}]
+    '''
+    samples = np.array(range(-hn, hn+1), dtype=np.float64)
+    M = np.array( [  [np.power(samples[i], p) for p in range(order+1)] for i in range(len(samples))], dtype=np.float64)
+    # print(f"M = {M}")
+    MM = scipy.linalg.inv(M.T.dot(M)).dot(M.T)
+    MM[np.abs(MM) < 1e-14] = 0.0
+    return MM
+
+def testMakeCentralPolyOp():
+    print("Testing makeCentralPolyOp")
+    MM = makeCentralPolyOp(2, 4)
+    print(f"MM = {24.0*MM}")
 
 def testLaplacian27():
     print("Testing Laplacian27", flush=True)
@@ -344,7 +367,7 @@ def testFilterL0():
     fdatar = np.roll(fdata, shift=(nh,nh,nh), axis=(0,1,2)) # roll to near center
     nhpt = np.array([nh,nh,nh], np.float64)
     print("Extracting L0 radial function from filtered data", flush=True)
-    radf = extractLm(nhpt, fdatar, 0.5, L1, m1, nh - 2.0)
+    radf = extractLm(nhpt, fdatar, 0.5, L1, m1, nh - 1.0)
     # print("radf = ", radf, flush=True)
     print("Comparing mix->filter->extract to original L0 radial function")
     for i in range(len(radf)):
@@ -352,9 +375,56 @@ def testFilterL0():
         h = w1 * norm1 * ho(nodal1, L1, b, r)
         print(f"   {radf[i][0]}: {radf[i][1]}, {h}")
 
+def process_A1():
+    '''
+    The data we are processing comes from a file and has the
+    shape  (nconfigs, ntimes, nx, ny, nz)
+    This data is from the ratio correlator    R(t, r) = C_{NN}(t, r)/C_N(t)^2
+    The origin is (0,0,0).
+    The task is to extract the radial function for each cfg and time
+    :return:
+    '''
+    fn = "data/nn_data_A1.dat.npy"
+    da1 = np.load(fn)
+    print(f"Loaded data has shape (ncfg,nt, nx,ny,nz)= {da1.shape}", flush=True)
+    # how far out do we extract the radial function - not into the corners.
+    radius = da1.shape[2] * 0.45
+    origin = np.array([0,0,0], dtype=np.float64)
+    norigin = np.array(da1.shape[2:5], dtype=np.int32) // 2
+    for cfg in range(4,5):  # range(da1.shape[0]):
+        for t in range(2, da1.shape[1]-2):
+            data = da1[cfg,t,:,:]
+            rdata = np.roll(data, shift=norigin, axis=(0,1,2))
+            f0data = extractLm(norigin, rdata, 0.5, 0, 0, radius)
+            print(f"t={t}, f0={f0data}")
+
+def doL0Filter():
+    nn_data_A1 = np.load("data/nn_data_A1.npy")
+    nn_data_L0 = np.zeros_like(nn_data_A1)
+    for cfg in range(nn_data_A1.shape[0]): # range(nn_data_A1.shape[0]):
+        for t in range(nn_data_A1.shape[1]):
+            # print(f"cfg={cfg}, t={t}: ", end="")
+            nn_data_L0[cfg,t] = FilterL0(nn_data_A1[cfg,t], origin=np.array([0,0,0]), spacing=0.5, lebOrder=9)
+        print(".", flush=True, end="")
+    print("")
+    np.save("data/nn_data_L0_Leb9_s5.npy", nn_data_L0)
+
 
 if __name__ == "__main__":
+    if False:
+        data = np.zeros( (4,4,4), dtype=np.int32)
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                for k in range(data.shape[2]):
+                    data[i,j,k] = i*100+j*10+k
+        print(data)
+        ndata = np.roll(data, shift=(1,1,1), axis=(0,1,2))
+        print(ndata)
+        quit()
+    doL0Filter()
+    # process_A1()
+    # testMakeCentralPolyOp()
     # testLaplacian27()
-    testFilterL0()
+    # testFilterL0()
     quit(0)
 
