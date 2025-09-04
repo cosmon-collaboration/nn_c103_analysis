@@ -54,7 +54,7 @@ and evaluate the derivatives of the polynomial at $\delta_t=0$, yielding
 ```math
 \begin{aligned}
 & \partial_t R(t,r)  = a_1  \\
-& \partial_t^2 R(t,r)  = a_2/2
+& \partial_t^2 R(t,r)  = 2 a_2
 \end{aligned}
 ```
 We can read off the weights for the samples from the rows of $\mathbf{M}^{-1}$.
@@ -65,7 +65,7 @@ a_1(t,r) = \frac{1}{24} \left( 2 R(t-2,r) - 16 R(t-1,r) + 16 R(t+1,r) - 2 R(t+2,
 which is implemented in the code as $(4/3)*V1_bs + (1/12)*V3_bs$
 for $a_2$ we want
 ```math
-a_1(t,r) = \frac{1}{24} \left(-R(t-2,r) + 16 R(t-1,r) - 30 R(t,r) -16 R(t+1,r) +R(t+2,r) \right)
+2 a_2(t,r) = \frac{1}{12} \left(-R(t-2,r) + 16 R(t-1,r) - 30 R(t,r) -16 R(t+1,r) +R(t+2,r) \right)
 ```
 which is implemented in the code as V4_bs.
 
