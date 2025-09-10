@@ -2,7 +2,25 @@
 
 We describe the usage of the code to fit the HAL Potential results we generated on the C103 ensemble.
 
+# Generating the HAL Potential
+
+The code to produce the HAL potential starting from correlator data is in the Jupyter notebook
+```
+collect_halqcd_potential_final.ipynb
+```
+
+Input data is hosted at  [cosmon nn_c103_205.05547](https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547)
+
+Data can be downloaded with
+```sh
+cd <your data directory>
+wget -nd -r -P . -A "c103_n*.h5" https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547/
+```
+
+The data files are large.   Verify that you have room for $\sim 40$ GB.
+
 # The Hal Potential Definition
+
 Step one is to produce the correlation function ratio
 ```math
 R\left(t, r\right) = \frac{ C_{NN}\left(t, r\right)} { N(t)^2 }
@@ -53,19 +71,56 @@ We then solve for the coefficients in terms of the known $\mathbf{v}$ values.
 and evaluate the derivatives of the polynomial at $\delta_t=0$, yielding  
 ```math
 \begin{aligned}
-&\left. \partial_t R(t+\delta_t,r) \right|_{\delta_t = 0} = a_1  \\
-&\left. \partial_t^2 R(t+\delta_t,r) \right|_{\delta_t = 0} = a_2/2
+& \partial_t R(t,r)  = a_1  \\
+& \partial_t^2 R(t,r)  = 2 a_2
 \end{aligned}
 ```
+We can read off the weights for the samples from the rows of $\mathbf{M}^{-1}$.
+For $a_1$ we want 
+```math
+a_1(t,r) = \frac{1}{24} \left( 2 R(t-2,r) - 16 R(t-1,r) + 16 R(t+1,r) - 2 R(t+2,r)\right)
+```
+which is implemented in the code as (4/3)*V1_bs + (1/12)*V3_bs  
+For $2 a_2$ we want
+```math
+2 a_2(t,r) = \frac{1}{12} \left(-R(t-2,r) + 16 R(t-1,r) - 30 R(t,r) -16 R(t+1,r) +R(t+2,r) \right)
+```
+which is implemented in the code as V4_bs.
 
+# Analyzing the Potential to Produce Phase Shifts
 
-# Input Data  
-Input data is hosted at  [cosmon nn_c103_205.05547](https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547)  
+The analysis is carried out in the Jupyter notebook
 
-Data can be downloaded with 
-```sh
-cd <your data directory>
-wget -nd -r -P . -A "c103_n*.h5" https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547/
+```
+final_fits.ipynb
 ```
 
-The data files are large.   Verify that you have room for $\sim 25$ GB.  
+The input is the hdf5 file produced by running the previous notebook
+
+```
+collect_halqcd_potential_final.ipynb
+```
+
+The notebook requires several Python libraries:
+- numpy
+- opt_einsum
+- scipy
+- matplotlib
+- h5py
+- gvar
+- lsqfit
+- plotly
+- lsqfit-gui
+The last package may be installed using
+```
+pip install git+https://github.com/ckoerber/lsqfit-gui@master
+```
+
+The notebook reads two python files. The first,
+```
+models.py
+```
+contains the set of fit functions used to perform the infinite t-extrapolation, as well as to fit the potential as a function of r. Priors for the various fit parameters are specified in
+```
+model_parameters.py
+```
