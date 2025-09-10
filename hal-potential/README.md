@@ -2,7 +2,25 @@
 
 We describe the usage of the code to fit the HAL Potential results we generated on the C103 ensemble.
 
+# Generating the HAL Potential
+
+The code to produce the HAL potential starting from correlator data is in the Jupyter notebook
+```
+collect_halqcd_potential_final.ipynb
+```
+
+Input data is hosted at  [cosmon nn_c103_205.05547](https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547)
+
+Data can be downloaded with
+```sh
+cd <your data directory>
+wget -nd -r -P . -A "c103_n*.h5" https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547/
+```
+
+The data files are large.   Verify that you have room for $\sim 40$ GB.
+
 # The Hal Potential Definition
+
 Step one is to produce the correlation function ratio
 ```math
 R\left(t, r\right) = \frac{ C_{NN}\left(t, r\right)} { N(t)^2 }
@@ -69,14 +87,40 @@ For $2 a_2$ we want
 ```
 which is implemented in the code as V4_bs.
 
+# Analyzing the Potential to Produce Phase Shifts
 
-# Input Data  
-Input data is hosted at  [cosmon nn_c103_205.05547](https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547)  
+The analysis is carried out in the Jupyter notebook
 
-Data can be downloaded with 
-```sh
-cd <your data directory>
-wget -nd -r -P . -A "c103_n*.h5" https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547/
+```
+final_fits.ipynb
 ```
 
-The data files are large.   Verify that you have room for $\sim 40$ GB.  
+The input is the hdf5 file produced by running the previous notebook
+
+```
+collect_halqcd_potential_final.ipynb
+```
+
+The notebook requires several Python libraries:
+- numpy
+- opt_einsum
+- scipy
+- matplotlib
+- h5py
+- gvar
+- lsqfit
+- plotly
+- lsqfit-gui
+The last package may be installed using
+```
+pip install git+https://github.com/ckoerber/lsqfit-gui@master
+```
+
+The notebook reads two python files. The first,
+```
+models.py
+```
+contains the set of fit functions used to perform the infinite t-extrapolation, as well as to fit the potential as a function of r. Priors for the various fit parameters are specified in
+```
+model_parameters.py
+```
