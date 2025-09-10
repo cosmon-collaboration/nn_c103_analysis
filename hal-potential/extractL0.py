@@ -1,19 +1,16 @@
 #
-# We are given data on a lattice
-# with an origin coordinate   [ (n-1)/2, (n-1)/2, (n-1)/2 ] to measure radial distance from.
-# We can write the data as
-#     f(\vec{r}) = \sum\limits_{L,m} \alpha_{L,m} R_{L,m}(r) Y_{L,m}(\hat{r})
-#
-# For this exercise I supply data in L=0 and L=4,m=0 using HO states for the
-# radial functions.
-#
-# The radial functions are extracted from the lattice at a set of r_i by integrating
-# a Ylm against an interpolated function on the lattice over the sphere (a surface) at radius r_i
-#
-# We could do this for each configuration to capture a distribution for the function at
-# each r_i, or more painfully, correlations between r_i and r_j
-#
-# The default run generates    ho_{0,0}(r) Y_{0,0}
+# This file contains code to perform an L=0 projection
+# of periodic lattice data.   
+# 1) Roll the origin (0,0,0) to a lattice point near the center.
+# 2) Set up a 3D interpolation of the data.  The interpolation
+#    function used does not understand periodic data so it will
+#    be valid in a region inside of the edges of the volume by a few lattice points.
+# 3) Perform spherical integrations against a Ylm at radii = (0, 0.5, 1.0, 1.5, ...)lu 
+#    out to just short of the faces.  For this purpose we will use Y_00 
+# 4) Set up 1D interpolator for the radial function.
+# 5) Use the Ylm and radial function to fill in values on the lattice inside a ball
+#    that does not touch the faces.
+# 6) Roll the resulting lattice back to the original origin position
 #
 import copy
 import numpy as np
@@ -26,8 +23,13 @@ from scipy.integrate import dblquad
 from scipy.integrate import lebedev_rule
 
 # The order tells us that this rule can integrate Y^{order}_m(\hat{r}) exactly.
-lebedev_order = 9  # can remove L=4,6 at this order
+lebedev_order = 9  # can remove L=4,6,8 at this order
 
+#
+# This is a reference integrand for use with dblquad
+# to compare to the lebedev integration.  It is comparitively
+# very slow.
+#
 def integrand(phi, theta, r, L, m, origin, interp):
     """
     Integrand for extracting radial component in L,m channel
@@ -123,7 +125,7 @@ def extractLm(origin, data, samplespacing, L, m, maxr, integrator = "lebedev", l
                 rslt = integrate_lebedevylm(yrule, rLmoi)
             else:
                 rslt = dblquad(integrand, 0.0, np.pi, lambda theta: 0.0, lambda theta: 2*np.pi , args=rLmoi )
-            if rslt[1] > max(ethresh, np.abs(rslt[0]) * ethresh): # Todo:  relative or absolute success
+            if rslt[1] > max(ethresh, np.abs(rslt[0]) * ethresh): 
                 raise ValueError(f"Error return from integral is too large in result = {rslt}")
             rslt = rslt[0]
         item = [r, rslt]
@@ -132,8 +134,12 @@ def extractLm(origin, data, samplespacing, L, m, maxr, integrator = "lebedev", l
         r += samplespacing # move to next radial distance
     return fdata
 
+#
+# These functions are used for testing the L=0 projection
+#
 def honorm(nodal, L, b):
     """
+    Harmonic oscillator state normalization that is independent of r
     Separate out normalization so it can be removed from loops
     :param nodal: nodal number of HO state  n=1,2,...
     :param L: angular momentum quantum number
@@ -167,6 +173,10 @@ def cart2sph(v):
     theta = np.arccos(v[2] / r) if r != 0.0 else 0.0
     return r, theta, phi
 
+#
+# Generates mix of different L HO states so we can
+# test the L=0 projection.
+#
 def maketestdata(n, origin, hodata1, hodata2, b):
     """
     Our test data will be a mix of two HO wave functions
@@ -284,6 +294,9 @@ def Laplacian27(data):
         t += (1.0/3.0) * np.roll(data, shift=c, axis=(0,1,2))
     return (3.0/13.0) * t
 
+#
+# Test code for polynomial fitting
+#
 def makeCentralPolyOp(hn, order):
     '''
     Fit a polynomial to evenly space samples around 0.
@@ -375,6 +388,10 @@ def testFilterL0():
         h = w1 * norm1 * ho(nodal1, L1, b, r)
         print(f"   {radf[i][0]}: {radf[i][1]}, {h}")
 
+#
+# Development version of L=0 projection after A1 projection
+# Since moved directly into ipynb
+#
 def process_A1():
     '''
     The data we are processing comes from a file and has the
@@ -411,6 +428,7 @@ def doL0Filter():
 
 
 if __name__ == "__main__":
+    # Configure to run tests for development
     if False:
         data = np.zeros( (4,4,4), dtype=np.int32)
         for i in range(data.shape[0]):
