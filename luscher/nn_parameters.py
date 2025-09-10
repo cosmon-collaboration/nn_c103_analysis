@@ -8,41 +8,43 @@ def params():
     import numpy as np
 
     p = dict()
-    p["debug"]   = False
-    p["verbose"] = False
-    p["latex"]   = True
+    p["debug"]   = False #True to turn on some debugging messages
+    p["verbose"] = False #True to turn on some messages
+    p["latex"]   = True #True to use latex with matplotlib
 
+    # path to data files
     p["fpath"] = {"nucleon": "./data/cosmon_c103_r005-8_nucleon.hdf5", 
                   "nn": "./data/cosmon_c103_r005-8_deuteron_Swave.hdf5"}
-
+    # save the fit results?
     p["save"] = True
-
+    # what minimizer to use, 'scipy_least_squares', 'gsl', ...
     p["fitter"] = 'scipy_least_squares'
 
-    p["t0"] = 5
-    p["td"] = 10
-    p['t_norm'] = 3
+    p["t0"] = 5  # t0 for GEVP rotation matrix
+    p["td"] = 10 # td for GEVP rotation matrix
+    p['t_norm'] = 3 # time to normalize correlators
     p['gevp']   = 'evp' # evp or gevp
-    p['get_Zj'] = True
+    p['get_Zj'] = True # compute overlap of each operator onto each state
+    # where to save the overlap factors
     if 'deuteron' in p["fpath"]["nn"]:
         p['Zjn_values'] = f"result/deuteron_Zjn_tNorm{p['t_norm']}_{p['gevp']}.h5"
     elif 'dineutron' in p["fpath"]["nn"]:
         p['Zjn_values'] = f"result/dineutron_Zjn_tNorm{p['t_norm']}_{p['gevp']}.h5"
-    p['show_Zjn']   = False
-    p['do_gevp']    = False #set to True if you want to do gevp if it was already done and saved
+    p['show_Zjn']   = False # plot Zij values
+    p['do_gevp']    = False #set to True if you want to do gevp even if it was already done and saved
 
-    p["block"] = 8
+    p["block"] = 8 # how many neighboring configurations to average together
     #p['cfgs']  = [0,802[,1]] # use this to cut configs if desired 
 
-    p['svd_study'] = False
-    p['svdcut']    = 1e-8
+    p['svd_study'] = False #perform an svd study when fitting correlators
+    p['svdcut']    = 1e-8 # svd cut to use
 
-    p["bootstrap"] = False
-    p['Nbs_max']   = 5000
-    p['bs_seed']   = 'nn_c103_b%d' %p["block"]
-    p["nbs"]       = 5000
-    p["nbs_sub"]   = 100
-    p['bs0_width'] = 5
+    p["bootstrap"] = False # one must run w/out BS first (False) before running the BS samples
+    p['Nbs_max']   = 5000 # max amount of BS samples
+    p['bs_seed']   = 'nn_c103_b%d' %p["block"] # seed the random number generator
+    p["nbs"]       = 5000 # how many BS samples to do
+    p["nbs_sub"]   = 100 # how many BS samples to do before saving results
+    p['bs0_width'] = 5 # during BS resampling, set the width of priors to 5*sigma where sigma is the gs uncertainty determined with boot0.  This is to stabilize BS resampling and help ensure the BS samples do not fall into a local minimum
     p['bs_prior']  = 'all' # 'gs' or 'all': 
                           # randomize prior mean for gs or all priors
     #p['old_bs']    = True # set to True to use BS list from 2009.11825
@@ -50,22 +52,27 @@ def params():
     p["autotime"]   = 10 # time used to estimate mean gs energy prior
     p["sig_e0"]     = 1 # multiplication factor for meff[autotime] for prior width for deltaE_gs
     p["sig_enn"]    = 1 # multiplication factor for meff[autotime] for prior width for deltaE_nn
-    p["positive_z"] = True
+    p["positive_z"] = True # force overlaps to be positive or not
 
-    p["ratio"]       = False
-    p["ratio_type"]  = "data"
-    p["irreps"]      = "irreps_ben" #["irreps", "irreps_ben"]
-    p["version"]     = 'conspire'
+    p["ratio"]       = False # fit NN/N1/N2 (True) or NN and N1 N2 (False)
+    p["ratio_type"]  = "data" # construct the ratio from the "data" or from ... just use the data
+    p["version"]     = 'conspire' # "conspire" or "agnostic"
     p["gs_conspire"] = False # only add deltaE for ground state?
-    p["nstates"]     = 3
-    p["r_n_inel"]    = 2
-    p["r_n_el"]      = 0
+    p["nstates"]     = 3 # number of single nucleon states
+    p["r_n_inel"]    = 2 # number of extra NN inelastic states - only relevant for agnostic
+    p["r_n_el"]      = 0 # number of extra NN elastic states - only relevant for agnostic
+    # pick a range for N and NN (R) for the fit
     p["trange"]      = {"N": [4, 20], "R": [4, 15]}
 
-    p["ampi"] = 0.310810
-    p["amn"]  = 0.70262
+    p["ampi"] = 0.310810 # ampi is used to construct excited state gaps
+    p["amn"]  = 0.70262 # amn is used to estimate elastic excited state gaps
     p["dE_elastic"] = 2 * np.sqrt(p["amn"]**2 + 1 * (2 * np.pi / 48) ** 2) -2*p["amn"]
 
+    # list the irreps and levels in each irrep to fit
+    # note, one can fit multiple irreps at once, or individually
+    # all irreps in an inner list [("Psq", "irrep", level),()]
+    # are simultaneously fit along with the corresponding single
+    # nucleon correlators
     if 'deuteron' in p["fpath"]["nn"]:
         p["masterkey"] = [
             [("0", "T1g", 0)], [('0', 'T1g', 1)],

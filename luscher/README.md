@@ -8,19 +8,15 @@ The data files used in the Luscher analysis are
 - cosmon_c103_r005-8_deuteron_Swave.hdf5
 - cosmon_c103_r005-8_dineutron_Swave.hdf5
 
-For the code to run, we need to either rename these files or make soft links to them (after you download them) to match the convention in the input files,
+Download these files and place them in a data folder, eg.
 ```
 mkdir data
 wget wget -nd -r -P data -A "cosmon_c103_r005-8_*.hdf5" https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547/
 ```
 
+In order to reproduce the main result from the paper, the `nn_parameters.py` file is provided with the repo.  This is the input file for `nn_fit.py`.  With the data files downloaded, the fit should work with by running `./nn_fit.py`
 
-The analysis proceeds in 3 steps:
-- [single nucleon stability study](#single-nucleon)
-- [two nucleon stability study](#two-nucleon)
-- phase shift analysis
-
-The analysis code requires a few Python libraries to work.  The version of each library with which this code has been tested are
+NOTE: there is a bug with this code and lsqfit >= 13.1 that is not yet resolved.  In order to run the fit, an environment with the following libraries should work
 - Python: 3.11.16
 - numpy: 1.26.4
 - opt_einsum: v3.3.0
@@ -30,7 +26,19 @@ The analysis code requires a few Python libraries to work.  The version of each 
 - gvar: 11.11.15
 - lsqfit: 13.0.1
 
-NOTE: there is a bug with this code and lsqfit >= 13.1 that is not yet resolved.
+The input file is mostly self-descriptive with some idiosyncrasies needed for it to work.  Comments in the input file are hopefully sufficiently descriptive to guide usage.
+
+There are helper scripts in the `nn_bash_scripts` folder that loop over many fitting choices discussed in the paper:
+- GEVP times `t0` and `td`
+- number of single nucleon states in fit model
+- whether fit model is `conspiracy` or `agnostic`
+- `t_min` of the single nucleon and NN correlators
+- `t_max` of the NN correlators
+
+In general, the analysis proceeds in 3 steps:
+- [single nucleon stability study](#single-nucleon)
+- [two nucleon stability study](#two-nucleon)
+- phase shift analysis
 
 ## Single Nucleon
 
@@ -78,3 +86,12 @@ Given these values, the stability plots versus GEVP times is obtained with `plot
 ```
 ./plot_nn_stability_gevp.py result/NN_dineutron_tnorm3_t0-td_5-10_N_n3_t_4-20_NN_conspire_e0_t_4-15_ratio_False_block8.pickle
 ```
+The other plotting routines to create stability plots function similarly.
+
+## phase shift analysis
+
+Given a set of bootstrap results from the spectrum, one can run the phase shift analysis, for example
+```
+./qcotd_inverse_qsq.py result/NN_deuteron_tnorm3_t0-td_5-10_N_n3_t_4-20_NN_conspire_e0_t_4-15_ratio_False_block8.pickle
+```
+There are a few options for controlling the analysis which are described with the help option, `-h`.  Important in this analysis was the use of `--irrep_avg` for the deuteron and using the continuum dispersion relation, `--continuum_disp` when implementing the quantization condition.
