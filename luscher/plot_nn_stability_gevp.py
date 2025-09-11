@@ -206,9 +206,9 @@ def main():
 
     #import IPython; IPython.embed()
     # make summary plot
-    if nn_iso == 'singlet':
+    if nn_iso == 'deuteron':
         mN = gevp_results['0_T1g_0']['E1'][0]
-    elif nn_iso == 'triplet':
+    elif nn_iso == 'dineutron':
         mN = gevp_results['0_A1g_0']['E1'][0]
     # plot GEVP
     summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, spin=nn_iso, 

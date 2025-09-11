@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ratio="False"
-nn_iso='singlet'
+nn_iso='deuteron'
 tnorm=3
 e=0
 block=8
@@ -19,7 +19,7 @@ for gevp_t in "4-8" "4-10" "5-10" "5-12" "6-10" "6-12" ; do
                 echo ""
                 echo $result
                 if [[ ! -e $result ]]; then
-                    sed   "s/triplet_S0/${nn_iso}_S0/" nn_parameters_base.py \
+                    sed   "s/_deuteron_/_${nn_iso}_/" nn_parameters_base.py \
                     | sed "s/t0\"\] = 5/t0\"\] = ${t0}/" \
                     | sed "s/td\"\] = 10/td\"\] = ${td}/" \
                     | sed "s/t_norm\'\] = 3/t_norm\'\] = ${tnorm}/" \
@@ -27,7 +27,7 @@ for gevp_t in "4-8" "4-10" "5-10" "5-12" "6-10" "6-12" ; do
                     | sed "s/nstates\"]     = 3/nstates\"]     = ${n_N}/" \
                     | sed "s/N\": \[3, 20\]/N\": \[${t0_N}, 20\]/" \
                     | sed "s/R\": \[3, 15\]/R\": \[$t, 15\]/" \
-                    | sed "s/ratio\"]       = True/ratio\"]       = ${ratio}/" \
+                    | sed "s/ratio\"]       = False/ratio\"]       = ${ratio}/" \
                     > nn_parameters.py
                     python nn_fit.py
                 else

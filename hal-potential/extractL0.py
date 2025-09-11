@@ -15,6 +15,7 @@
 import copy
 import numpy as np
 import scipy
+
 from scipy.special import genlaguerre
 from scipy.special import gamma
 from scipy.special import sph_harm_y
@@ -22,9 +23,9 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.integrate import dblquad
 from scipy.integrate import lebedev_rule
 
+
 # The order tells us that this rule can integrate Y^{order}_m(\hat{r}) exactly.
 lebedev_order = 9  # can remove L=4,6,8 at this order
-
 #
 # This is a reference integrand for use with dblquad
 # to compare to the lebedev integration.  It is comparitively

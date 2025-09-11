@@ -9,7 +9,7 @@ ratio="False"
 t0=6
 td=10
 gevp="${t0}-${td}"
-nn_iso='singlet'
+nn_iso='deuteron'
 
 for n_N in 2 3 4; do
     for t0_N in 2 3 4 5 6 7; do
@@ -25,8 +25,8 @@ for n_N in 2 3 4; do
                 | sed "s/nstates\"]    = 2/nstates\"]    = ${n_N}/" \
                 | sed "s/N\": \[5, 20\]/N\": \[${t0_N}, 20\]/" \
                 | sed "s/r_n_el\"\]     = 0/r_n_el\"\]     = $e/" \
-                | sed "s/triplet_S0/${nn_iso}_S0/" \
-                | sed "s/ratio\"]      = True/ratio\"]      = ${ratio}/" \
+                | sed "s/_deuteron_/_${nn_iso}_/" \
+                | sed "s/ratio\"]      = False/ratio\"]      = ${ratio}/" \
                 | sed "s/agnostic/conspire/" > nn_parameters.py
                 python nn_fit.py
             else

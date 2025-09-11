@@ -1,4 +1,4 @@
-This readme file was generated on 2025-06-23 by Andre Walker-Loud
+This readme file was generated on 2025-09-11 by Andre Walker-Loud
 
 
 GENERAL INFORMATION
@@ -26,6 +26,13 @@ GENERAL INFORMATION
 		Institution: Carnegie Mellon University
 		Address: Department of Physics, Carnegie Mellon University, Pittsburgh, Pennsylvania 15213, USA
 		Email: cmorning@andrew.cmu.edu
+
+	D. Associate or Co-investigator Contact Information
+		Name: Amy Nicholson
+		ORCID: 0000-0001-7002-0945
+		Institution: University of North Carolina, Chapel Hill
+		Address: Department of Physics and Astronomy, University of North Carolina, Chapel Hill, NC 27516-3255, USA
+		Email: annichol@email.unc.edu
 	
 3. Date of data collection: 2020-01-01 through 2022-12-31
 
@@ -73,49 +80,92 @@ SHARING/ACCESS INFORMATION
 DATA & FILE OVERVIEW
 
 1. File List: 
-<list all files (or folders, as appropriate for dataset organization) contained in the dataset, with a brief description>
+Two-point correlation function data:
+- cosmon_c103_r005-8_nucleon.hdf5
+- cosmon_c103_r005-8_dineutron_Swave.hdf5
+- cosmon_c103_r005-8_deuteron_Swave.hdf5
 
-2. Relationship between files, if important: 
+The first file is for extracting the single nucleon spectrum and dispersion relation.  The 2nd and third file contain the two-nucleon correlation functions in different cubic irreps in the deuteron and di-neutron channels respectively.
+
+HAL QCD potential data
+- c103_n_nblock_15.h5
+- c103_nn_pn_TRIP_NEG_PAR_hal_nblock_15.h5
+- c103_nn_pn_TRIP_hal_nblock_15.h5
+- c103_nn_pp_SING_NEG_PAR_hal_nblock_15.h5
+- c103_nn_pp_SING_hal_nblock_15.h5
+
+The first file is for extracting the single nucleon spectrum and dispersion relation with matching creation operator to the HAL QCD NN data.  The 2nd and 3rd file contain momentum-space NN "potential" data for the deuteron channel.  Time-reversal allows for a direct averaging of these.  The 4th and 5th file are the same but for the di-neutron channel (labeled "pp" which is the same in the isospin limit).
+
+Results from analyzing the two-nucleon correlation functions with the sLapH + GEVP methods are saved in the folder
+luscher/result
+
+These files can be read with the gvar library, for example, within a python environment
+gvar.load('luscher/result/NN_deuteron_tnorm3_t0-td_5-10_N_n3_t_4-20_NN_conspire_e0_t_4-15_ratio_False_block8.pickle')
+
+This file contains results of the posteriors of each irrep fit, stored in a python dictionary with an admittedly painful key structure.  A similar file to the above, ending with "bsPrior-all.pickle_bs" contains the bootstrap resamplings of the fit, which can be used to perform the phase shift analysis.
+
+
+2. Relationship between files, if important:
+The cosmon_c103_r005-8_*hdf5 files contain correlation functions evaluated on each configuration.  The data are stored in an array with the first index being configuration number, such that correlations between the data sets can be determined.  The same holds for the HAL QCD potential data files.
 
 3. Additional related data collected that was not included in the current data package: 
+N/A
 
 4. Are there multiple versions of the dataset?
-	A. If yes, name of file(s) that was updated: 
-		i. Why was the file updated? 
-		ii. When was the file updated? 
-
+NO
 
 METHODOLOGICAL INFORMATION
 
 1. Description of methods used for collection/generation of data: 
-<Include links or references to publications or other documentation containing experimental design or protocols used in data collection>
+These data files were generated with the methods describe in, or referenced, the arXiv preprint
+https://arxiv.org/abs/2505.05547
 
 2. Methods for processing the data: 
-<describe how the submitted data were generated from the raw or collected data>
+These H5 files contain the raw lattice QCD data files generated on various supercomputers, including:
+- Summit @ OLCF
+- Lassen @ LLNL
+- Frontera @ TACC
+- Cori @ NERSC
+
+The data files in the folder "luscher/result" were generated with python analysis code available at
+https://github.com/cosmon-collaboration/nn_c103_analysis
 
 3. Instrument- or software-specific information needed to interpret the data: 
-<include full name and version of software, and any necessary packages or libraries needed to run scripts>
+The two-nucleon correlation functions were generated with the "chroma_laph" software library, available from Colin Morningstar upon request (cmorning@andrew.cmu.edu).
+
+The HAL QCD potential data files were generated with the lalibe software library, in the "feature/mp_nn" branch
+https://github.com/callat-qcd/lalibe
+
 
 4. Standards and calibration information, if appropriate: 
+N/A
 
 5. Environmental/experimental conditions: 
+N/A
 
 6. Describe any quality-assurance procedures performed on the data: 
+Prior to production of the data, the software was run and compared against known results to verify correctness.
 
 7. People involved with sample collection, processing, analysis and/or submission: 
+Colin Morningstar
+André Walker-Loud
+Amy Nicholson
+Andrew Hanlon
+Sarah Skinner
+Ken McElvain
+Fernando Romero-López
+Joseph Moscoso
+Ben Hörz
+Henry Monge-Camacho
+Christopher Körber
+Aaron Meyer
+Ermal Rrapaj
+Andrea Shindler
+Bálint Joó
+John Bulava
 
+DATA-SPECIFIC INFORMATION FOR:
+The input parameters needed to compute the calculation are all contained in the accompanying publication
+https://arxiv.org/abs/2505.05547
 
-DATA-SPECIFIC INFORMATION FOR: [FILENAME]
-<repeat this section for each dataset, folder or file, as appropriate>
-
-1. Number of variables: 
-
-2. Number of cases/rows: 
-
-3. Variable List: 
-<list variable name(s), description(s), unit(s) and value labels as appropriate for each>
-
-4. Missing data codes: 
-<list code/symbol and definition>
-
-5. Specialized formats or other abbreviations used: 
+and the codes used to generate them (listed above) are also pointed to in the paper.
