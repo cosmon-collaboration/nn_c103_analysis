@@ -112,6 +112,7 @@ The notebook requires several Python libraries:
 - plotly
 - ipywidgets
 - lsqfit-gui
+
 The last package may be installed using
 ```
 pip install git+https://github.com/ckoerber/lsqfit-gui@master
