@@ -22,8 +22,8 @@ parser = argparse.ArgumentParser(prog='halfit', description="Fit model to HalQCD
 parser.add_argument("-odir", nargs='?', action='store', default="<modelname>", help="Directory name for output files")
 parser.add_argument("-model", nargs='?', action='store', default="ho-opep", help= "Model to fit, either ho-opep (harmonic oscillator states + opep), or ws-opep (Woods-Saxon + opep")
 parser.add_argument("-tr", nargs='?', action='store', default="4:15", help= "time slices to analysize, single value or start:stop, default 4:15")
-parser.add_argument("-ofr", nargs='?', action='store', default="0.7:1.3", help="OPEP fit range, default 0.7:1.3")
-parser.add_argument("-fr", nargs='?', action='store', default="0.0:1.3", help="Potential fit range, default 0.0:1.3")
+parser.add_argument("-ofr", nargs='?', action='store', default="0.7:1.1", help="OPEP fit range, default 0.7:1.1")
+parser.add_argument("-fr", nargs='?', action='store', default="0.0:1.1", help="Potential fit range, default 0.0:1.1")
 parser.add_argument("-pr", nargs='?', action='store', default="0.0:1.6", help="Fit plot fit range, default 0.0:1.6")
 parser.add_argument('--show', action=argparse.BooleanOptionalAction, default=True, help="If enabled, graphs will be interactively displayed, default --show")
 parser.add_argument('--sd', action=argparse.BooleanOptionalAction, default=False, help="Scale uncertainties to compensate for rapid sample density increase with r, default --no-sd")
@@ -204,7 +204,7 @@ def density(x):
 
 # Extract data to fit as hash table with key f"pn_trip_t{t}" where t is the time
 data = {}
-with h5.File('c103_V_hal_pn_TRIP.h5') as f5:
+with h5.File('c103_V_hal_pn_TRIP_L0_Lap7.h5') as f5:
     r_a = f5['r_a'][()]
     setDensity()
     pn_trip = f5['V_hal_pn_TRIP'][()]
