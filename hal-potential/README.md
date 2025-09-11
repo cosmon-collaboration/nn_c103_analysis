@@ -110,8 +110,8 @@ The notebook requires several Python libraries:
 - gvar
 - lsqfit
 - plotly
-- lsqfit-gui
 - ipywidgets
+- lsqfit-gui
 The last package may be installed using
 ```
 pip install git+https://github.com/ckoerber/lsqfit-gui@master
