@@ -14,7 +14,7 @@ mkdir data
 wget wget -nd -r -P data -A "cosmon_c103_r005-8_*.hdf5" https://portal.nersc.gov/cfs/m2986/cosmon/nn_c103_2505.05547/
 ```
 
-In order to reproduce the main result from the paper, the `nn_parameters.py` file is provided with the repo.  This is the input file for `nn_fit.py`.  With the data files downloaded, the fit should work with by running `./nn_fit.py`
+In order to reproduce the main result from the paper, the `nn_parameters.py` file is provided with the repo.  This is the input file for `nn_fit.py`.  With the data files downloaded, the fit should work with by running `./nn_fit.py`.  There are sample results files from the bootstrap = False and True options for both deuteron and dineutron in the `luscher/result` folder contained in the above data location.
 
 NOTE: there is a bug with this code and lsqfit >= 13.1 that is not yet resolved.  In order to run the fit, an environment with the following libraries should work
 - Python: 3.11.16

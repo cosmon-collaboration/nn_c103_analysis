@@ -3,7 +3,7 @@ This readme file was generated on 2025-09-11 by Andre Walker-Loud
 
 GENERAL INFORMATION
 
-1. Title of Dataset: LQCD_NN_C103_S-wave
+1. Title of Dataset: LQCD NN S-wave @ SU(3) on C103
 
 2. Author Information
 	A. Principal Investigator Contact Information
@@ -97,7 +97,10 @@ HAL QCD potential data
 The first file is for extracting the single nucleon spectrum and dispersion relation with matching creation operator to the HAL QCD NN data.  The 2nd and 3rd file contain momentum-space NN "potential" data for the deuteron channel.  Time-reversal allows for a direct averaging of these.  The 4th and 5th file are the same but for the di-neutron channel (labeled "pp" which is the same in the isospin limit).
 
 Results from analyzing the two-nucleon correlation functions with the sLapH + GEVP methods are saved in the folder
+
 luscher/result
+
+The main results from the publication are saved there as examples.  They can be reproduced by running the code mentioned below in 2. Methods for processing the data.
 
 These files can be read with the gvar library, for example, within a python environment
 gvar.load('luscher/result/NN_deuteron_tnorm3_t0-td_5-10_N_n3_t_4-20_NN_conspire_e0_t_4-15_ratio_False_block8.pickle')
@@ -144,6 +147,7 @@ N/A
 N/A
 
 6. Describe any quality-assurance procedures performed on the data: 
+
 Prior to production of the data, the software was run and compared against known results to verify correctness.
 
 7. People involved with sample collection, processing, analysis and/or submission: 
