@@ -19,7 +19,7 @@ elif [[ $ensemble == "a12m400trMc" ]]; then
     n_N="3"
     Nb=2
     tNN=`seq 2 10`
-    tf=13
+    tf=11
     t0N="2 3 4 5 6 7"
     tf_N=18
     ref_time=10

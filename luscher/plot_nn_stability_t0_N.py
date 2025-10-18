@@ -194,7 +194,7 @@ def main():
             
         ax_nnR.set_ylim(nnr_lim[q])
         ax_nn.set_ylim(nn_lim[q])
-        ax_nnR.set_ylabel(r'$\Delta E_0^{\rm %s}$' %q_str, fontsize=20)
+        ax_nnR.set_ylabel(r'$\delta E_{00}^{\rm %s}$' %q_str, fontsize=20)
         ax_nn.set_ylabel(r'$E_0^{\rm %s}$' %q_str, fontsize=20)
         ax_Q.set_ylabel(r'$Q$', fontsize=20)
         ax_Q.tick_params(bottom=True, top=True, direction='in')

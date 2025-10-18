@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import itertools
+import h5py as h5
 #
 # load nn_fit to get fit functions
 import nn_fit as fitter
@@ -43,6 +44,7 @@ def main():
                         help=       'if test==True, only do T1g [%(default)s]')
     parser.add_argument('--debug',  default=False, action='store_true',
                         help=       'add extra debug print statements? [%(default)s]')
+    parser.add_argument('--drew',   type=str, help='point to h5 file with drews results to compare')
    
     args = parser.parse_args()
     print(args)
@@ -164,7 +166,7 @@ def main():
                     #print(k, k_n1, k_n2)
         # plot fit on numerator
         fit_func = fitter.Functions(params_q)
-        x_plot = np.arange(0,20,.1)
+        x_plot = np.arange(0,int(tf)+2.5+.1,.1)
         nn_opt = fit_func.pure_ratio(k_opt, x_plot, params_q)
         eff_opt = np.log(nn_opt / np.roll(nn_opt,-10))
         y  = np.array([eff.mean for eff in eff_opt])
@@ -205,12 +207,34 @@ def main():
             nnr_lim = summary_plot.nnr_lim
             nn_lim  = summary_plot.nn_lim
 
+        if args.drew:
+            with h5.File(args.drew) as f5:
+                psq = f"PSQ{q[0]}"
+                ENN_cm_bs   = f5[f"{psq}/{q[1]}/elab_{q[2]}"][()]
+                dENN_bs     = f5[f"{psq}/{q[1]}/dElab_{q[2]}"][()]
+                ENN_lab_bs  = f5[f"single_hadrons/O({k_n1[2]})"][()]
+                ENN_lab_bs += f5[f"single_hadrons/O({k_n2[2]})"][()]
+                ENN_lab_bs += dENN_bs
+                print(k_n1,k_n2,ENN_cm_bs.mean(),ENN_lab_bs.mean())
+                #import IPython; IPython.embed()
+
+            ax_nn.fill_between(x_plot, 
+                               ENN_lab_bs.mean()-ENN_lab_bs.std()+0*x_plot,
+                               ENN_lab_bs.mean()+ENN_lab_bs.std()+0*x_plot,
+                               color='b',alpha=.2)
+            ax_nnR.fill_between(x_plot,
+                                dENN_bs.mean()-dENN_bs.std()+0*x_plot,
+                                dENN_bs.mean()+dENN_bs.std()+0*x_plot,
+                                color='b',alpha=.2)
+
+        
+
         handles, labels = ax_nn.get_legend_handles_labels()
         ax_nn.legend(flip(handles, len(args.gevp)), flip(labels, len(args.gevp)), loc=1, ncol=len(args.gevp), fontsize=10, columnspacing=0,handletextpad=0.1)
 
         ax_nnR.set_ylim(nnr_lim[q])
         ax_nn.set_ylim(nn_lim[q])
-        ax_nnR.set_ylabel(r'$\Delta E_0^{\rm %s}$' %q_str, fontsize=20)
+        ax_nnR.set_ylabel(r'$\delta E_{00}^{\rm %s}$' %q_str, fontsize=20)
         ax_nn.set_ylabel(r'$E_0^{\rm %s}$' %q_str, fontsize=20)
         ax_Q.set_ylabel(r'$Q$', fontsize=20)
         ax_Q.tick_params(bottom=True, top=True, direction='in')
