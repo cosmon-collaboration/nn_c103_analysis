@@ -446,6 +446,7 @@ class Fit:
             nn_ops  = dict()
             n_irrep = dict()
             correlators = f5.keys()
+            correlators = [k for k in correlators if len(k.split('_'))>1]
             for correlator in correlators:
                 try:
                     psq,irrep    = correlator.split('_')
@@ -454,6 +455,7 @@ class Fit:
                     irrep,psq = correlator.split("_")
                     mom2 = psq.split("Psq")[1]
                 tag          = (mom2, irrep)
+                print(tag)
                 nn_ops[tag]  = f5[correlator].attrs['op_list']
                 n_irrep[tag] = self.n_operators(nn_ops[tag])
         self.nn_ops = nn_ops
@@ -467,6 +469,7 @@ class Fit:
         nn_ops = self.get_nn_operators()
         ratio_denom = {}
         for irrep in self.ZjnSq:
+            print(irrep)
             n_op_j = {k:[] for k in range(self.irrep_dim[irrep])}
             for op_j in range(self.irrep_dim[irrep]):
                 opt_id = self.ZjnSq[irrep][op_j].argmax()
@@ -699,7 +702,7 @@ class Fit:
 
         irrep_dim = dict()
         for irrep_op in gvdata.keys():
-            if irrep_op in ["0", "1", "2", "3", "4", "5F1", "5F2"]:
+            if irrep_op in ["0", "1", "2", "3", "4", "5F1", "5F2", '5G1']:
                 continue
             irrep = (irrep_op[0], irrep_op[1])
             if irrep in irrep_dim:
