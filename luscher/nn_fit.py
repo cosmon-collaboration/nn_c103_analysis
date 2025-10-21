@@ -98,6 +98,19 @@ class Fit:
                 dc = 1
             self.cfgs = range(ci,cf,dc)
             
+        # are we re-weighting?
+        self.rw = False
+        if 'rw' in self.params:
+            self.rw = True
+            with h5.File(self.params['rw']['file'],'r') as f5:
+                self.rw_facs = f5[self.params['rw']['hpath']][()]
+            if 'cfgs' in self.params:
+                rw_facs = self.rw_facs[self.cfgs]
+                self.rw_facs = rw_facs
+            if self.block != 1:
+                rw_facs = block_data(self.rw_facs, self.block)
+                self.rw_facs = rw_facs
+
         self.version = self.params['version']
         if self.version not in ['agnostic', 'conspire']:
             sys.exit('version must be in [ agnostic, conspire]')
@@ -158,7 +171,9 @@ class Fit:
                 filename = f"{filename}{svd}"
             else:
                 filename = f"{filename}Opt"
-
+        # reweighting
+        if self.rw:
+            filename = f"{filename}_rw"
         self.filename = f"{filename}.pickle"
         if self.params['bootstrap']:
             self.boot0_file = self.filename.replace('_bsPrior-'+bs_prior,"")
@@ -333,6 +348,7 @@ class Fit:
             for k in data:
                 new_data[k] = block_data(data[k], self.block)
             data = new_data
+
         if self.params["debug"]:
             """Plot effective mass for averaged correlator"""
             for mom2 in data:
@@ -614,6 +630,17 @@ class Fit:
         def do_gevp_rotation(verbose=True):
             nucleon = self.nucleon_data()
             singlet = self.nn_data()
+            # if re-weigthing, we need to do GEVP with RW correlators
+            if self.rw:
+                rw = self.rw_facs / np.mean(self.rw_facs)
+                nucleon_rw = {}
+                for k in nucleon:
+                    nucleon_rw[k] = np.einsum('c,ct->ct', rw, nucleon[k])
+                nucleon = nucleon_rw
+                singlet_rw = {}
+                for k in singlet:
+                    singlet_rw[k] = np.einsum('c,cijt->cijt', rw, singlet[k])
+                singlet = singlet_rw
 
             # add single hadron data to allsing specified by shape
             # BB data will have shape = (Ncfg, Nt, Nop, Nop)
@@ -651,6 +678,8 @@ class Fit:
             else:
                 self.h5_bs = False                
 
+            # note, this is created from re-weighted data
+            # so we will have to adjust the normalization when it is used
             self.bsdata = {**nucleon, **allsing}
 
             return nucleon, allsing
@@ -670,6 +699,8 @@ class Fit:
             datapath = f"{datapath}_{cfgs}"
         if self.block != 1:
             datapath = f"{datapath}_block{self.block}"
+        if self.rw:
+            datapath = f"{datapath}_rw"
         datapath = f"{datapath}.pickle"
         if path.exists(datapath) and self.params["bootstrap"] is False:
             print("Read data from gvar dump")
@@ -907,6 +938,8 @@ class Fit:
             
             if svdcut:
                 if 'svdcut' not in dir(self) or ('svdcut' in dir(self) and key_ratio not in self.svdcut):
+                    # this BS data is the original, re-weighted data
+                    # so it does not need to be modified to be used for the SVD diagnosis
                     ysvd[key_ratio] = self.bsdata[key][x[key_ratio]]
                     ysvd[key_nucl0] = self.bsdata[k0][x[key_nucl0]]
                     ysvd[key_nucl1] = self.bsdata[k1][x[key_nucl1]]
@@ -931,11 +964,21 @@ class Fit:
                     mask = self.draws[nbs]
                 else:
                     mask = [int(m) for m in self.draws["draws"].iloc[nbs][1:-1].split(",")]
+                # if reweighting, we need to get BS RW factors
+                # the self.bsdata has already been re-weighted, so we need to compute the ratio
+                # of the average RW factor to that under bs
+                # rw_bs_norm = <RW> / <RW[bs]>
+                # in order to properly normalize the BS-RW data
+                if self.rw:
+                    rw_bs = self.rw_facs[mask]
+                    rw_bs_norm = self.rw_facs.mean() / rw_bs.mean()
+                else:
+                    rw_bs_norm = 1
                 # only select data we want for this particular fit
                 # key = NN
                 # k0, k1 = single nucleon keys corresponding to NN
                 wanted_keys = [key, k0, k1]
-                ndata = {k: self.bsdata[k][mask] for k in self.bsdata if k in wanted_keys}
+                ndata = {k: self.bsdata[k][mask]*rw_bs_norm for k in self.bsdata if k in wanted_keys}
                 ndataset  = gv.dataset.avg_data(ndata)
 
                 numerator = ndataset[key][x[key_ratio]]
