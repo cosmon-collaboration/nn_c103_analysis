@@ -114,9 +114,9 @@ class qsqFit:
         self.rel_qcotd_results = {}
 
         # are we fitting the deuteron or di-neutron channel?
-        if 'singlet' in args.fit_result:
+        if 'deuteron' in args.fit_result:
             self.channel = 'deuteron'
-        elif 'triplet' in args.fit_result:
+        elif 'dineutron' in args.fit_result:
             self.channel = 'dineutron'
         else:
             sys.exit(f"your fit_result, {args.fit_result}, is not understood as deuteron or dineutron")
@@ -475,6 +475,9 @@ class qsqFit:
             print(' q4 m**3 = %s' %(p[2] / rescale**3))
         if len(p) >= 4:
             print(' q6 m**5 = %s' %(p[3] / rescale**5))
+        print('covariance')
+        print([k for k in p])
+        print(gv.evalcov([k for k in p]))
 
     def fit_rel_qcotd(self,n):
         ''' fit qcotdelta to relativistic forms
