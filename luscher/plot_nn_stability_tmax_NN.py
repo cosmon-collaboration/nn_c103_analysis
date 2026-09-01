@@ -128,9 +128,9 @@ def main():
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
-        ax_nn  = plt.axes([0.16, 0.66, 0.83, 0.33])
-        ax_nnR = plt.axes([0.16, 0.33, 0.83, 0.33])
-        ax_Q   = plt.axes([0.16, 0.13, 0.83, 0.20])
+        ax_nn  = plt.axes([0.165, 0.66, 0.83, 0.33])
+        ax_nnR = plt.axes([0.165, 0.33, 0.83, 0.33])
+        ax_Q   = plt.axes([0.165, 0.13, 0.83, 0.20])
 
         # plot fit on data
         params_q = dict(optimal_p)
@@ -181,9 +181,9 @@ def main():
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, tf_results, tf_lbls)
 
         # increase tick label size
-        ax_nn.tick_params(axis='both', labelsize=14)
-        ax_nnR.tick_params(axis='both', labelsize=14)
-        ax_Q.tick_params(axis='both', labelsize=14)
+        ax_nn.tick_params(axis='both', labelsize=16)
+        ax_nnR.tick_params(axis='both', labelsize=16)
+        ax_Q.tick_params(axis='both', labelsize=16)
 
         fig_name = '%s_tf_NN_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
         plt.savefig('figures/'+fig_name,transparent=True)
@@ -229,7 +229,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
 
     handles, labels = axnnR.get_legend_handles_labels()
-    axnn.legend(flip(handles, len(arg.tf_NN)), flip(labels, len(arg.tf_NN)), loc=1, ncol=len(arg.tf_NN), fontsize=10, columnspacing=0,handletextpad=0.1)
+    axnn.legend(flip(handles, len(arg.tf_NN)), flip(labels, len(arg.tf_NN)), loc=1, ncol=len(arg.tf_NN), fontsize=16, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = summary_plot.nnr_lim
     nn_lim  = summary_plot.nn_lim

@@ -138,9 +138,9 @@ def main():
         print(q)
         q_str = '\_'.join([str(k) for k in q])
         fig = plt.figure(str(q),figsize=(7,5.5))
-        ax_nn  = plt.axes([0.16, 0.66, 0.83, 0.33])
-        ax_nnR = plt.axes([0.16, 0.33, 0.83, 0.33])
-        ax_Q   = plt.axes([0.16, 0.13, 0.83, 0.20])
+        ax_nn  = plt.axes([0.165, 0.66, 0.83, 0.33])
+        ax_nnR = plt.axes([0.165, 0.33, 0.83, 0.33])
+        ax_Q   = plt.axes([0.165, 0.13, 0.83, 0.20])
 
         # plot fit on data
         params_q = dict(optimal_p)
@@ -192,9 +192,9 @@ def main():
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, gevp_results, gevp_lbls, tmin_results, tmin_lbls)
 
         # increase tick label size
-        ax_nn.tick_params(axis='both', labelsize=14)
-        ax_nnR.tick_params(axis='both', labelsize=14)
-        ax_Q.tick_params(axis='both', labelsize=14)
+        ax_nn.tick_params(axis='both', labelsize=16)
+        ax_nnR.tick_params(axis='both', labelsize=16)
+        ax_Q.tick_params(axis='both', labelsize=16)
 
         fig_name = '%s_gevp_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.'+args.fig_type))
         if args.fig_type == 'pdf':
@@ -212,7 +212,7 @@ def main():
         mN = gevp_results['0_A1g_0']['E1'][0]
     # plot GEVP
     summary_plot.summary_ENN(gevp_results, mN, gevp_lbls, color, spin=nn_iso, 
-                             lbl0=r'GEVP: $t_0-t_d$=', fig=f"{nn_iso}_gevp_summary")
+                             lbl0=r'$t_0-t_d$=', fig=f"{nn_iso}_gevp_summary")
     # plot tmin
     summary_plot.summary_ENN(tmin_results, mN, tmin_lbls, t_color, spin=nn_iso,
                              lbl0=r'$t_{\rm min}^{NN}=$', fig=f"{nn_iso}_tmin_summary")
@@ -245,7 +245,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
     axnnR.errorbar(np.arange(2,2+len(r_eff),1),m,yerr=dm,color='k',mfc='None',marker='o',linestyle='None', label=r'eff mass')
 
     handles, labels = axnn.get_legend_handles_labels()
-    axnn.legend(flip(handles, len(arg.gevp)), flip(labels, len(arg.gevp)), loc=1, ncol=len(arg.gevp), fontsize=10, columnspacing=0,handletextpad=0.1)
+    axnn.legend(flip(handles, len(arg.gevp)), flip(labels, len(arg.gevp)), loc=1, ncol=len(arg.gevp)//2+1, fontsize=16, columnspacing=0,handletextpad=0.1)
     #axnn.legend(loc=1, ncol=len(arg.gevp)+1, fontsize=10, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = summary_plot.nnr_lim

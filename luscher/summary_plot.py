@@ -36,10 +36,10 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='deuteron', f
         ]
     #import IPython; IPython.embed()
     #plt.ion()
-    plt.figure(fig, figsize=(6, 6/1.618))
+    plt.figure(fig, figsize=(6.5, 6.5/1.618))
     ax = plt.axes([.14,.10,.85,.885])
-    plt.figure(fig+'_dElab', figsize=(6, 6/1.618))
-    ax_dE = plt.axes([.165,.10,.83,.885])
+    plt.figure(fig+'_dElab', figsize=(6.5, 6.5/1.618))
+    ax_dE = plt.axes([.17,.10,.825,.885])
     for k in all_results:
         irrep = (k.split('_')[0], k.split('_')[1])
         DE_i = np.array(all_results[k]['DE'])
@@ -69,15 +69,15 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='deuteron', f
                         marker='s', linestyle='None', mfc='None',
                         color=color, label=lbl)
     ticks = [v for k,v in irreps.items()]
-    ax.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
-    ax.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
-    ax.set_ylabel(r'$E_{\rm cm} / m_N$', fontsize=16)
+    ax.set_xticks(ticks, labels=irrep_lbls, fontsize=16)
+    ax.legend(loc=1,fontsize=16,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
+    ax.set_ylabel(r'$E_{\rm c.m.} / m_N$', fontsize=20)
     ax.axhline(2, linestyle='--', color='k')
     ax.set_ylim(1.995,2.0601)
-    ax.tick_params(axis='both', labelsize=14, direction='in')
+    ax.tick_params(axis='both', labelsize=16, direction='in')
     # padd the right lim.  Each irrep is spaced at 10, so add 2 to the end
-    #xlim = ax.get_xlim()
-    #ax.set_xlim(xlim[0],xlim[1]+2)
+    xlim = ax.get_xlim()
+    ax.set_xlim(xlim[0],xlim[1]+4)
 
 
     plt.figure(fig)
@@ -85,17 +85,17 @@ def summary_ENN(all_results, mN, all_lbls, colors, lbl0=None, spin='deuteron', f
         os.makedirs('figures')
     plt.savefig('figures/'+fig+'.'+format, transparent=True)
 
-    ax_dE.set_xticks(ticks, labels=irrep_lbls, fontsize=12)
-    ax_dE.legend(loc=1,fontsize=12,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
-    ax_dE.set_ylabel(r'$\delta E_{00}^{\rm lab} / m_N$', fontsize=16)
+    ax_dE.set_xticks(ticks, labels=irrep_lbls, fontsize=16)
+    ax_dE.legend(loc=1,fontsize=16,ncol=len(Ecm_mN), columnspacing=0,handletextpad=0.1)
+    ax_dE.set_ylabel(r'$\delta E_{00}^{\rm lab} / m_N$', fontsize=20)
     if spin == 'deuteron':
         ax_dE.set_ylim(-0.0105,0.0005)
     elif spin == 'dineutron':
         ax_dE.set_ylim(-0.0061,0.0005)
-    ax_dE.tick_params(axis='both', labelsize=14, direction='in')
+    ax_dE.tick_params(axis='both', labelsize=16, direction='in')
     # padd the right lim.  Each irrep is spaced at 10, so add 5 to the end
-    #xlim = ax_dE.get_xlim()
-    #ax_dE.set_xlim(xlim[0],xlim[1]+2)
+    xlim = ax_dE.get_xlim()
+    ax_dE.set_xlim(xlim[0],xlim[1]+4)
 
     plt.figure(fig+'_dElab')
     plt.savefig('figures/'+fig+'_dElab'+'.'+format, transparent=True)

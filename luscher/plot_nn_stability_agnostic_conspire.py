@@ -191,9 +191,9 @@ def main():
         plot_tmin(ax_nn, ax_nnR, ax_Q, q, models, args, nn_file, nn_dict, nn_model, optimal_model, fit_keys, nn_data, blk_results, blk_lbls)
 
         # increase tick label size
-        ax_nn.tick_params(axis='both', labelsize=14)
-        ax_nnR.tick_params(axis='both', labelsize=14)
-        ax_Q.tick_params(axis='both', labelsize=14)
+        ax_nn.tick_params(axis='both',  labelsize=16)
+        ax_nnR.tick_params(axis='both', labelsize=16)
+        ax_Q.tick_params(axis='both',   labelsize=16)
 
         fig_name = '%s_ConspiracyAgnostic_%s' %(q_str.replace('\_','_'), args.optimal.split('/')[-1].replace('pickle','stability.pdf'))
         plt.savefig('figures/'+fig_name,transparent=True)
@@ -245,7 +245,7 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
         ncol = n_models // 2
     else:
         ncol = n_models
-    axnn.legend(flip(handles, n_models), flip(labels, n_models), loc=1, ncol=ncol, fontsize=10, columnspacing=0,handletextpad=0.1)
+    axnn.legend(flip(handles, n_models), flip(labels, n_models), loc=1, ncol=ncol, fontsize=16, columnspacing=0,handletextpad=0.1)
 
     nnr_lim = summary_plot.nnr_lim
     nn_lim  = summary_plot.nn_lim
@@ -267,11 +267,11 @@ def plot_tmin(axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, opt
 
     axnn.tick_params(direction='inout')
     axnn.set_xticklabels([])
-    axnnR.tick_params(direction='inout')
+    axnnR.tick_params(bottom=True, top=True, direction='in')
     axnnR.set_xticklabels([])
+    axQ.set_yticks([0, .25, .5, .75])
     axQ.tick_params(direction='inout')
     #axQ.set_xticklabels([])
-    axQ.set_yticks([0, .25, .5, .75])
 
 
 def plot_one_tmin(t, axnn, axnnR, axQ, state, models, arg, nnFile, nnDict, nnModel, optModel, fitKeys, nnData, r_blk, l_blk):

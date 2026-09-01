@@ -37,14 +37,16 @@ def main():
     parser.add_argument('--ere_order',       default=2, type=int,
                         help=                'max order in ERE expansion, [%(default)s]')
     parser.add_argument('--rel_order',       default=1, type=int,
-                        help=                'max order in Rel. qcotd fit [%(default)s]')
+                        help=                'max order in Relativistic qcotd fit [%(default)s]')
     parser.add_argument('--plot_rel',        default=False, action='store_true',
                         help=                'plot Rel. qcotd fits? [%(default)s]')
+    parser.add_argument('--plot_ere_n',      nargs='+', type=int, default=[1,2], 
+                        help=                'which orders of ERE to plot? %(default)s')
     parser.add_argument('--irrep_avg',       default=True, action='store_false',
                         help=                'average irreps to suppress physical S-D mixing? [%(default)s]')
     parser.add_argument('--plot_raw',        default=True, action='store_false',
                         help=                'plot raw data not used in fit?  [%(default)s]')
-    parser.add_argument('--Psq_max',         default=3, type=int,
+    parser.add_argument('--Psq_max',         default=4, type=int,
                         help=                'max value of Psq to use [%(default)s]')
     parser.add_argument('--continuum_disp',  default=True, action='store_false',
                         help=                'use continuum dispersion relation to construct E_NN = dE + E1 + E2? [%(default)s]')
@@ -52,6 +54,8 @@ def main():
     parser.add_argument('--Nbs',             type=int, help='set number of bs samples to Nbs')
     parser.add_argument('--plot_virtual',    default=True, action='store_false',
                         help=                'plot solution of qcotd = sqrt(-q**2)? [%(default)s]')
+    parser.add_argument('--plot_bound',      default=False, action='store_true',
+                        help=                'plot bound state solution of qcotd = sqrt(-q**2)? [%(default)s]')
     parser.add_argument('--plot_hal',        default=False, action='store_true', 
                         help=                'plot HAL potential results? [%(default)s]')
     parser.add_argument('--plot_phys',       default=True, action='store_const',
@@ -59,6 +63,8 @@ def main():
     parser.add_argument('--qcotd_text',      type=str, help='optional text to add to qcotd plot')
     parser.add_argument('--vs_mpi',          default=True,  action='store_false',
                         help=                'scale qcotd and qsq by mpi? [%(default)s]')
+    parser.add_argument('--legend',          default=True, action='store_false', 
+                        help=                'show legend? [%(default)s]')
     parser.add_argument('--ylim',            type=float, nargs=2,
                         help=                'change default ylim for qcotd plot')
     parser.add_argument('--xlim',            type=float, nargs=2,
@@ -574,16 +580,22 @@ class qsqFit:
         ''' make plot of qcotd / M vs qcm**2 / M**2
             M can be either the nucleon mass or the pion mass
             controlled by args.vs_mpi
+            args.vs_mpi = True - scale into mpi units
+            args.vs_mpi = False - use mN units
+            qcotd from Luscher analysis is in mN units
+            qcotd from HAL analysis is in mpi units
         '''
 
         if self.args.vs_mpi:
             self.rescale = (self.data['mN'][0]/self.mpi)
+            self.rescale_hal = 1.
         else:
             self.rescale = 1.
-        plt.figure('qcotd',figsize=(7,4))
-        ax = plt.axes([0.12,0.17,0.87,0.81])
-        plt.figure('delta',figsize=(7,4))
-        axD = plt.axes([0.12,0.17,0.87,0.81])
+            self.rescale_hal = (self.data['mN'][0]/self.mpi)
+        plt.figure('qcotd',figsize=(6.5,6.5/1.618))
+        ax = plt.axes([0.145,0.17,0.83,0.81])
+        plt.figure('delta',figsize=(6.5,6.5/1.618))
+        axD = plt.axes([0.145,0.17,0.83,0.81])
 
         # plot fit results
         fit_clrs = {1:'r', 2:'g', 3:'b'}
@@ -594,18 +606,19 @@ class qsqFit:
         xD   = qsqD * self.rescale**2
 
         for n in range(1,self.args.ere_order+1)[::-1]:
-            qcotd = self.rescale * self.ere(qsq, *self.ere_results[n]['p_opt'])
-            y     = np.array([k.mean for k in qcotd])
-            dy    = np.array([k.sdev for k in qcotd])
-            ax.fill_between(x, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10)
+            if n in self.args.plot_ere_n:
+                qcotd = self.rescale * self.ere(qsq, *self.ere_results[n]['p_opt'])
+                y     = np.array([k.mean for k in qcotd])
+                dy    = np.array([k.sdev for k in qcotd])
+                ax.fill_between(x, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10)
 
-            # phase shift
-            qcotdD = self.ere(qsqD, *self.ere_results[n]['p_opt'])
-            cotd   = qcotdD * self.data['mN'][0] / np.sqrt(qsqD)
-            delta  = (np.pi / 2 - np.arctan(cotd)) * 180 / np.pi
-            y      = np.array([k.mean for k in delta])
-            dy     = np.array([k.sdev for k in delta])
-            axD.fill_between(xD, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10,label=r'ERE: $\mathrm{O}(q_{\rm cm}^%d)$' %(n*2))
+                # phase shift
+                qcotdD = self.ere(qsqD, *self.ere_results[n]['p_opt'])
+                cotd   = qcotdD * self.data['mN'][0] / np.sqrt(qsqD)
+                delta  = (np.pi / 2 - np.arctan(cotd)) * 180 / np.pi
+                y      = np.array([k.mean for k in delta])
+                dy     = np.array([k.sdev for k in delta])
+                axD.fill_between(xD, y-dy, y+dy, color=fit_clrs[n], alpha=(5-n)/10,label=r'ERE: $\mathrm{O}(q_{\rm c.m.}^%d)$' %(n*2))
 
         if self.args.plot_rel:
             # plot Rel. qcotd
@@ -627,7 +640,14 @@ class qsqFit:
         if self.args.plot_virtual:
             x_v = np.arange(-.2,0,.0001)
             y_v = np.sqrt(-x_v)
-            ax.plot(x_v,y_v, linestyle=':', color='k', alpha=.8)
+            #ax.plot(x_v,y_v, linestyle=':', color='g', alpha=.8)
+            ax.plot(x_v,y_v, color='g', alpha=.7, linewidth=3)
+
+        if self.args.plot_bound:
+            x_v = np.arange(-.2,0,.0001)
+            y_v = -np.sqrt(-x_v)
+            #ax.plot(x_v,y_v, linestyle=':', color='r', alpha=.7)
+            ax.plot(x_v,y_v, color='r', alpha=.7, linewidth=3)
 
         if self.args.plot_hal:
             '''
@@ -640,6 +660,11 @@ class qsqFit:
             qsq_hal   = np.array([float(q) for q in hal_in[0].split()])
             qcotd_max = np.array([float(q) for q in hal_in[1].split()])
             qcotd_min = np.array([float(q) for q in hal_in[2].split()])
+            # rescale for mpi vs mN units
+            print(self.rescale)
+            qsq_hal   = qsq_hal / self.rescale_hal**2
+            qcotd_max = qcotd_max / self.rescale_hal
+            qcotd_min = qcotd_min / self.rescale_hal
             '''
             qsq_hal = []
             hal_results = []
@@ -673,19 +698,19 @@ class qsqFit:
                 axD.axis([0,0.26, 0, 182])
             else:
                 axD.axis([0,0.26, 0, 82])
-            ax.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
-            axD.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
-            ax.set_ylabel(r'$q {\rm cot} \delta / m_\pi$', fontsize=24)
-            axD.set_xlabel(r'$q_{\rm cm}^2 / m_\pi^2$', fontsize=24)
+            ax.set_xlabel(r'$q_{\rm c.m.}^2 / m_\pi^2$', fontsize=20)
+            axD.set_xlabel(r'$q_{\rm c.m.}^2 / m_\pi^2$', fontsize=20)
+            ax.set_ylabel(r'$q {\rm cot} \delta / m_\pi$', fontsize=20)
+            axD.set_xlabel(r'$q_{\rm c.m.}^2 / m_\pi^2$', fontsize=20)
         else:
             ax.axis([-.026, 0.0525, -.15,0.6])
             if self.channel == 'deuteron':
                 axD.axis([0,0.0525, 0, 182])
             else:
                 axD.axis([0,0.0525, 0, 82])
-            ax.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=24)
-            axD.set_xlabel(r'$q_{\rm cm}^2 / m_N^2$', fontsize=24)
-            ax.set_ylabel(r'$q {\rm cot} \delta / m_N$', fontsize=24)
+            ax.set_xlabel(r'$q_{\rm c.m.}^2 / m_N^2$', fontsize=20)
+            axD.set_xlabel(r'$q_{\rm c.m.}^2 / m_N^2$', fontsize=20)
+            ax.set_ylabel(r'$q {\rm cot} \delta / m_N$', fontsize=20)
         if self.args.ylim:
             ax.set_ylim(self.args.ylim)
         if self.args.xlim:
@@ -729,15 +754,17 @@ class qsqFit:
         axD.axhline(color='k')
         axD.axvline(color='k')
 
-        ax.legend(loc=2, columnspacing=0, handletextpad=0.1)
-        ax.tick_params(axis='both', labelsize=14, direction='in')
-        axD.legend(loc=1, columnspacing=0, handletextpad=0.1, fontsize=18)
-        axD.tick_params(axis='both', labelsize=14, direction='in')
+        #ax.legend(loc='lower right', columnspacing=0, handletextpad=0.1, fontsize=14)
+        if self.args.legend:
+            ax.legend(loc=2, columnspacing=0, handletextpad=0.1, fontsize=14)
+            axD.legend(loc=1, columnspacing=0, handletextpad=0.1, fontsize=14)
+        ax.tick_params(axis='both', labelsize=16, direction='in')
+        axD.tick_params(axis='both', labelsize=16, direction='in')
 
         # optional text for qcotd
         if self.args.qcotd_text:
             txt = self.args.qcotd_text.replace('_','\_')
-            ax.text(0.54, 0.85, r'%s' %(txt), horizontalalignment='center',
+            ax.text(0.65, 0.85, r'%s' %(txt), horizontalalignment='center',
                     transform=ax.transAxes, fontsize=24, 
                     bbox={'facecolor':'none','boxstyle':'round'})
 
@@ -748,14 +775,14 @@ class qsqFit:
             os.makedirs('figures')
 
         # switch to correct plot to save
-        plt.figure('qcotd',figsize=(7,4))
+        plt.figure('qcotd')
         if self.args.fig_type == 'pdf':
             plt.savefig(f'figures/qcotd_{fig_base}.pdf', transparent=True)
         else:
             plt.savefig(f'figures/qcotd_{fig_base}.{self.args.fig_type}')
 
         # now switch to phase shift plot
-        plt.figure('delta',figsize=(7,4))
+        plt.figure('delta')
         if self.args.fig_type == 'pdf':
             plt.savefig(f'figures/delta_{fig_base}.pdf', transparent=True)
         else:
